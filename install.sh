@@ -25,7 +25,7 @@ function display_banner() {
 function clone_dotfiles() {
   if [ ! -d $HOME/.dotfiles ]; then
     echo -e "${GREEN}INFO:${CLEAR} Cloning dotfiles to $HOME/.dotfiles";
-    git clone https://github.com/pmgledhill102/dotfiles.git $HOME/.dotfiles;
+    git clone https://github.com/pmgledhill102/dotfiles.git --branch ${GITHUB_HEAD_REF:-main} --single-branch $HOME/.dotfiles;
   else
     echo -e "${GREEN}INFO:${CLEAR} Dotfiles already cloned. Pulling latest changes";
     git -C $HOME/.dotfiles pull > /dev/null;
@@ -76,6 +76,7 @@ function stow_dotfiles() {
   cd $HOME/.dotfiles
   #stow iterm
   stow bash
+  stow zsh
 }
 
 function install_apt_packages() {

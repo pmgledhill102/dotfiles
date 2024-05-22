@@ -6,7 +6,6 @@
 - Which of these are mine, versus work laptop?
 - iTerm => MacOS Terminal settings
 - (think there's a fair bit on MacOS settings)
-- Update stupid red/green 'flower' to a circle? square?
 
 ## Install
 
@@ -28,7 +27,8 @@ I'm looking to support:
 
 ## Thanks Shivam Khattar
 
-Idea stolen from the absolutely wonderful Shivam Khattar ([@iamkhattar](https://github.com/iamkhattar)). Many thanks for your endless energy!
+Idea stolen from the absolutely wonderful Shivam Khattar ([@iamkhattar](https://github.com/iamkhattar)).
+Many thanks for your endless energy!
 
 ## Scope
 

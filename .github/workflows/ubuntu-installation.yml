@@ -25,14 +25,14 @@ jobs:
       - name: Install dotfiles
         run: ./install.sh
 
-      # - name: Verifies dotfiles (ZSH)
-      #   run: source ~/.zshrc && ./verify.zsh
-      #   shell: /bin/zsh {0}
-      #   env:
-      #     ZSH_DISABLE_COMPFIX: true
-
       - name: Verifies dotfiles (BASH)
         run: source ~/.bashrc && ./verify.sh
+
+      - name: Verifies dotfiles (ZSH)
+        run: source ~/.zshrc && ./verify.sh
+        shell: /bin/zsh {0}
+        env:
+          ZSH_DISABLE_COMPFIX: true
 
       - name: Check disk usage
         run: ./verify_disk_usage.sh
