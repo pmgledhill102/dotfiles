@@ -8,10 +8,7 @@
           "type": "os",
           "style": "plain",
           "foreground": "#26C6DA",
-          "template": "{{ if .WSL }}WSL {{ end }}{{.Icon}} ",
-          "properties": {
-            "macos": "mac"
-          }
+          "template": "{{ if .WSL }}WSL {{ end }}{{.Icon}} "
         },    
         {
           "foreground": "#1951c9",

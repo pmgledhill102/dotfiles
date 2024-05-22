@@ -1,5 +1,7 @@
+
 # Load all global dotfiles
-for DOTFILE in $(ls ~/.config/zsh/*.zsh | sort); do
+export SH=zsh
+for DOTFILE in $(ls ~/.config/bash/*.sh | sort); do
 	[ -r "$DOTFILE" ] && [ -f "$DOTFILE" ] && source "$DOTFILE";
 done;
 unset DOTFILE;
