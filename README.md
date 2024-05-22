@@ -53,6 +53,8 @@ Many thanks for your endless energy!
 - Nano Language Support
 - Ubuntu core utils
 
+Note: Ubuntu Minimal not supported (lacks git, nano, apt-utils, ...)
+
 ## Oh My Posh
 
 I decided to embrace [Oh My Posh](https://ohmyposh.dev/) to provide terminal customisations. Although
