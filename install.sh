@@ -84,7 +84,7 @@ function install_apt_packages() {
   # Check to see if packages are installed
   INSTALLS_REQUIRED=0
   for i in $(cat $HOME/.dotfiles/apt/pkglist);
-    do if dpkg -s $i &>dev/null; then echo -e " $GREEN - $i is installed $CLEAR";
+    do if dpkg -s $i &>/dev/null; then echo -e " $GREEN - $i is installed $CLEAR";
     else echo -e "$RED - $i is not installed $CLEAR"; INSTALLS_REQUIRED=1; fi;
   done
 

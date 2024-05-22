@@ -6,16 +6,18 @@ on:
     branches:
       - main
   workflow_dispatch:
-    
+
 jobs:
   ubuntu-install:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
-      - name: Check starting disk space
+      - name: Get initial disk usage
+        id: get_initial_usage
         run: |
-          echo "Start free space: "
-          df -h -B 1
+          initial_usage=$(df -h -B 1 | grep '/dev/root' | awk '{print $3}')
+          echo "Initial disk usage: $initial_usage bytes"
+          echo "initial_usage=$initial_usage" >> $GITHUB_ENV
 
       - name: Clone this repository
         uses: actions/checkout@v4
@@ -30,9 +32,7 @@ jobs:
       #     ZSH_DISABLE_COMPFIX: true
 
       - name: Verifies dotfiles (BASH)
-        run: source ~/.bashrc && ./verify.zsh
+        run: source ~/.bashrc && ./verify.sh
 
-      - name: Check end disk space
-        run: | 
-          echo "End free space: "
-          df -h -B 1
+      - name: Check disk usage
+        run: ./verify_disk_usage.sh
