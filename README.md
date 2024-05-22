@@ -175,6 +175,14 @@ To do...
 - Add Tooltips for additional feedback (I.e. gcloud => gcp)
 - Investigate Transient Prompts (<https://ohmyposh.dev/docs/configuration/transient>)
 
+### Lean  Focus
+
+Package Sizes:
+
+- zsh : 19.1MB
+- zip : 1.0 MB
+- jq  : 1.1 1MB
+
 ### Interesting Links
 
 Here are a few links to apps used, or articles related to dotfiles:

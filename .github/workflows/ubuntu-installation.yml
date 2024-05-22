@@ -5,12 +5,18 @@ on:
   push:
     branches:
       - main
-
+  workflow_dispatch:
+    
 jobs:
   ubuntu-install:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Check starting disk space
+        run: |
+          echo "Start free space: "
+          df -h -B 1
+
       - name: Clone this repository
         uses: actions/checkout@v4
 
@@ -25,3 +31,8 @@ jobs:
 
       - name: Verifies dotfiles (BASH)
         run: source ~/.bashrc && ./verify.zsh
+
+      - name: Check end disk space
+        run: | 
+          echo "End free space: "
+          df -h -B 1
