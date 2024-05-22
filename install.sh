@@ -24,7 +24,7 @@ function display_banner() {
 
 function clone_dotfiles() {
   if [ ! -d $HOME/.dotfiles ]; then
-    echo -e "${GREEN}INFO:${CLEAR} Cloning dotfiles to $HOME/.dotfiles";
+    echo -e "${GREEN}INFO:${CLEAR} Cloning dotfiles to $HOME/.dotfiles (${GITHUB_HEAD_REF:-main})";
     git clone https://github.com/pmgledhill102/dotfiles.git --branch ${GITHUB_HEAD_REF:-main} --single-branch $HOME/.dotfiles;
   else
     echo -e "${GREEN}INFO:${CLEAR} Dotfiles already cloned. Pulling latest changes";
@@ -74,9 +74,18 @@ function stow_dotfiles() {
   rm -rf ~/.zprofile
   rm -rf ~/.bashrc
   cd $HOME/.dotfiles
-  #stow iterm
   stow bash
   stow zsh
+}
+
+function stow_dotfiles_macos() {
+  stow_dotfiles
+
+  echo -e "${GREEN}INFO:${CLEAR} Stowing Mac Only dotfiles"
+
+  cd $HOME/.dotfiles
+  #stow iterm
+  stow brew
 }
 
 function install_apt_packages() {
@@ -121,7 +130,7 @@ function install_nanorc_highlighting() {
   echo -e "${GREEN}INFO:${CLEAR} Installing Nano syntax highlighting"
 
   wget -q -O /tmp/nanorc.sh https://raw.githubusercontent.com/scopatz/nanorc/master/install.sh
-  sed -i 's/wget -O/wget -q -O/g' /tmp/nanorc.sh
+  sed -i -e 's/wget -O/wget -q -O/g' /tmp/nanorc.sh
   /bin/bash -c "$(cat /tmp/nanorc.sh)" > /dev/null
 }
 
@@ -129,9 +138,10 @@ function main_macos() {
   display_banner "MacOS Edition"
   clone_dotfiles
   create_directories
-  stow_dotfiles
-  #install_oh_my_posh
+  install_brew
+  install_dependencies_using_brew
   install_nanorc_highlighting
+  stow_dotfiles_macos
 }
 
 function main_ubuntu() {

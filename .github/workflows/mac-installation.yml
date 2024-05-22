@@ -1,6 +1,11 @@
 name: Macbook Dotfiles Installation
 
-on: workflow_dispatch
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   mac-install:
@@ -20,4 +25,4 @@ jobs:
       - name: Install using Install Script
         run: rm -rf $HOME/.gitconfig && chmod +x install.sh && ./install.sh
       - name: Verify using Verify Script
-        run: chmod +x verify.zsh && zsh -c "source ~/.zshrc && $HOME/.dotfiles/verify.zsh"
+        run: zsh -c "source ~/.zshrc && $HOME/.dotfiles/verify.sh"

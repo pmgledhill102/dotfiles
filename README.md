@@ -2,7 +2,6 @@
 
 ## TO DO
 
-- Look at my MacOS Brewfile and update this with it
 - Which of these are mine, versus work laptop?
 - iTerm => MacOS Terminal settings
 - (think there's a fair bit on MacOS settings)
@@ -172,18 +171,106 @@ defaults write com.googlecode.iterm2 PrefsCustomFolder -string "~/dev/dotfiles/i
 defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
 ```
 
-To do...
-
-- Add Tooltips for additional feedback (I.e. gcloud => gcp)
-- Investigate Transient Prompts (<https://ohmyposh.dev/docs/configuration/transient>)
-
 ### Lean  Focus
 
-Package Sizes:
+When installed to Ubuntu servers, I want the footprint to be kept to a minimum, as I'll be
+charged for the storage. This is a major reason to avoid `homebrew`. To enforce this over time
+I've included a 100MB check into the GitHub workflow.
 
-- zsh : 19.1MB
-- zip : 1.0 MB
-- jq  : 1.1 1MB
+### Brew before I started
+
+Here's my Mac brew list before I started to automate installs
+
+```sh
+> brew list
+> brew tap
+```
+
+Formulae
+
+- autoconf
+- brotli
+- c-ares
+- ca-certificates
+- cairo
+- fontconfig
+- freetype
+- gcc
+- gettext
+- gh
+- giflib
+- git
+- glib
+- gmp
+- go
+- gradle
+- graphite2
+- grep
+- harfbuzz
+- icu4c
+- isl
+- jj
+- jpeg-turbo
+- kind
+- kn
+- kubernetes-cli
+- libmpc
+- libnghttp2
+- libpng
+- libtiff
+- libuv
+- libx11
+- libxau
+- libxcb
+- libxdmcp
+- libxext
+- libxrender
+- little-cms2
+- lz4
+- lzo
+- m4
+- maven
+- mpdecimal
+- mpfr
+- node
+- nvm
+- oh-my-posh
+- openjdk
+- openjdk@17
+- openssl@3
+- pack
+- pandoc
+- pcre2
+- pixman
+- pkg-config
+- pyenv
+- quarkus
+- readline
+- rustup-init
+- sqlite
+- tfenv
+- xorgproto
+- xz
+- zstd
+
+Casks
+- discord
+- font-jetbrains-mono-nerd-font
+- google-cloud-sdk
+- insomnia
+- inspec
+- intellij-idea-ce
+- iterm2
+- utm
+- visual-studio-code
+
+Taps
+- buildpacks/tap
+- chef/chef
+- jandedobbeleer/oh-my-posh
+- knative/client
+- quarkusio/tap
+- tidwall/jj
 
 ### Interesting Links
 

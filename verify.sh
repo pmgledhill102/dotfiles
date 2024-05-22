@@ -120,20 +120,12 @@ fi
   @verify_binary openssl
   @verify_binary sam
   @verify_binary terraform
-  @verify_binary cert-details
+  @verify_binary oh-my-posh
 
   @verify_directory ~/.dotfiles
-  @verify_directory ~/.config/zsh
-  @verify_directory ~/.config/zsh/bin
 
   @verify_file ~/.zshrc
-  @verify_file ~/.zprofile
   @verify_file ~/.hushlogin
-  @verify_file ~/.p10k.zsh
-  @verify_file ~/.config/zsh/aliases.zsh
-  @verify_file ~/.config/zsh/exports.zsh
-  @verify_file ~/.config/zsh/functions.zsh
-  @verify_file ~/.config/zsh/path.zsh
 
   @verify_environment_variable LANG
   @verify_environment_variable LC_ALL
@@ -142,25 +134,13 @@ fi
   @verify_environment_variable DOTNET_CLI_TELEMETRY_OPTOUT
   @verify_environment_variable PYTHONIOENCODING
   @verify_environment_variable HISTCONTROL
-  @verify_environment_variable FZF_DEFAULT_OPTS
-  @verify_environment_variable NVM_DIR
   @verify_environment_variable HOME
   @verify_environment_variable DOTFILES_DIR
 
   @verify_on_path $HOMEBREW_PATH_DIR
 
   @verify_symlink ~/.hushlogin .dotfiles/zsh/.hushlogin
-  @verify_symlink ~/.p10k.zsh .dotfiles/zsh/.p10k.zsh
-  @verify_symlink ~/.zprofile .dotfiles/zsh/.zprofile
   @verify_symlink ~/.zshrc .dotfiles/zsh/.zshrc
-  @verify_symlink ~/.config/zsh ../.dotfiles/zsh/.config/zsh
-  @verify_symlink ~/.wgetrc .dotfiles/wget/.wgetrc
-  @verify_symlink ~/.tmux.conf .dotfiles/tmux/.tmux.conf
-  @verify_symlink ~/.config/nvim/lua/custom ../../../.dotfiles/nvim/.config/nvim/lua/custom
-  @verify_symlink ~/.config/iterm ../.dotfiles/iterm/.config/iterm
-  @verify_symlink ~/.gitconfig .dotfiles/git/.gitconfig
-  @verify_symlink ~/.fzf.zsh .dotfiles/fzf/.fzf.zsh
-  @verify_symlink ~/.curlrc .dotfiles/curl/.curlrc
   @verify_symlink ~/Brewfile .dotfiles/brew/Brewfile
 }
 

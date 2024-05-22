@@ -6,6 +6,8 @@
 ### Customizations...
 ############################
 
+CURRENT_OS=$(uname)
+
 # Load all global dotfiles
 export SH=bash
 for DOTFILE in $(ls ~/.config/bash/*.sh | sort); do

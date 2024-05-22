@@ -133,7 +133,7 @@
         {
           "foreground": "white",
           "style": "plain",
-          "template": "\udb80\udd3e",
+          "template": " \udb80\udd3e",
           "type": "text"
         }
       ],
