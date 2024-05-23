@@ -22,6 +22,3 @@ export HISTCONTROL='ignoreboth'
 
 # Project Directory
 export PROJECT_DIR=$HOME/dev
-
-# Required for Oh My Posh
-export PATH="$PATH:~/bin"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-final_usage=$(df -k | grep -E '/dev/root|/dev/disk3s1s1' | awk '{print $3}')
+final_usage=$(df -k | grep -E '/dev/root|/dev/disk3s5' | awk '{print $3}')
 echo "Final disk usage: $final_usage kbytes"
 usage_change_kb=$((final_usage - initial_usage))
 usage_change_mb=$(echo "scale=2; $usage_change_kb / 1024" | bc)

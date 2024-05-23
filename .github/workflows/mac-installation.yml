@@ -24,7 +24,7 @@ jobs:
       - name: Get initial disk usage
         id: get_initial_usage
         run: |
-          initial_usage=$(df -k | grep -E '/dev/root|/dev/disk3s1s1' | awk '{print $3}')
+          initial_usage=$(df -k | grep -E '/dev/root|/dev/disk3s5' | awk '{print $3}')
           echo "Initial disk usage: $initial_usage kbytes"
           echo "initial_usage=$initial_usage" >> $GITHUB_ENV
 
@@ -40,4 +40,4 @@ jobs:
       - name: Check disk usage
         run: ./verify_disk_usage.sh
         env:
-          max_allowed_usage: 2500
+          max_allowed_usage: 5000

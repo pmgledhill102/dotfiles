@@ -32,10 +32,10 @@ jobs:
         run: ./install.sh
 
       - name: Verifies dotfiles (BASH)
-        run: source ~/.bashrc && ./verify.sh
+        run: source ~/.bash_profile && source ~/.bashrc && ./verify.sh
 
       - name: Verifies dotfiles (ZSH)
-        run: source ~/.zshrc && ./verify.sh
+        run: source ~/.zprofile && source ~/.zshrc && ./verify.sh
         shell: /bin/zsh {0}
         env:
           ZSH_DISABLE_COMPFIX: true

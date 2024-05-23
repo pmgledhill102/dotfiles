@@ -3,9 +3,6 @@
 ###################################
 ### CONFIGURE VARS USED BY SCRIPTS
 
-# MacOS or Linux?
-export CURRENT_OS=$(uname)
-
 #  Interactive Session?
 case $- in
     *i*) export INTERACTIVE=1;;
@@ -16,7 +13,6 @@ esac
 ### CUSTOMISATION SCRIPTS
 
 # cycle all files in folder, in alphabetical order
-export SH=bash
 for DOTFILE in $(ls ~/.config/bash/*.sh | sort); do
 	[ -r "$DOTFILE" ] && [ -f "$DOTFILE" ] && source "$DOTFILE";
 done;

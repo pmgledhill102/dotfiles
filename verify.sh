@@ -121,11 +121,15 @@ fi
   @verify_binary sam
   @verify_binary terraform
   @verify_binary oh-my-posh
+  @verify_binary pwsh
 
   @verify_directory ~/.dotfiles
 
-  @verify_file ~/.zshrc
   @verify_file ~/.hushlogin
+  @verify_file ~/.zshrc
+  @verify_file ~/.zprofile
+  @verify_file ~/.nano/go.nanorc
+  @verify_file ~/.config/powershell/Microsoft.PowerShell_profile.ps1
 
   @verify_environment_variable LANG
   @verify_environment_variable LC_ALL
@@ -153,14 +157,17 @@ fi
   @verify_binary wget
   @verify_binary zsh
   @verify_binary stow
-
-  #@verify_binary oh-my-posh
+  @verify_binary oh-my-posh
+  @verify_binary pwsh
 
   @verify_directory ~/.dotfiles
 
   @verify_file ~/.bashrc
-  @verify_file ~/.nanorc
+  @verify_file ~/.bash_profile
+  @verify_file ~/.zshrc
+  @verify_file ~/.zprofile
   @verify_file ~/.nano/go.nanorc
+  @verify_file ~/.config/powershell/Microsoft.PowerShell_profile.ps1
 
   @verify_environment_variable PYTHONIOENCODING
   @verify_environment_variable HISTCONTROL

@@ -99,6 +99,7 @@ function stow_dotfiles() {
   rm -rf ~/.zshrc
   rm -rf ~/.zprofile
   rm -rf ~/.bashrc
+  rm -rf ~/.bash_profile
   cd $HOME/.dotfiles
   stow bash
   stow zsh
@@ -112,7 +113,10 @@ function stow_dotfiles_macos() {
 
   cd $HOME/.dotfiles
   #stow iterm
+  
   stow brew
+  stow zsh
+  stow powershell
 }
 
 function install_apt_packages() {
