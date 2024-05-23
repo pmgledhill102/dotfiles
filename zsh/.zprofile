@@ -1,9 +1,6 @@
 # MacOS or Linux?
 export CURRENT_OS=$(uname)
 
-# Env Var for the shell name
-export SH=zsh
-
 # Homebrew
 if [ -d "/opt/homebrew" ]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"

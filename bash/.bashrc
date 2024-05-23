@@ -1,5 +1,8 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
+# Env Var for the shell name
+export SH=bash
+
 ###################################
 ### CONFIGURE VARS USED BY SCRIPTS
 
