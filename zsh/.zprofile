@@ -14,7 +14,7 @@ elif [ -d "/home/linuxbrew" ]; then
 fi
 
 # Oh My Posh
-if [[ "${CURRENT_OS}" == "Linux" ]]; then
+if [ "${CURRENT_OS}" = "Linux" ]; then
   # Required for Oh My Posh
   export PATH="$PATH:$HOME/bin"
 fi

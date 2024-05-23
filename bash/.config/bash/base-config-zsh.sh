@@ -2,10 +2,10 @@
 # for examples
 
 # If not bash then quit
-if [[ "$SH" != "zsh" ]]; then return; fi
+if [ "$SH" != "zsh" ]; then return; fi
 
 # If not running interactively, don't do anything
-if [[ $INTERACTIVE -eq 0 ]]; then return; fi
+if [ "$INTERACTIVE" -eq 0 ]; then return; fi
 
 # Lines configured by zsh-newuser-install
 HISTFILE=~/.histfile
