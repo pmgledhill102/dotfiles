@@ -194,3 +194,7 @@ if [ "${CURRENT_OS}" == "Darwin" ]; then
 else
   main_ubuntu "$@"
 fi
+
+# Execute bash profile scripts
+source $HOME/.bash_profile
+source $HOME/.bashrc
