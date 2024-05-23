@@ -54,10 +54,10 @@ function install_dependencies_using_brew() {
 }
 
 function install_oh_my_posh() {
-  # Install to ~/bin folder
+  # Install to $HOME/bin folder
   mkdir -p $HOME/bin
   echo -e "${GREEN}INFO:${CLEAR} Installing Oh My Posh, installing using install script"
-  curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/bin
+  curl -s https://ohmyposh.dev/install.sh | bash -s -- -d $HOME/bin
 }
 
 function create_directories() {

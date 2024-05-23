@@ -131,15 +131,15 @@ mv "$tmp" "$HOME/Library/Application Support/Code/User/settings.json"
 ### Ubuntu
 
 ```sh
-# Install to ~/bin folder
-curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/bin
+# Install to $HOME/bin folder
+curl -s https://ohmyposh.dev/install.sh | bash -s -- -d $HOME/bin
 ```
 
 Add this to ~/.bashrc ...
 
 ```sh
 # Oh My Posh
-export PATH="$PATH:~/bin"
+export PATH="$PATH:$HOME/bin"
 eval "$(oh-my-posh init bash --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.json')"
 ```
 
