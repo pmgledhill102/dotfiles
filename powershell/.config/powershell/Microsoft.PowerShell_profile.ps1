@@ -1,0 +1,1 @@
+oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.json' | Invoke-Expression

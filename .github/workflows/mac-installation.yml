@@ -20,9 +20,24 @@ jobs:
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh)"
           rm -rf ~/.oh-my-zsh
           rm -rf ~/powerlevel10k
+
+      - name: Get initial disk usage
+        id: get_initial_usage
+        run: |
+          initial_usage=$(df -k | grep -E '/dev/root|/dev/disk3s1s1' | awk '{print $3}')
+          echo "Initial disk usage: $initial_usage kbytes"
+          echo "initial_usage=$initial_usage" >> $GITHUB_ENV
+
       - name: Clone this repository
         uses: actions/checkout@v4
+
       - name: Install using Install Script
         run: rm -rf $HOME/.gitconfig && chmod +x install.sh && ./install.sh
+
       - name: Verify using Verify Script
         run: zsh -c "source ~/.zshrc && $HOME/.dotfiles/verify.sh"
+
+      - name: Check disk usage
+        run: ./verify_disk_usage.sh
+        env:
+          max_allowed_usage: 2500
