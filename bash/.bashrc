@@ -4,6 +4,15 @@
 export SH=bash
 
 ###################################
+### QUIT ON MAC
+### - only zsh and pwsh supported
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  echo "Only zsh and pwsh are supported on MacOS"
+  return
+fi
+
+###################################
 ### CONFIGURE VARS USED BY SCRIPTS
 
 #  Interactive Session?
