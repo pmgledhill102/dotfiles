@@ -168,6 +168,51 @@ function install_nanorc_highlighting() {
   /bin/bash -c "$(cat /tmp/nanorc.sh)" > /dev/null
 }
 
+function configure_wsl() {
+  # Check if running in WSL
+  if [ -z "${WSL_DISTRO_NAME}" ]; then
+      return
+  fi
+
+  # Running as WSL
+  echo -e "${GREEN}INFO:${CLEAR} Windows Subsystem for Linux (WSL) detected"
+
+  # Check if the current user is root
+  if [ "$(id -u)" -ne 0 ]; then
+    return
+  fi
+
+  # Running as default root user in WSL
+  echo -e "${RED}INFO:${CLEAR} Default Root User Detected, creating new user"
+  NEW_USER=pmg102
+
+  # Install sudo
+  sudo apt update > /dev/null
+  sudo apt install -y sudo > /dev/null
+
+  # Add user, and add to sudo group
+  sudo adduser --gecos "" $NEW_USER
+  sudo usermod -aG sudo $NEW_USER
+
+  # Make $NEW_USER the default user
+  echo "[user]" >> /etc/wsl.conf
+  echo "default=$NEW_USER" >> /etc/wsl.conf
+
+  # Allow $NEW_USER to run echo and apt-get as sudo without password
+  # echo "$NEW_USER ALL=(ALL) NOPASSWD: /bin/echo" > /etc/sudoers.d/010_$NEW_USER-nopasswd
+  # echo "$NEW_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get" >> /etc/sudoers.d/010_$NEW_USER-nopasswd
+
+  echo -e "${GREEN}INFO:${CLEAR} New User Created '$NEW_USER' switching context. Re-run install"
+
+  # Rerunning  as new user
+  sudo -u $NEW_USER "curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/dev/install.sh | bash"
+
+  #su - $NEW_USER -c "curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/dev/install.sh | bash"
+
+  # Exit
+  exit
+}
+
 function main_macos() {
   display_banner "MacOS Edition"
   clone_dotfiles
@@ -180,6 +225,7 @@ function main_macos() {
 
 function main_ubuntu() {
   display_banner "Ubuntu Edition"
+  configure_wsl
   clone_dotfiles
   create_directories
   install_apt_packages
