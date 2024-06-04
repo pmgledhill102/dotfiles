@@ -5,6 +5,10 @@
 - Which of these are mine, versus work laptop?
 - iTerm => MacOS Terminal settings
 - (think there's a fair bit on MacOS settings)
+- Detect Stndard MacOS terminal - and bail - in the bashrc files
+- Add to Brew... `brew install --cask font-jetbrains-mono-nerd-font`
+- Add to Brew... `brew install --cask iterm2`
+- Add iTerms settings default locations
 
 ## Install
 
@@ -171,7 +175,7 @@ brew install --cask iterm2
 # Configure iterm2 to use the file from this repo for it's settings, this includes
 # the changes to default font
 
-defaults write com.googlecode.iterm2 PrefsCustomFolder -string "~/dev/dotfiles/iterm"
+defaults write com.googlecode.iterm2 PrefsCustomFolder -string "~/.config/iterm"
 defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
 ```
 
