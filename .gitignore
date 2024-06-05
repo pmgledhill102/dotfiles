@@ -2,3 +2,5 @@
 .idea
 
 local
+
+Brewfile.lock.json
