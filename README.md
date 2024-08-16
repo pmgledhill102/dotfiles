@@ -9,6 +9,9 @@
 - Add to Brew... `brew install --cask font-jetbrains-mono-nerd-font`
 - Add to Brew... `brew install --cask iterm2`
 - Add iTerms settings default locations
+- MacOS Java - improve - may need this:
+- `sudo ln -sfn $HOMEBREW_PREFIX/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk`
+- Or maybe jenv?
 
 ## Install
 
