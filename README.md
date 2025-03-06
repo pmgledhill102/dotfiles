@@ -9,6 +9,9 @@
 - Add to Brew... `brew install --cask font-jetbrains-mono-nerd-font`
 - Add to Brew... `brew install --cask iterm2`
 - Add iTerms settings default locations
+- MacOS Java - improve - may need this:
+- `sudo ln -sfn $HOMEBREW_PREFIX/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk`
+- Or maybe jenv?
 
 ## Install
 
@@ -304,3 +307,4 @@ Here are a few links to apps used, or articles related to dotfiles:
 - [Using GNU Stow to manage your dotfiles](https://brandon.invergo.net/news/2012-05-26-using-gnu-stow-to-manage-your-dotfiles.html)
 - [Awesome Linux shell on Windows: WSL, Windows Terminal, ZSH, oh-my-zsh, and powerlevel10k](https://gist.github.com/RalfG/19dfb8b51dd681abbae22af966c57ced)
 - [Scott Hanselman : My Ultimate PowerShell prompt with Oh My Posh and the Windows Terminal](https://www.hanselman.com/blog/my-ultimate-powershell-prompt-with-oh-my-posh-and-the-windows-terminal)
+- [Powershell Custom Prompt Setup](https://learn.microsoft.com/en-us/windows/terminal/tutorials/custom-prompt-setup)
