@@ -205,6 +205,16 @@
       "template": "\ue7B2 {{.Project}} :: {{.Account}}{{ if .Region}} :: {{.Region}}{{ end }}"
     },
     {
+      "type": "az",
+      "style": "plain",
+      "powerline_symbol": "",
+      "foreground": "#d83cbe",
+      "template": "\uebd8 {{ .EnvironmentName }} :: {{ .User.Name }}",
+      "properties": {
+        "source": "pwsh"
+      }
+    },
+    {
       "type": "kubectl",
       "tips": [
         "kubectl",
