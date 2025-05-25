@@ -206,6 +206,9 @@
     },
     {
       "type": "az",
+      "tips": [
+        "az"
+      ],
       "style": "plain",
       "foreground": "#d83cbe",
       "template": "\uebd8 {{ .EnvironmentName }} :: {{ .User.Name }}",
