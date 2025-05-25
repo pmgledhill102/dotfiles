@@ -213,7 +213,7 @@
       "foreground": "#d83cbe",
       "template": "\uebd8 {{ .EnvironmentName }} :: {{ .User.Name }}",
       "properties": {
-        "source": "pwsh"
+        "source": "cli"
       }
     },
     {
