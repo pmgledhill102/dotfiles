@@ -48,7 +48,6 @@ function install_dependencies_using_brew() {
   echo -e "${GREEN}INFO:${CLEAR} Installing dependencies from $HOME/.dotfiles/brew/Brewfile"
   brew analytics off
   brew update
-  brew tap homebrew/bundle
   brew bundle install --file=$HOME/.dotfiles/brew/Brewfile
   brew cleanup
 }
