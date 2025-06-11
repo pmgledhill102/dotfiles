@@ -33,5 +33,5 @@ and add this to $PROFILE (you may need to create the folder for this file)
 
 ```pwsh
 $env:PATH += ":$HOME/.local/bin"
-oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH/jandedobbeleer.omp.json" | Invoke-Expression
+oh-my-posh init pwsh --config "https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.json" | Invoke-Expression
 ```
