@@ -21,3 +21,17 @@ sudo apt update
 # 6. Install PowerShell
 sudo apt install -y powershell
 ```
+
+## Install Oh My Posh on top
+
+```pwsh
+sudo apt install unzip -y
+curl -s https://ohmyposh.dev/install.sh | bash -s
+```
+
+and add this to $PROFILE (you may need to create the folder for this file)
+
+```pwsh
+$env:PATH += ":$HOME/.local/bin"
+oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH/jandedobbeleer.omp.json" | Invoke-Expression
+```
