@@ -205,6 +205,18 @@
       "template": "\ue7B2 {{.Project}} :: {{.Account}}{{ if .Region}} :: {{.Region}}{{ end }}"
     },
     {
+      "type": "az",
+      "tips": [
+        "az"
+      ],
+      "style": "plain",
+      "foreground": "#d83cbe",
+      "template": "\uebd8 {{ .EnvironmentName }} :: {{ .User.Name }}",
+      "properties": {
+        "source": "cli"
+      }
+    },
+    {
       "type": "kubectl",
       "tips": [
         "kubectl",

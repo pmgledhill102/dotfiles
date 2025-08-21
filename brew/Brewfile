@@ -1,6 +1,4 @@
 tap "aws/tap"
-tap "homebrew/bundle"
-tap "homebrew/services"
 tap "jandedobbeleer/oh-my-posh"
 tap "powershell/tap"
 
@@ -42,3 +40,5 @@ brew "stow"
 brew "tenv"
 brew "wget"
 brew "zstd"
+brew "dotnet"
+brew "powershell"
