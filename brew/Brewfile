@@ -1,5 +1,4 @@
 tap "aws/tap"
-tap "homebrew/services"
 tap "jandedobbeleer/oh-my-posh"
 tap "powershell/tap"
 
