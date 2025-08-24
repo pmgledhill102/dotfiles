@@ -21,3 +21,6 @@ zstyle :compinstall filename '/home/pmg102/.zshrc'
 autoload -Uz compinit
 compinit
 # End of lines added by compinstall
+
+# Go Path
+export PATH="$PATH:~/go/bin"
