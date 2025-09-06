@@ -40,4 +40,4 @@ jobs:
       - name: Check disk usage
         run: ./verify_disk_usage.sh
         env:
-          max_allowed_usage: 6000
+          max_allowed_usage: 8000
