@@ -1,4 +1,4 @@
-# Exit is env var TERM_PROGRAM is set to vscode
+# Exit if env var TERM_PROGRAM is set to vscode
 # This prevents oh-my-posh from disrupting CoPilot terminal commands
 if ($env:TERM_PROGRAM -eq "vscode") { return }
 
