@@ -142,15 +142,6 @@ blocks:
         style: plain
         template: " {{ .Name }} "
 
-      - type: ytm
-        foreground: "#1BD760"
-        properties:
-          paused_icon: " "
-          playing_icon: " "
-        style: plain
-        template: ' {{ .Icon }}{{ if ne .Status "stopped" }}{{ .Artist }} - {{ .Track
-          }}{{ end }} '
-
       - type: battery
         foreground: "#f36943"
         foreground_templates:
