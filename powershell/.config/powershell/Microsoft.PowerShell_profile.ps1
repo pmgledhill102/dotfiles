@@ -1,7 +1,7 @@
 # Constants
-$ThemeUrl = "https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.json"
+$ThemeUrl = "https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.yaml"
 $CacheDir = Join-Path $HOME ".cache\ohmyposh"
-$LocalTheme = Join-Path $CacheDir "cached-theme.json"
+$LocalTheme = Join-Path $CacheDir "cached-theme.yaml"
 $EtagFile = Join-Path $CacheDir "etag.txt"
 
 # Ensure cache dir exists
