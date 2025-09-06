@@ -164,6 +164,7 @@ blocks:
       - type: upgrade
         foreground: "#ff0000"
         style: plain
+        template: " \uf019 ({{ .Current }} => {{ .Latest }}) "
         properties:
           cache_duration: 48h
 
