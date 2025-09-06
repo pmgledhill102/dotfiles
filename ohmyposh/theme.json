@@ -2,6 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "blocks": [
     {
+      "type": "prompt",
       "alignment": "left",
       "segments": [
         {
@@ -136,10 +137,10 @@
           "template": " \udb80\udd3e",
           "type": "text"
         }
-      ],
-      "type": "prompt"
+      ]
     },
     {
+      "type": "rprompt",
       "segments": [
         {
           "foreground": "#83769c",
@@ -189,8 +190,7 @@
           "trailing_diamond": "\ue0b4",
           "type": "time"
         }
-      ],
-      "type": "rprompt"
+      ]
     }
   ],
   "tooltips": [
