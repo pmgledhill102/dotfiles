@@ -2,6 +2,8 @@
 
 ## TO DO
 
+- Add GitBash to supported terminals (seems to work minus some decorations)
+- Support CoPilot in VSCode... think this means detecting then disabling OMP, but with a quick enabler? i.e. `omp`
 - Which of these are mine, versus work laptop?
 - iTerm => MacOS Terminal settings
 - (think there's a fair bit on MacOS settings)
@@ -114,7 +116,9 @@ winget install --id="DEVCOM.JetBrainsMonoNerdFont" --exact
 
 `$PROFILE = "C:\Users\messe\OneDrive\Documents\PowerShell\Microsoft.PowerShell_profile.ps1"`
 
-`oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.json' | Invoke-Expression`
+`oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.yaml' | Invoke-Expression`
+
+`oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/refs/heads/dev/ohmyposh/theme.yaml' | Invoke-Expression`
 
 ### VSCode Terminal
 
@@ -151,7 +155,7 @@ Add this to ~/.bashrc ...
 ```sh
 # Oh My Posh
 export PATH="$PATH:$HOME/bin"
-eval "$(oh-my-posh init bash --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.json')"
+eval "$(oh-my-posh init bash --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/ohmyposh/theme.yaml')"
 ```
 
 ### MacOS

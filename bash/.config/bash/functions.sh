@@ -2,7 +2,7 @@
 
 function test_posh() {
     # Enable Oh My Posh prompt
-    eval "$(oh-my-posh init $SH --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/dev/ohmyposh/theme.json')"
+    eval "$(oh-my-posh init $SH --config 'https://raw.githubusercontent.com/pmgledhill102/dotfiles/dev/ohmyposh/theme.yaml')"
 }
 
 # See <https://medium.com/@guillem.riera/podman-machine-setup-for-x86-64-on-apple-silicon-run-docker-amd64-containers-on-m1-m2-m3-bf02bea38598>

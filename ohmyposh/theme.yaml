@@ -1,0 +1,208 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json
+
+version: 2
+console_title_template: "{{ .Shell }} in {{ .Folder }}"
+final_space: true
+terminal_background: "#0C0C0C"
+
+blocks:
+
+# Left prompt
+
+  - type: prompt
+    alignment: left
+    segments:
+
+      - type: os
+        style: plain
+        foreground: "#26C6DA"
+        template: "{{ if .WSL }}WSL {{ end }}{{.Icon}} "
+
+      - type: session
+        foreground: "#1951c9"
+        style: plain
+        template: "{{ .UserName }} "
+
+      - type: path
+        foreground: "#20b664"
+        properties:
+          folder_separator_icon: " \ue0b1 "
+          home_icon: "~"
+          style: folder
+        style: plain
+        template: "{{ .Path }} "
+
+      - type: git
+        foreground: "#fffb38"
+        foreground_templates:
+          - "{{ if or (.Working.Changed) (.Staging.Changed) }}#FF9248{{ end }}"
+          - "{{ if and (gt .Ahead 0) (gt .Behind 0) }}#ff4500{{ end }}"
+          - "{{ if gt .Ahead 0 }}#B388FF{{ end }}"
+          - "{{ if gt .Behind 0 }}#B388FF{{ end }}"
+        properties:
+          branch_max_length: 25
+          fetch_stash_count: true
+          fetch_status: true
+          fetch_upstream_icon: true
+        style: plain
+        template: "{{ .UpstreamIcon }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus
+          }}{{ end }}{{ if .Working.Changed }} \uf044 {{ .Working.String }}{{ end
+          }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if
+          .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }}{{ if gt
+          .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} "
+
+      - type: node
+        foreground: "#6CA35E"
+        properties:
+          fetch_version: true
+        style: plain
+        template: "\ue718 {{ if .PackageManagerIcon }}{{ .PackageManagerIcon }} {{ end }}{{
+          .Full }} "
+
+      - type: go
+        foreground: "#8ED1F7"
+        properties:
+          fetch_version: true
+        style: plain
+        template: "\ue626 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+
+      - type: julia
+        foreground: "#4063D8"
+        properties:
+          fetch_version: true
+        style: plain
+        template: "\ue624 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+
+      - type: python
+        foreground: "#FFDE57"
+        properties:
+          display_mode: files
+          fetch_virtual_env: false
+        style: plain
+        template: "\ue235 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+
+      - type: ruby
+        foreground: "#AE1401"
+        properties:
+          display_mode: files
+          fetch_version: true
+        style: plain
+        template: "\ue791 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+
+      - type: azfunc
+        foreground: "#FEAC19"
+        properties:
+          display_mode: files
+          fetch_version: false
+        style: plain
+        template: "\uf0e7{{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+
+      - type: aws
+        foreground_templates:
+          - '{{if contains "default" .Profile}}#FFA400{{end}}'
+          - '{{if contains "jan" .Profile}}#f1184c{{end}}'
+        properties:
+          display_default: false
+        style: plain
+        template: "\ue7ad {{ .Profile }}{{ if .Region }}@{{ .Region }}{{ end }} "
+
+      - type: root
+        foreground: "#ffff66"
+        style: plain
+        template: "\uf0ad "
+
+      - type: status
+        foreground: "#00897b"
+        foreground_templates:
+          - "{{ if gt .Code 0 }}#e91e63{{ end }}"
+        properties:
+          always_enabled: true
+        style: plain
+        template: "{{ if gt .Code 0}}\uf530{{ else }}\uf058{{ end}} "
+
+      - type: text
+        foreground: white
+        style: plain
+        template: " \U000F013E"
+
+# Right prompt
+
+  - type: rprompt
+    segments:
+
+      - type: executiontime
+        foreground: "#83769c"
+        properties:
+          style: amarillo
+        style: plain
+        template: "\ueba2 {{ .FormattedMs }}\u2800 "
+
+      - type: shell
+        foreground: "#0077c2"
+        style: plain
+        template: "\uf489 {{ .Name }} "
+
+      - type: battery
+        foreground: "#f36943"
+        foreground_templates:
+          - '{{if eq "Charging" .State.String}}#40c4ff{{end}}'
+          - '{{if eq "Discharging" .State.String}}#ff5722{{end}}'
+          - '{{if eq "Full" .State.String}}#4caf50{{end}}'
+        properties:
+          charged_icon: "\ue22f "
+          charging_icon: "\ue234 "
+          discharging_icon: "\ue231 "
+        style: plain
+        template: "{{ if not .Error }}{{ .Icon }}{{ .Percentage }}{{ end }}{{ .Error }}\uf295 "
+
+      - type: time
+        foreground: "#2e9599"
+        style: plain
+        template: "{{ .CurrentDate | date .Format }} "
+        trailing_diamond: "\ue0b4"
+
+      - type: upgrade
+        foreground: "#ff0000"
+        style: plain
+        template: " \uf019 ({{ .Current }} => {{ .Latest }}) "
+        properties:
+          cache_duration: 48h
+
+# Tooltips
+
+tooltips:
+
+  - type: gcp
+    tips:
+      - gcloud
+      - gc
+    style: plain
+    foreground: "#d83cbe"
+    template: "\ue7B2 {{.Project}} :: {{.Account}}{{ if .Region}} :: {{.Region}}{{ end }}"
+
+  - type: az
+    tips:
+      - az
+    style: plain
+    foreground: "#d83cbe"
+    template: "\uebd8 {{ .EnvironmentName }} :: {{ .User.Name }}"
+    properties:
+      source: cli
+
+  - type: kubectl
+    tips:
+      - kubectl
+      - kub
+    style: plain
+    foreground: "#d83cbe"
+    template: "\ufd31 {{.Context}}{{if .Namespace}} :: {{.Namespace}}{{end}}{{if
+      .Cluster}} :: {{.Cluster}}{{end}} "
+
+  - type: path
+    tips:
+      - cd
+    style: plain
+    foreground: "#d83cbe"
+    properties:
+      style: full
+    template: "{{ .Path }}"
