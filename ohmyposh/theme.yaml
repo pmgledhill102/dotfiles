@@ -26,7 +26,7 @@ blocks:
       - type: path
         foreground: "#20b664"
         properties:
-          folder_separator_icon: "  "
+          folder_separator_icon: " \ue0b1 "
           home_icon: "~"
           style: folder
         style: plain
@@ -46,17 +46,17 @@ blocks:
           fetch_upstream_icon: true
         style: plain
         template: "{{ .UpstreamIcon }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus
-          }}{{ end }}{{ if .Working.Changed }}  {{ .Working.String }}{{ end
+          }}{{ end }}{{ if .Working.Changed }} \uf044 {{ .Working.String }}{{ end
           }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if
-          .Staging.Changed }}  {{ .Staging.String }}{{ end }}{{ if gt
-          .StashCount 0 }}  {{ .StashCount }}{{ end }} "
+          .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }}{{ if gt
+          .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} "
 
       - type: node
         foreground: "#6CA35E"
         properties:
           fetch_version: true
         style: plain
-        template: " {{ if .PackageManagerIcon }}{{ .PackageManagerIcon }} {{ end }}{{
+        template: "\ue718 {{ if .PackageManagerIcon }}{{ .PackageManagerIcon }} {{ end }}{{
           .Full }} "
 
       - type: go
@@ -64,14 +64,14 @@ blocks:
         properties:
           fetch_version: true
         style: plain
-        template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+        template: "\ue626 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
 
       - type: julia
         foreground: "#4063D8"
         properties:
           fetch_version: true
         style: plain
-        template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+        template: "\ue624 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
 
       - type: python
         foreground: "#FFDE57"
@@ -79,7 +79,7 @@ blocks:
           display_mode: files
           fetch_virtual_env: false
         style: plain
-        template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+        template: "\ue235 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
 
       - type: ruby
         foreground: "#AE1401"
@@ -87,7 +87,7 @@ blocks:
           display_mode: files
           fetch_version: true
         style: plain
-        template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+        template: "\ue791 {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
 
       - type: azfunc
         foreground: "#FEAC19"
@@ -95,7 +95,7 @@ blocks:
           display_mode: files
           fetch_version: false
         style: plain
-        template: "{{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
+        template: "\uf0e7{{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
 
       - type: aws
         foreground_templates:
@@ -104,12 +104,12 @@ blocks:
         properties:
           display_default: false
         style: plain
-        template: " {{ .Profile }}{{ if .Region }}@{{ .Region }}{{ end }} "
+        template: "\ue7ad {{ .Profile }}{{ if .Region }}@{{ .Region }}{{ end }} "
 
       - type: root
         foreground: "#ffff66"
         style: plain
-        template: " "
+        template: "\uf0ad "
 
       - type: status
         foreground: "#00897b"
@@ -118,12 +118,12 @@ blocks:
         properties:
           always_enabled: true
         style: plain
-        template: "{{ if gt .Code 0}}{{ else }}{{ end}} "
+        template: "{{ if gt .Code 0}}\uf530{{ else }}\uf058{{ end}} "
 
       - type: text
         foreground: white
         style: plain
-        template: " 󰄾"
+        template: " \udb80\udd3e"
 
 # Right prompt
 
@@ -135,12 +135,12 @@ blocks:
         properties:
           style: amarillo
         style: plain
-        template: " {{ .FormattedMs }}⠀ "
+        template: "\ueba2 {{ .FormattedMs }}\u2800 "
 
       - type: shell
         foreground: "#0077c2"
         style: plain
-        template: " {{ .Name }} "
+        template: "\uf489 {{ .Name }} "
 
       - type: battery
         foreground: "#f36943"
@@ -149,18 +149,17 @@ blocks:
           - '{{if eq "Discharging" .State.String}}#ff5722{{end}}'
           - '{{if eq "Full" .State.String}}#4caf50{{end}}'
         properties:
-          charged_icon: " "
-          charging_icon: " "
-          discharging_icon: " "
+          charged_icon: "\ue22f "
+          charging_icon: "\ue234 "
+          discharging_icon: "\ue231 "
         style: plain
-        template: "{{ if not .Error }}{{ .Icon }}{{ .Percentage }}{{ end }}{{ .Error }}
-          "
+        template: "{{ if not .Error }}{{ .Icon }}{{ .Percentage }}{{ end }}{{ .Error }}\uf295 "
 
       - type: time
         foreground: "#2e9599"
         style: plain
         template: "{{ .CurrentDate | date .Format }} "
-        trailing_diamond: 
+        trailing_diamond: "\ue0b4"
 
       - type: upgrade
         foreground: "#ff0000"
@@ -178,14 +177,14 @@ tooltips:
       - gc
     style: plain
     foreground: "#d83cbe"
-    template: " {{.Project}} :: {{.Account}}{{ if .Region}} :: {{.Region}}{{ end }}"
+    template: "\ue7B2 {{.Project}} :: {{.Account}}{{ if .Region}} :: {{.Region}}{{ end }}"
 
   - type: az
     tips:
       - az
     style: plain
     foreground: "#d83cbe"
-    template: " {{ .EnvironmentName }} :: {{ .User.Name }}"
+    template: "\uebd8 {{ .EnvironmentName }} :: {{ .User.Name }}"
     properties:
       source: cli
 
@@ -195,7 +194,7 @@ tooltips:
       - kub
     style: plain
     foreground: "#d83cbe"
-    template: "ﴱ {{.Context}}{{if .Namespace}} :: {{.Namespace}}{{end}}{{if
+    template: "\ufd31 {{.Context}}{{if .Namespace}} :: {{.Namespace}}{{end}}{{if
       .Cluster}} :: {{.Cluster}}{{end}} "
 
   - type: path
