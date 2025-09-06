@@ -162,6 +162,12 @@ blocks:
         template: "{{ .CurrentDate | date .Format }} "
         trailing_diamond: 
 
+      - type: upgrade
+        foreground: "#ff0000"
+        style: plain
+        properties:
+          cache_duration: 48h
+
 # Tooltips
 
 tooltips:
