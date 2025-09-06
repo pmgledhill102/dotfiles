@@ -1,26 +1,39 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json
 
+version: 2
+console_title_template: "{{ .Shell }} in {{ .Folder }}"
+final_space: true
+terminal_background: "#0C0C0C"
+
 blocks:
+
+# Left prompt
+
   - type: prompt
     alignment: left
     segments:
+
       - type: os
         style: plain
         foreground: "#26C6DA"
         template: "{{ if .WSL }}WSL {{ end }}{{.Icon}} "
-      - foreground: "#1951c9"
+
+      - type: session
+        foreground: "#1951c9"
         style: plain
         template: "{{ .UserName }} "
-        type: session
-      - foreground: "#20b664"
+
+      - type: path
+        foreground: "#20b664"
         properties:
           folder_separator_icon: "  "
           home_icon: "~"
           style: folder
         style: plain
         template: "{{ .Path }} "
-        type: path
-      - foreground: "#fffb38"
+
+      - type: git
+        foreground: "#fffb38"
         foreground_templates:
           - "{{ if or (.Working.Changed) (.Staging.Changed) }}#FF9248{{ end }}"
           - "{{ if and (gt .Ahead 0) (gt .Behind 0) }}#ff4500{{ end }}"
@@ -37,92 +50,109 @@ blocks:
           }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if
           .Staging.Changed }}  {{ .Staging.String }}{{ end }}{{ if gt
           .StashCount 0 }}  {{ .StashCount }}{{ end }} "
-        type: git
-      - foreground: "#6CA35E"
+
+      - type: node
+        foreground: "#6CA35E"
         properties:
           fetch_version: true
         style: plain
         template: " {{ if .PackageManagerIcon }}{{ .PackageManagerIcon }} {{ end }}{{
           .Full }} "
-        type: node
-      - foreground: "#8ED1F7"
+
+      - type: go
+        foreground: "#8ED1F7"
         properties:
           fetch_version: true
         style: plain
         template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
-        type: go
-      - foreground: "#4063D8"
+
+      - type: julia
+        foreground: "#4063D8"
         properties:
           fetch_version: true
         style: plain
         template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
-        type: julia
-      - foreground: "#FFDE57"
+
+      - type: python
+        foreground: "#FFDE57"
         properties:
           display_mode: files
           fetch_virtual_env: false
         style: plain
         template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
-        type: python
-      - foreground: "#AE1401"
+
+      - type: ruby
+        foreground: "#AE1401"
         properties:
           display_mode: files
           fetch_version: true
         style: plain
         template: " {{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
-        type: ruby
-      - foreground: "#FEAC19"
+
+      - type: azfunc
+        foreground: "#FEAC19"
         properties:
           display_mode: files
           fetch_version: false
         style: plain
         template: "{{ if .Error }}{{ .Error }}{{ else }}{{ .Full }}{{ end }} "
-        type: azfunc
-      - foreground_templates:
+
+      - type: aws
+        foreground_templates:
           - '{{if contains "default" .Profile}}#FFA400{{end}}'
           - '{{if contains "jan" .Profile}}#f1184c{{end}}'
         properties:
           display_default: false
         style: plain
         template: " {{ .Profile }}{{ if .Region }}@{{ .Region }}{{ end }} "
-        type: aws
-      - foreground: "#ffff66"
+
+      - type: root
+        foreground: "#ffff66"
         style: plain
         template: " "
-        type: root
-      - foreground: "#00897b"
+
+      - type: status
+        foreground: "#00897b"
         foreground_templates:
           - "{{ if gt .Code 0 }}#e91e63{{ end }}"
         properties:
           always_enabled: true
         style: plain
         template: "{{ if gt .Code 0}}{{ else }}{{ end}} "
-        type: status
-      - foreground: white
+
+      - type: text
+        foreground: white
         style: plain
         template: " 󰄾"
-        type: text
+
+# Right prompt
+
   - type: rprompt
     segments:
-      - foreground: "#83769c"
+
+      - type: executiontime
+        foreground: "#83769c"
         properties:
           style: amarillo
         style: plain
         template: " {{ .FormattedMs }}⠀ "
-        type: executiontime
-      - foreground: "#0077c2"
+
+      - type: shell
+        foreground: "#0077c2"
         style: plain
         template: " {{ .Name }} "
-        type: shell
-      - foreground: "#1BD760"
+
+      - type: ytm
+        foreground: "#1BD760"
         properties:
           paused_icon: " "
           playing_icon: " "
         style: plain
         template: ' {{ .Icon }}{{ if ne .Status "stopped" }}{{ .Artist }} - {{ .Track
           }}{{ end }} '
-        type: ytm
-      - foreground: "#f36943"
+
+      - type: battery
+        foreground: "#f36943"
         foreground_templates:
           - '{{if eq "Charging" .State.String}}#40c4ff{{end}}'
           - '{{if eq "Discharging" .State.String}}#ff5722{{end}}'
@@ -134,13 +164,17 @@ blocks:
         style: plain
         template: "{{ if not .Error }}{{ .Icon }}{{ .Percentage }}{{ end }}{{ .Error }}
           "
-        type: battery
-      - foreground: "#2e9599"
+
+      - type: time
+        foreground: "#2e9599"
         style: plain
         template: "{{ .CurrentDate | date .Format }} "
         trailing_diamond: 
-        type: time
+
+# Tooltips
+
 tooltips:
+
   - type: gcp
     tips:
       - gcloud
@@ -148,6 +182,7 @@ tooltips:
     style: plain
     foreground: "#d83cbe"
     template: " {{.Project}} :: {{.Account}}{{ if .Region}} :: {{.Region}}{{ end }}"
+
   - type: az
     tips:
       - az
@@ -156,6 +191,7 @@ tooltips:
     template: " {{ .EnvironmentName }} :: {{ .User.Name }}"
     properties:
       source: cli
+
   - type: kubectl
     tips:
       - kubectl
@@ -164,6 +200,7 @@ tooltips:
     foreground: "#d83cbe"
     template: "ﴱ {{.Context}}{{if .Namespace}} :: {{.Namespace}}{{end}}{{if
       .Cluster}} :: {{.Cluster}}{{end}} "
+
   - type: path
     tips:
       - cd
@@ -172,7 +209,3 @@ tooltips:
     properties:
       style: full
     template: "{{ .Path }}"
-console_title_template: "{{ .Shell }} in {{ .Folder }}"
-final_space: true
-version: 2
-terminal_background: "#0C0C0C"
