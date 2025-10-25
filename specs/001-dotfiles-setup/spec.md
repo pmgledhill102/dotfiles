@@ -51,6 +51,23 @@ As a developer, I want to manage my secrets (API keys, tokens, etc.) securely, w
 1. **Given** the dotfiles are installed, **When** a user needs to add a secret, **Then** there is a clear and documented process for doing so without committing the secret to the repository.
 2. **Given** the repository is public, **When** a security scan is performed, **Then** no secrets are found in the repository.
 
+---
+
+### User Story 4 - Automated Testing & Validation (Priority: P2)
+
+As a developer maintaining this dotfiles repository, I want automated testing that validates the installation process across different platforms, so that I can confidently make changes without breaking existing functionality.
+
+**Why this priority**: This ensures reliability and prevents regressions during development.
+
+**Independent Test**: The installation process succeeds automatically on fresh macOS and Ubuntu environments through both local testing (UTM) and CI/CD (GitHub Actions).
+
+**Acceptance Scenarios**:
+
+1. **Given** a fresh macOS virtual machine in UTM, **When** the automated test runs the installation script, **Then** the dotfiles are installed successfully and all validation checks pass.
+2. **Given** a fresh Ubuntu virtual machine in UTM, **When** the automated test runs the installation script, **Then** the dotfiles are installed successfully and all validation checks pass.
+3. **Given** a pull request is created, **When** GitHub Actions triggers the test suite, **Then** all platform-specific installation tests pass successfully.
+4. **Given** the installation completes, **When** validation scripts run, **Then** all expected tools (zsh, oh-my-zsh, powerlevel10k) are properly configured and functional.
+
 ### Edge Cases
 
 - What happens if the installation script is run on an unsupported operating system?
@@ -68,6 +85,19 @@ As a developer, I want to manage my secrets (API keys, tokens, etc.) securely, w
 - **FR-005**: The system MUST install and configure the Powerlevel10k theme for OhMyZsh.
 - **FR-006**: The system MUST provide a mechanism for managing secrets that are not stored in the Git repository, using Bitwarden with chezmoi integration.
 - **FR-007**: The configuration for tools (Zsh, Git, etc.) MUST be organized into logical, self-contained modules.
+- **FR-008**: The system MUST include automated testing capabilities for validating installations on macOS and Ubuntu platforms.
+- **FR-009**: The system MUST include validation scripts that verify the correct installation and configuration of all components.
+- **FR-010**: The repository MUST include GitHub Actions workflows for continuous integration testing.
+
+## Non-Functional Requirements
+
+### Testing Requirements
+
+- **NFR-TEST-001**: Local testing MUST be performed using UTM virtual machines for both macOS and Ubuntu environments.
+- **NFR-TEST-002**: Automated testing MUST be implemented using GitHub Actions for pull request validation.
+- **NFR-TEST-003**: Test environments MUST be clean, isolated virtual machines that simulate fresh OS installations.
+- **NFR-TEST-004**: All tests MUST include validation of the complete user experience, from installation to functional shell usage.
+- **NFR-TEST-005**: Test execution time MUST not exceed 10 minutes per platform in the CI environment.
 
 ## Success Criteria *(mandatory)*
 
@@ -76,3 +106,5 @@ As a developer, I want to manage my secrets (API keys, tokens, etc.) securely, w
 - **SC-001**: A new machine (macOS, Ubuntu, or WSL) can be fully set up with the dotfiles by running a single command in under 5 minutes.
 - **SC-002**: After installation, the Zsh shell with the Powerlevel10k theme is the default shell and is visually and functionally identical across macOS, Ubuntu, and WSL.
 - **SC-003**: No secrets are stored in plaintext within the version-controlled repository.
+- **SC-004**: Automated tests successfully validate the installation process on both macOS and Ubuntu environments with a 100% success rate.
+- **SC-005**: Pull requests trigger automated CI tests that complete within 10 minutes and provide clear pass/fail feedback.

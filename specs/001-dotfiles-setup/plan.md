@@ -14,12 +14,32 @@ This plan outlines the technical implementation for creating a cross-platform do
 **Language/Version**: Shell (Zsh, Bash)
 **Primary Dependencies**: `chezmoi`, `zsh`, `oh-my-zsh`, `powerlevel10k`, `git`, `bitwarden-cli`
 **Storage**: Filesystem
-**Testing**: Manual testing on each platform, ShellCheck for linting.
+**Testing**: Automated testing via GitHub Actions + local UTM virtual machines, validation scripts, ShellCheck for linting.
 **Target Platform**: macOS, Debian/Ubuntu, WSL
 **Project Type**: Dotfiles management
 **Performance Goals**: Installation should take less than 5 minutes on a fresh OS.
 **Constraints**: Must work on all three target platforms.
 **Scale/Scope**: Personal use for a single developer.
+
+## Testing Strategy
+
+### Local Testing with UTM
+
+- **Tool**: UTM virtual machines on macOS
+- **Environments**:
+  - macOS Sonoma (latest) VM
+  - Ubuntu 22.04 LTS VM
+- **Process**: Automated scripts that provision clean VMs, run installation, and validate results
+- **Validation**: Post-installation scripts verify shell configuration, theme loading, and tool availability
+
+### CI/CD Testing with GitHub Actions
+
+- **Trigger**: Pull requests and pushes to main branch
+- **Environments**:
+  - `macos-latest` runner
+  - `ubuntu-latest` runner
+- **Matrix Testing**: Multiple OS versions where applicable
+- **Artifacts**: Test logs, configuration files, and validation reports
 
 ## Constitution Check
 
