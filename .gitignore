@@ -1,0 +1,20 @@
+# Dotfiles managed by chezmoi
+
+# Ignore local state
+.chezmoi.yaml
+.chezmoistate.boltdb
+
+# Ignore secrets
+.secrets
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore editor/IDE files
+.vscode/
+.idea/
+
+# Ignore shell history
+.zsh_history
+.bash_history

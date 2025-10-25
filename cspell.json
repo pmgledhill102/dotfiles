@@ -1,0 +1,22 @@
+{
+  "version": "0.2",
+  "language": "en-GB",
+  "dictionaries": ["en-gb"],
+  "words": [
+    "bitwarden",
+    "Bitwarden",
+    "chezmoi",
+    "chezmoiignore",
+    "chezmoitemplates",
+    "nvim",
+    "powerlevel",
+    "Powerlevel",
+    "speckit"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**"
+  ]
+}
