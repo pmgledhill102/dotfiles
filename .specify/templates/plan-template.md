@@ -31,7 +31,10 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Idempotence**: Do all setup scripts run without changing the system state after the initial run?
+- **Portability**: Does the system provide a consistent experience across macOS, Debian/Ubuntu, and WSL?
+- **Security**: Are secrets and sensitive data managed securely, outside of the repository?
+- **Modularity**: Are configurations for distinct tools organized into self-contained modules?
 
 ## Project Structure
 
