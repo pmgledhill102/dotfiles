@@ -1,6 +1,7 @@
 # Specification Quality Checklist: Cross-Platform Dotfiles Setup
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Purpose**: Validate specification completeness and quality before proceeding to
+planning
 **Created**: 2025-10-25
 **Feature**: [Link to spec.md](./spec.md)
 
@@ -31,4 +32,5 @@
 
 ## Notes
 
-- Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`
+- Items marked incomplete require spec updates before `/speckit.clarify` or
+  `/speckit.plan`

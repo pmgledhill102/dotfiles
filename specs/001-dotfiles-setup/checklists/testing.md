@@ -3,6 +3,7 @@
 ## Local Testing Setup (UTM)
 
 ### UTM Infrastructure
+
 - [ ] UTM application installed and configured on development machine
 - [ ] macOS Sonoma VM image prepared and accessible
 - [ ] Ubuntu 22.04 LTS VM image prepared and accessible
@@ -10,6 +11,7 @@
 - [ ] Network configuration allows VM internet access for package downloads
 
 ### Test Automation Scripts
+
 - [ ] VM snapshot management (clean state restoration)
 - [ ] Automated dotfiles installation execution
 - [ ] Post-installation validation script suite
@@ -19,6 +21,7 @@
 ## CI/CD Testing Setup (GitHub Actions)
 
 ### Workflow Configuration
+
 - [ ] `.github/workflows/` directory structure created
 - [ ] macOS runner workflow configured (`macos-latest`)
 - [ ] Ubuntu runner workflow configured (`ubuntu-latest`)
@@ -26,6 +29,7 @@
 - [ ] Proper trigger configuration (PR, push to main)
 
 ### Test Execution Environment
+
 - [ ] Clean environment simulation in runners
 - [ ] Package installation verification
 - [ ] Shell configuration validation
@@ -33,6 +37,7 @@
 - [ ] Performance benchmarking integration
 
 ### Artifacts & Reporting
+
 - [ ] Test logs collection and storage
 - [ ] Configuration file snapshots
 - [ ] Performance metrics reporting
@@ -42,6 +47,7 @@
 ## Validation Requirements
 
 ### Installation Verification
+
 - [ ] Zsh shell installation and default configuration
 - [ ] Oh-My-Zsh framework installation
 - [ ] Powerlevel10k theme installation and configuration
@@ -49,6 +55,7 @@
 - [ ] Secret management system functionality
 
 ### Functional Testing
+
 - [ ] Shell prompt displays correctly
 - [ ] Theme loads without errors
 - [ ] Custom aliases and functions work
@@ -56,6 +63,7 @@
 - [ ] Cross-platform consistency verification
 
 ### Security Validation
+
 - [ ] No secrets exposed in repository
 - [ ] Bitwarden integration functional
 - [ ] File permissions set correctly
@@ -64,12 +72,14 @@
 ## Quality Assurance
 
 ### Code Quality
+
 - [ ] ShellCheck linting passes
 - [ ] Script syntax validation
 - [ ] Error handling robustness
 - [ ] Idempotency verification
 
 ### Documentation
+
 - [ ] Testing procedures documented
 - [ ] VM setup instructions provided
 - [ ] CI/CD troubleshooting guide

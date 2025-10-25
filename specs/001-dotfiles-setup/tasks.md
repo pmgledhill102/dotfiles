@@ -15,17 +15,22 @@
 
 - [x] T005 Create `run_once_install-packages.sh.tmpl` script
 - [x] T006 [P] Add OS detection logic to `run_once_install-packages.sh.tmpl`
-- [x] T007 [P] Add base package installation for macOS to `run_once_install-packages.sh.tmpl`
-- [x] T008 [P] Add base package installation for Debian/Ubuntu to `run_once_install-packages.sh.tmpl`
-- [x] T009 [P] Add base package installation for WSL to `run_once_install-packages.sh.tmpl`
+- [x] T007 [P] Add base package installation for macOS to
+  `run_once_install-packages.sh.tmpl`
+- [x] T008 [P] Add base package installation for Debian/Ubuntu to
+  `run_once_install-packages.sh.tmpl`
+- [x] T009 [P] Add base package installation for WSL to
+  `run_once_install-packages.sh.tmpl`
 
 ---
 
 ## Phase 3: User Story 1 - Easy Installation (Priority: P1) 🎯 MVP
 
-**Goal**: A developer can set up their dotfiles on a new machine with a single command.
+**Goal**: A developer can set up their dotfiles on a new machine with a single
+command.
 
-**Independent Test**: A new, clean machine can be fully configured by running one command.
+**Independent Test**: A new, clean machine can be fully configured by running
+one command.
 
 - [x] T010 [US1] Document the single command installation in `home/README.md`
 
@@ -35,12 +40,15 @@
 
 **Goal**: Provide a consistent Zsh shell experience across all platforms.
 
-**Independent Test**: The shell prompt, theme, and aliases are identical on all platforms.
+**Independent Test**: The shell prompt, theme, and aliases are identical on all
+platforms.
 
 - [x] T011 [US2] Add `.zshrc` to `chezmoi` in `home/dot_zshrc`
 - [x] T012 [US2] Add OhMyZsh installation to `run_once_install-packages.sh.tmpl`
-- [x] T013 [US2] Add Powerlevel10k installation to `run_once_install-packages.sh.tmpl`
-- [x] T014 [US2] Add Powerlevel10k configuration file (`.p10k.zsh`) to `chezmoi` in `home/dot_p10k.zsh`
+- [x] T013 [US2] Add Powerlevel10k installation to
+  `run_once_install-packages.sh.tmpl`
+- [x] T014 [US2] Add Powerlevel10k configuration file (`.p10k.zsh`) to `chezmoi`
+  in `home/dot_p10k.zsh`
 
 ---
 
@@ -48,10 +56,13 @@
 
 **Goal**: Manage secrets securely without storing them in the Git repository.
 
-**Independent Test**: A scan of the repository does not find any plaintext secrets.
+**Independent Test**: A scan of the repository does not find any plaintext
+secrets.
 
-- [x] T015 [US3] Add Bitwarden CLI installation to `run_once_install-packages.sh.tmpl`
-- [x] T016 [US3] Create a template for a secret file (e.g., `home/.secrets.tmpl`) that will be populated by `chezmoi` from Bitwarden.
+- [x] T015 [US3] Add Bitwarden CLI installation to
+  `run_once_install-packages.sh.tmpl`
+- [x] T016 [US3] Create a template for a secret file (e.g., `home/.secrets.tmpl`)
+  that will be populated by `chezmoi` from Bitwarden.
 - [x] T017 [US3] Document the secret management workflow in `home/README.md`
 
 ---
@@ -60,12 +71,13 @@
 
 **Goal**: Implement comprehensive testing strategy using UTM and GitHub Actions.
 
-**Independent Test**: Installation process succeeds automatically on fresh macOS and Ubuntu environments.
+**Independent Test**: Installation process succeeds automatically on fresh macOS
+and Ubuntu environments.
 
 ### Local Testing Infrastructure (UTM)
 
 - [ ] T018 [US4] Create UTM VM provisioning scripts for macOS testing
-- [ ] T019 [US4] Create UTM VM provisioning scripts for Ubuntu testing  
+- [ ] T019 [US4] Create UTM VM provisioning scripts for Ubuntu testing
 - [ ] T020 [US4] Develop automated test runner for UTM environments
 - [ ] T021 [US4] Create post-installation validation scripts
 
@@ -89,7 +101,7 @@
 
 - [ ] T030 [P] Add ShellCheck linting to the CI pipeline
 - [ ] T031 Test the installation on a clean macOS machine (UTM)
-- [ ] T032 Test the installation on a clean Ubuntu machine (UTM)  
+- [ ] T032 Test the installation on a clean Ubuntu machine (UTM)
 - [ ] T033 Test the installation on a clean WSL instance
 - [ ] T034 [P] Update documentation with testing procedures
 - [x] T035 Refine and update the `README.md`
