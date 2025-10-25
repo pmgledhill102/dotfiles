@@ -1,0 +1,36 @@
+#!/bin/sh
+
+case "$(uname -s)" in
+  Linux*)
+    echo "Linux detected"
+    if grep -q Microsoft /proc/version; then
+      echo "WSL detected"
+    fi
+    echo "Updating apt-get..."
+    sudo apt-get update
+    echo "Installing packages with apt-get..."
+    # Add packages here
+    sudo apt-get install -y chezmoi zsh snapd
+    sudo snap install bw
+
+    echo "Installing Powerlevel10k theme..."
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+    ;;
+  Darwin*)
+    echo "macOS detected"
+    if ! command -v brew >/dev/null 2>&1; then
+      echo "Installing Homebrew..."
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    echo "Installing packages with Homebrew..."
+    # Add packages here
+    brew install chezmoi zsh bitwarden-cli
+
+    echo "Installing Powerlevel10k theme..."
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+    ;;
+  *)
+    echo "Unsupported operating system"
+    exit 1
+    ;;
+esac

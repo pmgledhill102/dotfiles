@@ -1,16 +1,20 @@
 {
   "version": "0.2",
   "language": "en-GB",
-  "dictionaries": ["en-gb"],
+  "dictionaries": [
+    "en-gb"
+  ],
   "words": [
     "bitwarden",
     "Bitwarden",
     "chezmoi",
     "chezmoiignore",
     "chezmoitemplates",
+    "esac",
     "nvim",
     "powerlevel",
     "Powerlevel",
+    "proc",
     "speckit"
   ],
   "ignorePaths": [
