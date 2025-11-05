@@ -42,7 +42,7 @@ configured by cloning the repository and running one command.
 
 As a developer, I want a consistent Zsh shell experience across all my
 machines, using Ghostty as the terminal emulator, complete with OhMyZsh and the
-Powerlevel10k theme, so that I can work efficiently without needing to adjust
+Starship prompt, so that I can work efficiently without needing to adjust
 to different shell environments.
 
 **Why this priority**: This provides a consistent and productive user
@@ -56,7 +56,7 @@ macOS, Ubuntu, and WSL.
 1. **Given** an installed system, **When** the user opens a new terminal,
    **Then** the Zsh shell is the default shell.
 2. **Given** the Zsh shell is open, **When** the user views the prompt, **Then**
-   the Powerlevel10k theme is displayed correctly.
+   the Starship prompt is displayed correctly.
 3. **Given** an installed system, **When** the user opens a terminal, **Then**
    Ghostty is available and configured.
 

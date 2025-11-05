@@ -32,10 +32,9 @@ secret management.
 - How can we ensure that the installation script installs the correct
   dependencies for each platform?
 
-### 3. Migrating from Powerlevel10k to Starship
+### 3. Starship Configuration
 
-**Task**: Research how to best migrate from Powerlevel10k to Starship, managed
-by `chezmoi`.
+**Task**: Research how to best configure Starship, managed by `chezmoi`.
 
 **Questions to Answer**:
 
@@ -49,10 +48,10 @@ by `chezmoi`.
 ### 4. Experimenting with Starship
 
 **Task**: Use the `starship-playground.md` to install and configure Starship.
-Document the process of migrating custom prompt elements from OhMyPosh/Powerlevel10k to Starship's configuration.
+Document the process of configuring custom prompt elements in Starship's configuration.
 
 **Questions to Answer**:
 
 - What is the basic installation and setup process for Starship?
 - How do you translate specific prompt features (e.g., git status, Kubernetes context, AWS profile) from the old setup to `starship.toml`?
-- What are the common pitfalls or differences in configuration philosophy between Starship and Powerlevel10k/OhMyPosh?
+- What are the common pitfalls or differences in configuration philosophy between Starship and other prompts?

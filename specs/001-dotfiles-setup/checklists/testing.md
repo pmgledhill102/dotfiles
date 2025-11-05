@@ -50,7 +50,7 @@
 
 - [ ] Zsh shell installation and default configuration
 - [ ] Oh-My-Zsh framework installation
-- [ ] Powerlevel10k theme installation and configuration
+- [ ] Starship prompt installation and configuration
 - [ ] Required packages and dependencies availability
 - [ ] Secret management system functionality
 

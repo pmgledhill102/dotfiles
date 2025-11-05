@@ -1,6 +1,6 @@
 # Starship Playground
 
-This document outlines the steps to install and configure Starship as a replacement for Powerlevel10k.
+This document outlines the steps to install and configure Starship.
 
 ## Installation
 
