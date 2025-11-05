@@ -11,13 +11,14 @@
 This plan outlines the technical implementation for creating a cross-platform
 dotfiles repository managed by `chezmoi`. The goal is to provide a consistent
 Zsh shell experience (OhMyZsh + Powerlevel10k) across macOS, Debian/Ubuntu, and
-WSL, with secure secret management using Bitwarden.
+WSL, with WezTerm as the terminal emulator and secure secret management using
+Bitwarden.
 
 ## Technical Context
 
 **Language/Version**: Shell (Zsh, Bash)
 **Primary Dependencies**: `chezmoi`, `zsh`, `oh-my-zsh`, `powerlevel10k`, `git`,
-  `bitwarden-cli`
+  `bitwarden-cli`, `wezterm`
 **Storage**: Filesystem
 **Testing**: Automated testing via GitHub Actions + local UTM virtual machines,
   validation scripts, ShellCheck for linting.

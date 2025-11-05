@@ -18,3 +18,6 @@ Thumbs.db
 # Ignore shell history
 .zsh_history
 .bash_history
+
+# Ignore temporary files
+temp/

@@ -1,0 +1,145 @@
+# Starship configuration
+
+# Inserts a blank line between shell prompts
+add_newline = true
+
+# Set the format of the prompt
+format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$character"""
+
+# Right Prompt Configuration
+right_format = """$cmd_duration$shell$battery$time"""
+
+[os]
+format = "[$symbol]($style) "
+style = "fg:#26C6DA"
+disabled = false
+
+[os.symbols]
+Windows = ""
+Ubuntu = ""
+SUSE = "SUSE"
+Raspbian = ""
+Mint = ""
+Macos = ""
+Manjaro = ""
+Linux = ""
+Gentoo = ""
+Fedora = ""
+Debian = ""
+CentOS = ""
+Arch = ""
+Alpine = ""
+Amazon = ""
+Android = ""
+
+[username]
+style_user = "fg:#1951c9"
+style_root = "fg:#ffff66"
+format = "[$user]($style) "
+disabled = false
+show_always = true
+
+[directory]
+style = "fg:#20b664"
+format = "[$path]($style)[$read_only]($read_only_style) "
+truncation_length = 3
+truncation_symbol = "…/"
+
+[git_branch]
+symbol = ""
+style = "fg:#fffb38"
+format = "[$symbol $branch]($style) "
+
+[git_status]
+style = "fg:#fffb38"
+format = '([$all_status$ahead_behind]($style)) '
+conflicted = "=${count}"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked = "?${count}"
+stashed = "${count}"
+modified = "!${count}"
+staged = "+${count}"
+renamed = "»${count}"
+deleted = "✘${count}"
+
+[character]
+success_symbol = "[󰄾](bold green)"
+error_symbol = "[󰄾](bold red)"
+vicmd_symbol = "[❮](bold green)"
+
+[nodejs]
+format = "[ $version](fg:#6CA35E) "
+detect_files = ["package.json", ".node-version"]
+detect_folders = ["node_modules"]
+
+[golang]
+format = "[ $version](fg:#8ED1F7) "
+
+[julia]
+format = "[ $version](fg:#4063D8) "
+
+[python]
+format = "[ $version](fg:#FFDE57) "
+pyenv_version_name = true
+
+[ruby]
+format = "[ $version](fg:#AE1401) "
+
+#[aws]
+#symbol = ""
+#format = '[$symbol ($profile@$region)]($style) '
+#style = "fg:#FFA400"
+#
+#[azure]
+#disabled = false
+#format = "[ﴃ $subscription]($style) "
+#style = "blue"
+
+[cmd_duration]
+min_time = 1000
+format = "[$duration]($style) "
+style = "fg:#83769c"
+show_milliseconds = true
+
+[shell]
+format = "[$indicator]($style) "
+zsh_indicator = "zsh"
+powershell_indicator = "pwsh"
+bash_indicator = "bash"
+disabled = false
+style = "fg:#0077c2"
+
+[battery]
+full_symbol = "🔋"
+charging_symbol = "⚡️"
+discharging_symbol = "💀"
+
+[[battery.display]]
+threshold = 10
+style = "bold red"
+
+[[battery.display]]
+threshold = 30
+style = "bold yellow"
+
+[[battery.display]]
+threshold = 100
+style = "bold green"
+
+[time]
+disabled = false
+format = "at [$time]($style) "
+style = "fg:#2e9599"
+use_12hr = false
+show_milliseconds = true
+
+#[gcloud]
+#format = "on [ $project]($style) "
+#style = "fg:#d83cbe"
+#
+#[kubernetes]
+#format = 'on [ﴱ $context(::$namespace)]($style) '
+#style = "fg:#d83cbe"
+#disabled = false

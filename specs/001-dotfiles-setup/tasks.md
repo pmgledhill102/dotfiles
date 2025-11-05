@@ -49,6 +49,8 @@ platforms.
   `run_once_install-packages.sh.tmpl`
 - [x] T014 [US2] Add Powerlevel10k configuration file (`.p10k.zsh`) to `chezmoi`
   in `home/dot_p10k.zsh`
+- [ ] T015 [US2] Add WezTerm installation to `run_once_install-packages.sh.tmpl`
+- [ ] T016 [US2] Add WezTerm configuration file to `chezmoi`
 
 ---
 
@@ -59,11 +61,11 @@ platforms.
 **Independent Test**: A scan of the repository does not find any plaintext
 secrets.
 
-- [x] T015 [US3] Add Bitwarden CLI installation to
+- [x] T017 [US3] Add Bitwarden CLI installation to
   `run_once_install-packages.sh.tmpl`
-- [x] T016 [US3] Create a template for a secret file (e.g., `home/.secrets.tmpl`)
+- [x] T018 [US3] Create a template for a secret file (e.g., `home/.secrets.tmpl`)
   that will be populated by `chezmoi` from Bitwarden.
-- [x] T017 [US3] Document the secret management workflow in `home/README.md`
+- [x] T019 [US3] Document the secret management workflow in `home/README.md`
 
 ---
 
@@ -76,24 +78,24 @@ and Ubuntu environments.
 
 ### Local Testing Infrastructure (UTM)
 
-- [ ] T018 [US4] Create UTM VM provisioning scripts for macOS testing
-- [ ] T019 [US4] Create UTM VM provisioning scripts for Ubuntu testing
-- [ ] T020 [US4] Develop automated test runner for UTM environments
-- [ ] T021 [US4] Create post-installation validation scripts
+- [ ] T020 [US4] Create UTM VM provisioning scripts for macOS testing
+- [ ] T021 [US4] Create UTM VM provisioning scripts for Ubuntu testing
+- [ ] T022 [US4] Develop automated test runner for UTM environments
+- [ ] T023 [US4] Create post-installation validation scripts
 
 ### CI/CD Pipeline (GitHub Actions)
 
-- [ ] T022 [US4] Create GitHub Actions workflow for macOS testing
-- [ ] T023 [US4] Create GitHub Actions workflow for Ubuntu testing
-- [ ] T024 [US4] Add matrix testing for multiple OS versions
-- [ ] T025 [US4] Configure artifact collection for test results
+- [ ] T024 [US4] Create GitHub Actions workflow for macOS testing
+- [ ] T025 [US4] Create GitHub Actions workflow for Ubuntu testing
+- [ ] T026 [US4] Add matrix testing for multiple OS versions
+- [ ] T027 [US4] Configure artifact collection for test results
 
 ### Validation & Quality Assurance
 
-- [ ] T026 [US4] Create shell configuration validation scripts
-- [ ] T027 [US4] Add theme and prompt functionality tests
-- [ ] T028 [US4] Implement tool availability verification
-- [ ] T029 [US4] Add performance benchmarking for installation time
+- [ ] T028 [US4] Create shell configuration validation scripts
+- [ ] T029 [US4] Add theme and prompt functionality tests
+- [ ] T030 [US4] Implement tool availability verification
+- [ ] T031 [US4] Add performance benchmarking for installation time
 
 ---
 

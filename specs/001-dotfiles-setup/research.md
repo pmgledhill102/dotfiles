@@ -32,15 +32,27 @@ secret management.
 - How can we ensure that the installation script installs the correct
   dependencies for each platform?
 
-### 3. Migrating Existing OhMyZsh and Powerlevel10k Setup
+### 3. Migrating from Powerlevel10k to Starship
 
-**Task**: Research how to best migrate an existing OhMyZsh and Powerlevel10k
-setup to a `chezmoi`-managed repository.
+**Task**: Research how to best migrate from Powerlevel10k to Starship, managed
+by `chezmoi`.
 
 **Questions to Answer**:
 
-- Which files need to be managed by `chezmoi`? (`.zshrc`, `.p10k.zsh`, etc.)
-- How should OhMyZsh and Powerlevel10k be installed by the `chezmoi`
-  installation script?
-- How can we ensure that the existing configuration is preserved and applied
-  correctly on a new machine?
+- Which files need to be managed by `chezmoi` for Starship? (`starship.toml`)
+- How should Starship be installed by the `chezmoi` installation script across
+  different platforms (macOS, Debian/Ubuntu, WSL)?
+- How do we configure Starship to replicate the features from the existing
+  prompt?
+- How does Starship integrate with OhMyZsh?
+
+### 4. Experimenting with Starship
+
+**Task**: Use the `starship-playground.md` to install and configure Starship.
+Document the process of migrating custom prompt elements from OhMyPosh/Powerlevel10k to Starship's configuration.
+
+**Questions to Answer**:
+
+- What is the basic installation and setup process for Starship?
+- How do you translate specific prompt features (e.g., git status, Kubernetes context, AWS profile) from the old setup to `starship.toml`?
+- What are the common pitfalls or differences in configuration philosophy between Starship and Powerlevel10k/OhMyPosh?

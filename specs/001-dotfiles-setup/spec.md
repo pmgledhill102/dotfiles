@@ -41,8 +41,9 @@ configured by cloning the repository and running one command.
 ### User Story 2 - Consistent Shell Experience (Priority: P1)
 
 As a developer, I want a consistent Zsh shell experience across all my
-machines, complete with OhMyZsh and the Powerlevel10k theme, so that I can
-work efficiently without needing to adjust to different shell environments.
+machines, using WezTerm as the terminal emulator, complete with OhMyZsh and the
+Powerlevel10k theme, so that I can work efficiently without needing to adjust
+to different shell environments.
 
 **Why this priority**: This provides a consistent and productive user
 experience.
@@ -56,6 +57,8 @@ macOS, Ubuntu, and WSL.
    **Then** the Zsh shell is the default shell.
 2. **Given** the Zsh shell is open, **When** the user views the prompt, **Then**
    the Powerlevel10k theme is displayed correctly.
+3. **Given** an installed system, **When** the user opens a terminal, **Then**
+   WezTerm is available and configured.
 
 ---
 
@@ -136,6 +139,8 @@ macOS and Ubuntu environments through both local testing (UTM) and CI/CD
   installation and configuration of all components.
 - **FR-010**: The repository MUST include GitHub Actions workflows for
   continuous integration testing.
+- **FR-011**: The system MUST install and configure WezTerm as the default
+  terminal emulator.
 
 ## Non-Functional Requirements
 
