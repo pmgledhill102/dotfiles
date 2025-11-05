@@ -67,7 +67,7 @@ To repeatedly test your dotfiles on a clean system, you can take a snapshot of t
 1.  **Shut down your VM.** It's crucial to not have the VM running when you manipulate snapshots from the command line.
 2.  In UTM, right-click your VM and select "Show in Finder".
 3.  Right-click the `.utm` file and choose "Show Package Contents".
-4.  Navigate into the `Images/` directory. You'll find the main disk image, usually named `data.qcow2`. This is the file you'll be working with.
+4.  Navigate into the `Data/` directory. You'll find the main disk image, which is a `.qcow2` file with a unique name. This is the file you'll be working with.
 
 ### Installing `qemu-img`
 
@@ -79,24 +79,24 @@ brew install qemu
 
 ### Managing Snapshots
 
-Here are the essential `qemu-img` commands for snapshot management. You'll need to provide the full path to the `data.qcow2` file you located earlier.
+Here are the essential `qemu-img` commands for snapshot management. You'll need to provide the full path to the `.qcow2` file you located earlier.
 
 -   **To create a snapshot:**
 
     Before you start testing, create a snapshot of the clean OS installation. Give it a descriptive name like "Clean Install".
 
     ```sh
-    qemu-img snapshot -c <snapshot_name> /path/to/your/vm.utm/Images/data.qcow2
+    qemu-img snapshot -c <snapshot_name> /path/to/your/vm.utm/Data/<disk_image_name>.qcow2
     ```
     *Example:*
     ```sh
-    qemu-img snapshot -c clean-install "/Users/paul/Library/Containers/com.utmapp.UTM/Data/Documents/Debian.utm/Images/data.qcow2"
+    qemu-img snapshot -c clean-linux "/Users/paul/Library/Containers/com.utmapp.UTM/Data/Documents/Linux.utm/Data/90137F59-D73B-4655-9F64-F0DE48B2F808.qcow2"
     ```
 
 -   **To list all snapshots:**
 
     ```sh
-    qemu-img snapshot -l /path/to/your/vm.utm/Images/data.qcow2
+    qemu-img snapshot -l /path/to/your/vm.utm/Data/<disk_image_name>.qcow2
     ```
 
 -   **To revert to a snapshot:**
@@ -104,18 +104,43 @@ Here are the essential `qemu-img` commands for snapshot management. You'll need 
     After you have finished testing, you can revert the VM to its clean state.
 
     ```sh
-    qemu-img snapshot -a <snapshot_name> /path/to/your/vm.utm/Images/data.qcow2
+    qemu-img snapshot -a <snapshot_name> /path/to/your/vm.utm/Data/<disk_image_name>.qcow2
     ```
 
 -   **To delete a snapshot:**
 
     ```sh
-    qemu-img snapshot -d <snapshot_name> /path/to/your/vm.utm/Images/data.qcow2
+    qemu-img snapshot -d <snapshot_name> /path/to/your/vm.utm/Data/<disk_image_name>.qcow2
     ```
 
 Using `qemu-img` provides a powerful way to manage your testing environments, especially when you want to script the process of reverting to a clean state.
 
-## 5. Test Your Dotfiles
+## 5. Automated Testing with a Script
+
+To streamline the testing process, you can use the provided `scripts/test-linux.sh` script. This script automates reverting to a clean snapshot and starting the VM.
+
+### Prerequisites
+
+-   **`utmctl`**: This script requires `utmctl`, a command-line tool for controlling UTM. You can install it with Homebrew:
+    ```sh
+    brew install utmctl
+    ```
+
+### Running the Test Script
+
+To run the test, execute the script from your terminal:
+
+```sh
+./scripts/test-linux.sh
+```
+
+The script will:
+1.  Revert your "Linux" VM to the "clean-linux" snapshot.
+2.  Start the VM.
+
+After the script runs, you can connect to the VM to manually run your installation script and verify the results.
+
+## 6. Test Your Dotfiles
 
 Now you are ready to test your dotfiles.
 
@@ -137,4 +162,4 @@ Now you are ready to test your dotfiles.
 3. **Verify the Installation**: Check that your shell is configured correctly,
    your theme is applied, and your secrets are managed as expected.
 
-After testing, you can revert to the clean snapshot using the `qemu-img` command shown above and run your tests again.
+After testing, you can revert to the clean snapshot using the `qemu-img` command shown above or by re-running the `test-linux.sh` script.
