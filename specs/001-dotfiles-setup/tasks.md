@@ -49,8 +49,8 @@ platforms.
   `run_once_install-packages.sh.tmpl`
 - [x] T014 [US2] Add Powerlevel10k configuration file (`.p10k.zsh`) to `chezmoi`
   in `home/dot_p10k.zsh`
-- [ ] T015 [US2] Add WezTerm installation to `run_once_install-packages.sh.tmpl`
-- [ ] T016 [US2] Add WezTerm configuration file to `chezmoi`
+- [ ] T015 [US2] Add Ghostty installation to `run_once_install-packages.sh.tmpl`
+- [ ] T016 [US2] Add Ghostty configuration file to `chezmoi`
 
 ---
 

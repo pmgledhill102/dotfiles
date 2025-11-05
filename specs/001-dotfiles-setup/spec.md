@@ -6,7 +6,7 @@
 **Input**: User description: "Create a new dotfiles repository for a software
 developer working across macOS, Ubuntu, and Windows (via WSL). The system must
 provide a consistent Zsh shell experience, powered by OhMyZsh and the
-Powerlevel10k theme. It must be easily installable on a new machine with a
+Starship prompt. It must be easily installable on a new machine with a
 single command. All sensitive data, such as API keys, must be managed securely
 and kept out of the public Git repository."
 
@@ -41,7 +41,7 @@ configured by cloning the repository and running one command.
 ### User Story 2 - Consistent Shell Experience (Priority: P1)
 
 As a developer, I want a consistent Zsh shell experience across all my
-machines, using WezTerm as the terminal emulator, complete with OhMyZsh and the
+machines, using Ghostty as the terminal emulator, complete with OhMyZsh and the
 Powerlevel10k theme, so that I can work efficiently without needing to adjust
 to different shell environments.
 
@@ -58,7 +58,7 @@ macOS, Ubuntu, and WSL.
 2. **Given** the Zsh shell is open, **When** the user views the prompt, **Then**
    the Powerlevel10k theme is displayed correctly.
 3. **Given** an installed system, **When** the user opens a terminal, **Then**
-   WezTerm is available and configured.
+   Ghostty is available and configured.
 
 ---
 
