@@ -12,7 +12,7 @@ case "$(uname -s)" in
     # Add packages here
     sudo apt-get install -y zsh snapd
     echo "Installing Starship..."
-    curl -sS https://starship.rs/install.sh | sh -s -- -y --quiet
+    curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1
     sudo apt-get install -y age
 
     if [ -d "$HOME/.oh-my-zsh" ]; then
