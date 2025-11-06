@@ -80,26 +80,26 @@ and Ubuntu environments.
 
 ### Local Testing Infrastructure (VMware Fusion)
 
-- [ ] T020 [US4] Document manual VMware Fusion VM setup for macOS testing in
+- [ ] T021 [US4] Document manual VMware Fusion VM setup for macOS testing in
   `docs/VMWARE_TESTING_GUIDE.md`
-- [ ] T021 [US4] Document manual VMware Fusion VM setup for Ubuntu testing in
+- [ ] T022 [US4] Document manual VMware Fusion VM setup for Ubuntu testing in
   `docs/VMWARE_TESTING_GUIDE.md`
-- [ ] T022 [US4] Create test script to run inside the VMware Fusion VM
-- [ ] T023 [US4] Create post-installation validation scripts
+- [ ] T023 [US4] Create test script to run inside the VMware Fusion VM
+- [ ] T024 [US4] Create post-installation validation scripts
 
 ### CI/CD Pipeline (GitHub Actions)
 
-- [ ] T024 [US4] Create GitHub Actions workflow for macOS testing
-- [ ] T025 [US4] Create GitHub Actions workflow for Ubuntu testing
-- [ ] T026 [US4] Add matrix testing for multiple OS versions
-- [ ] T027 [US4] Configure artifact collection for test results
+- [ ] T025 [US4] Create GitHub Actions workflow for macOS testing
+- [ ] T026 [US4] Create GitHub Actions workflow for Ubuntu testing
+- [ ] T027 [US4] Add matrix testing for multiple OS versions
+- [ ] T028 [US4] Configure artifact collection for test results
 
 ### Validation & Quality Assurance
 
-- [ ] T028 [US4] Create shell configuration validation scripts
-- [ ] T029 [US4] Add theme and prompt functionality tests
-- [ ] T030 [US4] Implement tool availability verification
-- [ ] T031 [US4] Add performance benchmarking for installation time
+- [ ] T029 [US4] Create shell configuration validation scripts
+- [ ] T030 [US4] Add theme and prompt functionality tests
+- [ ] T031 [US4] Implement tool availability verification
+- [ ] T032 [US4] Add performance benchmarking for installation time
 
 ---
 
