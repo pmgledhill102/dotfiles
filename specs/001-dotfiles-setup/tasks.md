@@ -45,11 +45,11 @@ platforms.
 
 - [x] T011 [US2] Add `.zshrc` to `chezmoi` in `home/dot_zshrc`
 - [x] T012 [US2] Add OhMyZsh installation to `run_once_install-packages.sh.tmpl`
-- [ ] T013 [US2] Add Starship installation to
+- [x] T013 [US2] Add Starship installation to
   `run_once_install-packages.sh.tmpl`
-- [ ] T014 [US2] Add Starship configuration file (`starship.toml`) to `chezmoi`
-- [ ] T015 [US2] Add Ghostty installation to `run_once_install-packages.sh.tmpl`
-- [ ] T016 [US2] Add Ghostty configuration file to `chezmoi`
+- [x] T014 [US2] Add Starship configuration file (`starship.toml`) to `chezmoi`
+- [x] T015 [US2] Add Ghostty installation to `run_once_install-packages.sh.tmpl`
+- [x] T016 [US2] Add Ghostty configuration file to `chezmoi`
 
 ---
 
