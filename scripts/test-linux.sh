@@ -47,14 +47,13 @@ log "VM started. Waiting for it to boot and network to be ready..."
 sleep 30
 
 # 3. Run the installation script inside the VM
+# sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --branch 001-dotfiles-setup https://github.com/pmgledhill102/dotfiles.git
 log "Running dotfiles installation script inside the VM..."
 INSTALL_COMMAND="sh -c \"\$(curl -fsLS get.chezmoi.io)\" -- init --apply --branch 001-dotfiles-setup ${GIT_REPO_URL}"
-utmctl exec "${VM_NAME}" --cmd /bin/sh -c "${INSTALL_COMMAND}"
 
-# Check the exit code of the last command
-if [ $? -eq 0 ]; then
-  log "Installation script completed successfully."
-else
+log "Running one-liner chezmoi installation..."
+if ! utmctl exec "${VM_NAME}" --cmd /bin/sh -c "${INSTALL_COMMAND}"
+then
   error "Installation script failed. Check the output above for details."
 fi
 
