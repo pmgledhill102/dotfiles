@@ -12,7 +12,8 @@ case "$(uname -s)" in
     # Add packages here
     sudo apt-get install -y zsh snapd
     # TODO: Add ghostty installation for Linux
-    sudo snap install --candidate starship
+    echo "Installing Starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
     sudo apt-get install -y age
     ;;
   Darwin*)
