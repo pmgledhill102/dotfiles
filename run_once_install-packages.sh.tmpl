@@ -15,6 +15,10 @@ case "$(uname -s)" in
     curl -sS https://starship.rs/install.sh | sh -s -- -y
     sudo apt-get install -y age
 
+    if [ -d "$HOME/.oh-my-zsh" ]; then
+      echo "Removing existing Oh My Zsh directory..."
+      rm -rf "$HOME/.oh-my-zsh"
+    fi
     echo "Installing Oh My Zsh..."
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     ;;
@@ -28,6 +32,10 @@ case "$(uname -s)" in
         # Add packages here
     brew install chezmoi zsh ghostty age starship
 
+    if [ -d "$HOME/.oh-my-zsh" ]; then
+      echo "Removing existing Oh My Zsh directory..."
+      rm -rf "$HOME/.oh-my-zsh"
+    fi
     echo "Installing Oh My Zsh..."
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     ;;
