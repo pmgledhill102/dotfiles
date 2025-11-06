@@ -55,16 +55,18 @@ platforms.
 
 ## Phase 5: User Story 3 - Secure Secret Management (Priority: P2)
 
-**Goal**: Manage secrets securely without storing them in the Git repository.
+**Goal**: Manage development secrets securely using age encryption.
 
 **Independent Test**: A scan of the repository does not find any plaintext
 secrets.
 
-- [x] T017 [US3] Add Bitwarden CLI installation to
-  `run_once_install-packages.sh.tmpl`
-- [x] T018 [US3] Create a template for a secret file (e.g., `home/.secrets.tmpl`)
-  that will be populated by `chezmoi` from Bitwarden.
-- [x] T019 [US3] Document the secret management workflow in `home/README.md`
+- [ ] T017 [US3] Add `age` installation to `run_once_install-packages.sh.tmpl`
+- [ ] T018 [US3] Create a template for a secret file (e.g.,
+  `home/.secrets.tmpl`) that will be encrypted with `age`.
+- [ ] T019 [US3] Document the age encryption workflow (key generation,
+  encryption, decryption) in `home/README.md`.
+- [ ] T020 [US3] Document that highly sensitive secrets are managed manually in
+  Bitwarden.
 
 ---
 

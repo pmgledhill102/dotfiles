@@ -64,9 +64,11 @@ macOS, Ubuntu, and WSL.
 
 ### User Story 3 - Secure Secret Management (Priority: P2)
 
-As a developer, I want to manage my secrets (API keys, tokens, etc.) securely,
-without storing them in plaintext in the Git repository, so that I can safely
-share my dotfiles publicly without exposing sensitive information.
+As a developer, I want to manage my development-related secrets (API keys,
+tokens, etc.) securely using age encryption with a passphrase, so that I can
+safely share my dotfiles publicly without exposing sensitive information. My
+highly sensitive, day-to-day secrets will remain in Bitwarden, managed
+manually.
 
 **Why this priority**: This is a critical security requirement.
 
@@ -75,11 +77,13 @@ secrets.
 
 **Acceptance Scenarios**:
 
-1. **Given** the dotfiles are installed, **When** a user needs to add a secret,
-   **Then** there is a clear and documented process for doing so without
-   committing the secret to the repository.
+1. **Given** the dotfiles are being installed on a new machine, **When**
+   `chezmoi apply` is run, **Then** the user is prompted for the age passphrase
+   to decrypt the secrets.
 2. **Given** the repository is public, **When** a security scan is performed,
-   **Then** no secrets are found in the repository.
+   **Then** no plaintext secrets are found in the repository.
+3. **Given** a user needs to add a new development secret, **Then** there is a
+   clear and documented process for encrypting it with age.
 
 ---
 
@@ -129,8 +133,9 @@ macOS and Ubuntu environments through both local testing (UTM) and CI/CD
 - **FR-004**: The system MUST install and configure OhMyZsh.
 - **FR-005**: The system MUST install and configure the Powerlevel10k theme for
   OhMyZsh.
-- **FR-006**: The system MUST provide a mechanism for managing secrets that are
-  not stored in the Git repository, using Bitwarden with chezmoi integration.
+- **FR-006**: The system MUST provide a mechanism for managing development
+  secrets using age encryption with a passphrase. Highly sensitive secrets
+  will be managed manually in Bitwarden.
 - **FR-007**: The configuration for tools (Zsh, Git, etc.) MUST be organized
   into logical, self-contained modules.
 - **FR-008**: The system MUST include automated testing capabilities for
@@ -166,8 +171,9 @@ macOS and Ubuntu environments through both local testing (UTM) and CI/CD
 - **SC-002**: After installation, the Zsh shell with the Powerlevel10k theme is
   the default shell and is visually and functionally identical across macOS,
   Ubuntu, and WSL.
-- **SC-003**: No secrets are stored in plaintext within the version-controlled
-  repository.
+- **SC-003**: No plaintext development secrets are stored within the
+  version-controlled repository. Encrypted secrets are decrypted at runtime
+  using a passphrase.
 - **SC-004**: Automated tests successfully validate the installation process on
   both macOS and Ubuntu environments with a 100% success rate.
 - **SC-005**: Pull requests trigger automated CI tests that complete within 10

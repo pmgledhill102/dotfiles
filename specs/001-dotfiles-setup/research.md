@@ -5,18 +5,32 @@ implementation of the dotfiles repository.
 
 ## Research Tasks
 
-### 1. `chezmoi` and Bitwarden Integration
+### 1. Secret Management: `age` vs. Bitwarden
 
-**Task**: Research best practices for integrating `chezmoi` with Bitwarden for
-secret management.
+**Task**: Research and decide on the best secret management tool for this
+project, considering `age` encryption and Bitwarden.
 
-**Questions to Answer**:
+**Decision**: `age` encryption with a passphrase will be used for
+development-related secrets within the dotfiles repository. Bitwarden will
+continue to be used for managing highly sensitive, personal secrets, but it will
+not be integrated directly into the automated dotfiles setup.
 
-- How does `chezmoi` integrate with the Bitwarden CLI?
-- What is the recommended workflow for adding, updating, and retrieving secrets?
-- How are secrets exposed to the system (e.g., as environment variables, in
-  config files)?
-- What are the security implications of this approach?
+**Rationale**:
+
+- **Simplicity**: `age` is a simple, modern, and lightweight encryption tool with
+  no external dependencies. This simplifies the installation process, especially
+  in automated, non-interactive environments like CI/CD or new machine setups.
+- **Cross-Platform Compatibility**: `age` works flawlessly on all target
+  platforms, including ARM-based Macs (M1/M2), where the Bitwarden CLI has
+  known issues.
+- **Security Model**: Using a separate, passphrase-protected key for
+  development secrets provides good security isolation. It avoids exposing the
+  master password manager to the command line and build scripts.
+- **`chezmoi` Integration**: `age` has first-class, native support in `chezmoi`,
+  making the integration seamless.
+- **Workflow**: The passphrase-based workflow is convenient for new machine
+  setups. The user is prompted once to decrypt secrets, which is a good balance
+  between security and automation.
 
 ### 2. Platform-Specific Configurations with `chezmoi`
 

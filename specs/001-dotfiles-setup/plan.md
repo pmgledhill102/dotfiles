@@ -12,13 +12,13 @@ This plan outlines the technical implementation for creating a cross-platform
 dotfiles repository managed by `chezmoi`. The goal is to provide a consistent
 Zsh shell experience (OhMyZsh + Starship) across macOS, Debian/Ubuntu, and
 WSL, with Ghostty as the terminal emulator and secure secret management using
-Bitwarden.
+age encryption for development-related secrets.
 
 ## Technical Context
 
 **Language/Version**: Shell (Zsh, Bash)
 **Primary Dependencies**: `chezmoi`, `zsh`, `oh-my-zsh`, `starship`, `git`,
-  `bitwarden-cli`, `ghostty`
+  `age`, `ghostty`
 **Storage**: Filesystem
 **Testing**: Automated testing via GitHub Actions + local UTM virtual machines,
   validation scripts, ShellCheck for linting.
@@ -58,8 +58,9 @@ Bitwarden.
   after the initial run?
 - **Portability**: Does the system provide a consistent experience across macOS,
   Debian/Ubuntu, and WSL?
-- **Security**: Are secrets and sensitive data managed securely, outside of the
-  repository?
+- **Security**: Are development secrets managed securely using age encryption
+  with passphrase protection, while keeping personal/sensitive secrets in
+  Bitwarden for manual management?
 - **Modularity**: Are configurations for distinct tools organized into
   self-contained modules?
 

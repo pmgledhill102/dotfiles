@@ -52,7 +52,8 @@
 - [ ] Oh-My-Zsh framework installation
 - [ ] Starship prompt installation and configuration
 - [ ] Required packages and dependencies availability
-- [ ] Secret management system functionality
+- [ ] `age` encryption/decryption functionality
+- [ ] Passphrase prompt during installation
 
 ### Functional Testing
 
@@ -65,7 +66,8 @@
 ### Security Validation
 
 - [ ] No secrets exposed in repository
-- [ ] Bitwarden integration functional
+- [ ] `age` integration functional
+- [ ] Passphrase prompt and decryption work as expected
 - [ ] File permissions set correctly
 - [ ] No sensitive data in logs or artifacts
 

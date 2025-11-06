@@ -12,12 +12,16 @@
     "chezmoiignore",
     "chezmoitemplates",
     "esac",
+    "getutm",
     "Ghostty",
     "nvim",
     "powerlevel",
     "Powerlevel",
     "proc",
-    "speckit"
+    "qcow",
+    "speckit",
+    "utmapp",
+    "utmctl"
   ],
   "ignorePaths": [
     "node_modules/**",
