@@ -4,10 +4,10 @@
 add_newline = true
 
 # Set the format of the prompt
-format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$cmd_duration$shell$time$character"""
+format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$character"""
 
-# Right Prompt Configuration (disabled for SSH compatibility)
-# right_format = """$time"""
+# Right Prompt Configuration
+right_format = """$cmd_duration$shell$battery$time"""
 
 [os]
 format = "[$symbol]($style) "
