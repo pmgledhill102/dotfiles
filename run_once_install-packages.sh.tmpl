@@ -15,6 +15,9 @@ case "$(uname -s)" in
     echo "Installing Starship..."
     curl -sS https://starship.rs/install.sh | sh -s -- -y
     sudo apt-get install -y age
+
+    echo "Installing Oh My Zsh..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     ;;
   Darwin*)
     echo "macOS detected"
