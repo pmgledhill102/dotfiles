@@ -14,9 +14,6 @@ case "$(uname -s)" in
     # TODO: Add ghostty installation for Linux
     sudo snap install starship
     sudo apt-get install -y age
-
-    echo "Installing Powerlevel10k theme..."
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
     ;;
   Darwin*)
     echo "macOS detected"
@@ -25,12 +22,10 @@ case "$(uname -s)" in
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
     echo "Installing packages with Homebrew..."
-    # Add packages here
+        # Add packages here
     brew install chezmoi zsh ghostty age starship
-
-    echo "Installing Powerlevel10k theme..."
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
     ;;
+esac
   *)
     echo "Unsupported operating system"
     exit 1
