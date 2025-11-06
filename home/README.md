@@ -24,8 +24,8 @@ On your first installation, you'll need to generate an `age` key:
 age-keygen -o ~/.config/chezmoi/key.txt
 ```
 
-**Important**: Store this key securely in Bitwarden! You'll need it on each machine 
-where you want to use these dotfiles. The key file should be placed at 
+**Important**: Store this key securely in Bitwarden! You'll need it on each machine
+where you want to use these dotfiles. The key file should be placed at
 `~/.config/chezmoi/key.txt` on each machine.
 
 ### Adding Secrets

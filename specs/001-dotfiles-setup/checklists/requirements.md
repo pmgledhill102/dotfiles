@@ -29,6 +29,7 @@ planning
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
+- [x] Code must pass linting checks (ShellCheck for scripts, markdownlint for documentation)
 
 ## Notes
 
