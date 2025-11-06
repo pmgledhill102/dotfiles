@@ -119,7 +119,7 @@ Now you are ready to test your dotfiles.
    one-liner installation command:
 
    ```sh
-   sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply \
+   sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --purge \
      --branch 001-dotfiles-setup \
      https://github.com/pmgledhill102/dotfiles.git
    ```

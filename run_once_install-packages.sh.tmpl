@@ -10,9 +10,9 @@ case "$(uname -s)" in
     sudo apt-get update
     echo "Installing packages with apt-get..."
     # Add packages here
-    sudo apt-get install -y chezmoi zsh snapd
+    sudo apt-get install -y zsh snapd
     # TODO: Add ghostty installation for Linux
-    sudo snap install starship
+    sudo snap install --candidate starship
     sudo apt-get install -y age
     ;;
   Darwin*)
