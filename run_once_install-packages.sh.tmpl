@@ -27,6 +27,9 @@ case "$(uname -s)" in
     echo "Installing packages with Homebrew..."
         # Add packages here
     brew install chezmoi zsh ghostty age starship
+
+    echo "Installing Oh My Zsh..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     ;;
   *)
     echo "Unsupported operating system"
