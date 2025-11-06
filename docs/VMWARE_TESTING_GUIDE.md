@@ -113,7 +113,7 @@ snapshot manager built into the GUI.
 Now you are ready to test your dotfiles.
 
 1. **Revert to Snapshot**: Before each test run, ensure you revert to your
-   "Clean Install with Git+Avahi" snapshot to start from a known-good state.
+   "Clean" snapshot to start from a known-good state.
 
 2. **Run the Installation Script**: Open a terminal in the VM and run the
    one-liner installation command:
