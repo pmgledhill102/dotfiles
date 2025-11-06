@@ -60,12 +60,12 @@ platforms.
 **Independent Test**: A scan of the repository does not find any plaintext
 secrets.
 
-- [ ] T017 [US3] Add `age` installation to `run_once_install-packages.sh.tmpl`
-- [ ] T018 [US3] Create a template for a secret file (e.g.,
+- [x] T017 [US3] Add `age` installation to `run_once_install-packages.sh.tmpl`
+- [x] T018 [US3] Create a template for a secret file (e.g.,
   `home/.secrets.tmpl`) that will be encrypted with `age`.
-- [ ] T019 [US3] Document the age encryption workflow (key generation,
+- [x] T019 [US3] Document the age encryption workflow (key generation,
   encryption, decryption) in `home/README.md`.
-- [ ] T020 [US3] Document that highly sensitive secrets are managed manually in
+- [x] T020 [US3] Document that highly sensitive secrets are managed manually in
   Bitwarden.
 
 ---
