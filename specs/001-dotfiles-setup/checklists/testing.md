@@ -1,18 +1,18 @@
 # Testing Requirements Checklist
 
-## Local Testing Setup (UTM)
+## Local Testing Setup (VMware Fusion)
 
-### UTM Infrastructure
+### VMware Fusion Infrastructure
 
-- [ ] UTM application installed and configured on development machine
+- [ ] VMware Fusion Player application installed and configured on development machine
 - [ ] macOS Sonoma VM image prepared and accessible
 - [ ] Ubuntu 22.04 LTS VM image prepared and accessible
-- [ ] VM provisioning scripts created for automated setup
+- [ ] VM snapshot management (clean state restoration)
 - [ ] Network configuration allows VM internet access for package downloads
 
 ### Test Automation Scripts
 
-- [ ] VM snapshot management (clean state restoration)
+- [ ] Manual snapshot management documented
 - [ ] Automated dotfiles installation execution
 - [ ] Post-installation validation script suite
 - [ ] Test result collection and reporting
@@ -91,6 +91,6 @@
 
 - [ ] 100% test success rate on fresh environments
 - [ ] CI tests complete within 10 minutes
-- [ ] Local UTM tests provide rapid feedback (<15 minutes)
+- [ ] Local VMware Fusion tests provide rapid feedback (<15 minutes)
 - [ ] All platform-specific configurations validated
 - [ ] Comprehensive test coverage of user scenarios

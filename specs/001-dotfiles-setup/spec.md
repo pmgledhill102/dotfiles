@@ -97,7 +97,7 @@ can confidently make changes without breaking existing functionality.
 development.
 
 **Independent Test**: The installation process succeeds automatically on fresh
-macOS and Ubuntu environments through both local testing (UTM) and CI/CD
+macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/CD
 (GitHub Actions).
 
 **Acceptance Scenarios**:

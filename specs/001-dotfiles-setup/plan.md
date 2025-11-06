@@ -20,8 +20,8 @@ age encryption for development-related secrets.
 **Primary Dependencies**: `chezmoi`, `zsh`, `oh-my-zsh`, `starship`, `git`,
   `age`, `ghostty`
 **Storage**: Filesystem
-**Testing**: Automated testing via GitHub Actions + local UTM virtual machines,
-  validation scripts, ShellCheck for linting.
+**Testing**: Automated testing via GitHub Actions + local VMware Fusion virtual
+  machines, validation scripts, ShellCheck for linting.
 **Target Platform**: macOS, Debian/Ubuntu, WSL
 **Project Type**: Dotfiles management
 **Performance Goals**: Installation should take less than 5 minutes on a fresh OS.
@@ -30,9 +30,9 @@ age encryption for development-related secrets.
 
 ## Testing Strategy
 
-### Local Testing with UTM
+### Local Testing with VMware Fusion
 
-- **Tool**: UTM virtual machines on macOS
+- **Tool**: VMware Fusion virtual machines on macOS
 - **Environments**:
   - macOS Sonoma (latest) VM
   - Ubuntu 22.04 LTS VM

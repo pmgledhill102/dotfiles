@@ -12,7 +12,8 @@ case "$(uname -s)" in
     # Add packages here
     sudo apt-get install -y chezmoi zsh snapd
     # TODO: Add ghostty installation for Linux
-    sudo snap install bw
+    sudo snap install starship
+    sudo apt-get install -y age
 
     echo "Installing Powerlevel10k theme..."
     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
@@ -25,7 +26,7 @@ case "$(uname -s)" in
     fi
     echo "Installing packages with Homebrew..."
     # Add packages here
-    brew install chezmoi zsh bitwarden-cli ghostty
+    brew install chezmoi zsh ghostty age starship
 
     echo "Installing Powerlevel10k theme..."
     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k

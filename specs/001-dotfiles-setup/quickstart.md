@@ -9,14 +9,14 @@ Before you begin, ensure that you have the following dependencies installed on
 your system:
 
 - `git`
-- `bitwarden-cli`
+- `age`
 
 ## Installation
 
 To install the dotfiles, run the following command in your terminal:
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply <your-git-repository-url>
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --branch 001-dotfiles-setup https://github.com/pmgledhill102/dotfiles.git
 ```
 
 This command will:
@@ -27,19 +27,13 @@ This command will:
 
 ## Secret Management
 
-This repository uses `chezmoi`'s integration with Bitwarden to manage secrets.
-To access your secrets, you will need to be logged into the Bitwarden CLI.
+This repository uses `age` to encrypt sensitive files. `chezmoi` will
+automatically decrypt these files when you run `chezmoi apply`, and will prompt
+you for your passphrase.
 
-1. **Log in to Bitwarden**:
-
-   ```sh
-   bw login
-   ```
-
-2. **Sync your secrets**:
-
-   `chezmoi` will automatically fetch your secrets from Bitwarden when you run
-   `chezmoi apply`.
+You do not need to perform any manual steps to decrypt secrets during
+installation. For details on how to add or edit encrypted files, please refer
+to the main `README.md` file.
 
 ## Platform-Specific Configurations
 

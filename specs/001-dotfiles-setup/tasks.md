@@ -72,16 +72,19 @@ secrets.
 
 ## Phase 6: User Story 4 - Automated Testing & Validation (Priority: P2)
 
-**Goal**: Implement comprehensive testing strategy using UTM and GitHub Actions.
+**Goal**: Implement comprehensive testing strategy using VMware Fusion and GitHub
+Actions.
 
 **Independent Test**: Installation process succeeds automatically on fresh macOS
 and Ubuntu environments.
 
-### Local Testing Infrastructure (UTM)
+### Local Testing Infrastructure (VMware Fusion)
 
-- [ ] T020 [US4] Create UTM VM provisioning scripts for macOS testing
-- [ ] T021 [US4] Create UTM VM provisioning scripts for Ubuntu testing
-- [ ] T022 [US4] Develop automated test runner for UTM environments
+- [ ] T020 [US4] Document manual VMware Fusion VM setup for macOS testing in
+  `docs/VMWARE_TESTING_GUIDE.md`
+- [ ] T021 [US4] Document manual VMware Fusion VM setup for Ubuntu testing in
+  `docs/VMWARE_TESTING_GUIDE.md`
+- [ ] T022 [US4] Create test script to run inside the VMware Fusion VM
 - [ ] T023 [US4] Create post-installation validation scripts
 
 ### CI/CD Pipeline (GitHub Actions)
