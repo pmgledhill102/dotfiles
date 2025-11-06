@@ -133,7 +133,6 @@ disabled = false
 format = "at [$time]($style) "
 style = "fg:#2e9599"
 use_12hr = false
-show_milliseconds = true
 
 #[gcloud]
 #format = "on [ $project]($style) "
