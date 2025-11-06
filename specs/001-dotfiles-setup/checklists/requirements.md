@@ -32,5 +32,6 @@ planning
 
 ## Notes
 
+- Ghostty is only required on macOS and Windows, as a GUI terminal will not be used on Linux.
 - Items marked incomplete require spec updates before `/speckit.clarify` or
   `/speckit.plan`

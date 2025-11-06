@@ -4,10 +4,10 @@ This repository contains my personal dotfiles, managed by `chezmoi`.
 
 ## Installation
 
-To install these dotfiles on a new machine, run the following command:
+To install these dotfiles on a new machine, run the following command. You can optionally pass a branch name as an argument to install a specific version of the dotfiles.
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --branch 001-dotfiles-setup https://github.com/pmgledhill102/dotfiles.git
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/001-dotfiles-setup/install.sh)" -- [branch-name]
 ```
 
 ## Secret Management
