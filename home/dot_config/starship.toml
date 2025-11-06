@@ -7,7 +7,7 @@ add_newline = true
 format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$character"""
 
 # Right Prompt Configuration
-right_format = """$cmd_duration$shell$battery$time"""
+right_format = """$time"""
 
 [os]
 format = "[$symbol]($style) "
