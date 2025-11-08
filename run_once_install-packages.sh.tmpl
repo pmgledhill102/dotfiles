@@ -10,21 +10,34 @@ case "$(uname -s)" in
     sudo apt-get update
     echo "Installing packages with apt-get..."
     # Add packages here
-    sudo apt-get install -y zsh snapd
-    echo "Installing Starship..."
-    curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1
-    sudo apt-get install -y age
-
-    if [ -d "$HOME/.oh-my-zsh" ]; then
-      echo "Removing existing Oh My Zsh directory..."
-      rm -rf "$HOME/.oh-my-zsh"
+    sudo apt-get install -y zsh snapd age
+    
+    if ! command -v starship >/dev/null 2>&1; then
+      echo "Installing Starship..."
+      curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1
+    else
+      echo "Starship already installed, skipping..."
     fi
-    echo "Installing Oh My Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+      echo "Installing Oh My Zsh..."
+      sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+      echo "Oh My Zsh already installed, skipping..."
+    fi
     
     echo "Installing Oh My Zsh custom plugins..."
-    git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
+      git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    else
+      echo "zsh-autosuggestions already installed, skipping..."
+    fi
+    
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
+      git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    else
+      echo "zsh-syntax-highlighting already installed, skipping..."
+    fi
     ;;
   Darwin*)
     echo "macOS detected"
@@ -33,19 +46,28 @@ case "$(uname -s)" in
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
     echo "Installing packages with Homebrew..."
-        # Add packages here
+    # Add packages here
     brew install chezmoi zsh ghostty age starship
 
-    if [ -d "$HOME/.oh-my-zsh" ]; then
-      echo "Removing existing Oh My Zsh directory..."
-      rm -rf "$HOME/.oh-my-zsh"
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+      echo "Installing Oh My Zsh..."
+      sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+      echo "Oh My Zsh already installed, skipping..."
     fi
-    echo "Installing Oh My Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     
     echo "Installing Oh My Zsh custom plugins..."
-    git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
+      git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    else
+      echo "zsh-autosuggestions already installed, skipping..."
+    fi
+    
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
+      git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    else
+      echo "zsh-syntax-highlighting already installed, skipping..."
+    fi
     ;;
   *)
     echo "Unsupported operating system"

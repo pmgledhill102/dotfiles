@@ -95,3 +95,31 @@ developer experience.
 - Custom plugins (autosuggestions, syntax-highlighting) must be cloned from
   GitHub into `~/.oh-my-zsh/custom/plugins/`
 - Built-in plugins only need to be added to the `plugins=()` array in `.zshrc`
+- Installation scripts must be idempotent to handle updates and re-runs
+
+### 6. Installation Script Idempotency
+
+**Task**: Research best practices for making installation scripts idempotent,
+particularly for package managers and git clones.
+
+**Decision**: Installation scripts will use conditional checks before performing
+installations to ensure safe re-execution.
+
+**Rationale**:
+
+- **Re-runability**: When adding new plugins or updating configurations, users
+  can re-run `chezmoi apply` without errors or duplicate installations.
+- **chezmoi `run_once_` Behaviour**: Scripts prefixed with `run_once_` only
+  re-execute when their content changes, which means configuration updates in
+  `.zshrc` won't trigger plugin installation unless the script itself changes.
+- **Error Prevention**: Attempting to re-install packages or re-clone
+  repositories that already exist can cause errors or unnecessary warnings.
+- **Best Practices**: Checking for existence before installation (e.g., `if [ !
+  -d "$HOME/.oh-my-zsh" ]`) is a standard pattern in shell scripting.
+
+**Implementation Pattern**:
+
+- Check if package/tool is already installed before attempting installation
+- Use conditional checks for directory existence before git clone operations
+- Package managers (apt-get, brew) should be invoked with appropriate flags to
+  handle already-installed packages gracefully

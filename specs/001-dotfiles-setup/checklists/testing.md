@@ -48,6 +48,17 @@
 
 ### Installation Verification
 
+- [ ] All required packages installed correctly
+- [ ] Zsh set as default shell
+- [ ] Oh My Zsh installed and sourced in .zshrc
+- [ ] All plugins (built-in and custom) installed and loaded
+- [ ] Starship prompt installed and configured
+- [ ] Ghostty installed (macOS/Windows only)
+- [ ] age encryption tool installed
+- [ ] Shell configuration files in expected locations
+- [ ] Installation scripts are idempotent (can be re-run safely)
+- [ ] Re-running installation after plugin updates applies changes correctly
+
 - [ ] Zsh shell installation and default configuration
 - [ ] Oh-My-Zsh framework installation
 - [ ] Starship prompt installation and configuration

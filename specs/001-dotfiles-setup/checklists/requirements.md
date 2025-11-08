@@ -30,6 +30,7 @@ planning
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 - [x] Code must pass linting checks (ShellCheck for scripts, markdownlint for documentation)
+- [x] Installation scripts must be idempotent and safely re-runnable
 
 ## Notes
 

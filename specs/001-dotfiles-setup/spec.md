@@ -151,6 +151,9 @@ macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/
   continuous integration testing.
 - **FR-011**: The system MUST install and configure Ghostty as the terminal
   emulator on macOS and Windows (not required for Linux).
+- **FR-012**: Installation scripts MUST be idempotent, allowing safe re-execution
+  without errors or duplicate installations. Re-running the installation script
+  after configuration changes MUST apply those changes correctly.
 
 ## Non-Functional Requirements
 
