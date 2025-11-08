@@ -34,6 +34,8 @@ license key.
 
 ## 2. Create a New Virtual Machine
 
+### Ubuntu/Linux VM Setup
+
 1. **Download an OS Image**: You will need an installation image for the
    operating system you want to test on. For example, you can download the
    latest Ubuntu Desktop image from the
@@ -47,6 +49,25 @@ license key.
    - Once the OS is installed, VMware Tools should be installed
      automatically, which provides better integration between the host and
      guest OS.
+
+### macOS VM Setup
+
+**Note**: Running macOS as a guest VM on VMware Fusion is only officially supported
+on Apple hardware and requires a licensed copy of macOS.
+
+1. **Download macOS Installer**: Download the macOS installer from the App Store
+   or use a recovery image.
+
+2. **Create a macOS VM in VMware Fusion**:
+   - Open VMware Fusion and select `File` > `New`.
+   - Choose `Create a custom virtual machine`.
+   - Select the appropriate macOS version from the dropdown.
+   - Choose `Use operating system installation disc` and point to your macOS installer.
+   - Follow the prompts to complete the VM creation.
+   - Start the VM and complete the macOS installation process.
+
+3. **Install VMware Tools**: VMware Tools should be installed automatically for
+   better integration. If not, go to `Virtual Machine` > `Install VMware Tools`.
 
 ## 3. Configure the VM for Testing
 
@@ -127,6 +148,17 @@ Now you are ready to test your dotfiles.
 
 4. **Verify the Installation**: Check that your shell is configured correctly,
    your theme is applied, and your secrets are managed as expected.
+
+5. **Run Validation Scripts**: After installation, run the validation scripts
+   to ensure everything is working correctly:
+
+   ```sh
+   # Run the post-installation validation
+   bash <(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/001-dotfiles-setup/scripts/validate-installation.sh)
+   
+   # Or run the comprehensive test suite
+   bash <(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/001-dotfiles-setup/scripts/test-vmware-installation.sh)
+   ```
 
 After testing, you can shut down the VM and revert to the clean snapshot again
 for the next test run.

@@ -80,12 +80,12 @@ and Ubuntu environments.
 
 ### Local Testing Infrastructure (VMware Fusion)
 
-- [ ] T021 [US4] Document manual VMware Fusion VM setup for macOS testing in
+- [x] T021 [US4] Document manual VMware Fusion VM setup for macOS testing in
   `docs/VMWARE_TESTING_GUIDE.md`
-- [ ] T022 [US4] Document manual VMware Fusion VM setup for Ubuntu testing in
+- [x] T022 [US4] Document manual VMware Fusion VM setup for Ubuntu testing in
   `docs/VMWARE_TESTING_GUIDE.md`
-- [ ] T023 [US4] Create test script to run inside the VMware Fusion VM
-- [ ] T024 [US4] Create post-installation validation scripts
+- [x] T023 [US4] Create test script to run inside the VMware Fusion VM
+- [x] T024 [US4] Create post-installation validation scripts
 
 ### CI/CD Pipeline (GitHub Actions)
 
