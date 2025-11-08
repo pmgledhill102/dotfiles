@@ -18,6 +18,7 @@
     "getutm",
     "Ghostty",
     "keygen",
+    "nogui",
     "nvim",
     "powerlevel",
     "Powerlevel",
@@ -28,7 +29,9 @@
     "speckit",
     "utmapp",
     "utmctl",
-    "vicmd"
+    "vicmd",
+    "vmrun",
+    "vmwarevm"
   ],
   "ignorePaths": [
     "node_modules/**",

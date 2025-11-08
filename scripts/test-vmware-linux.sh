@@ -17,17 +17,15 @@ SNAPSHOT_NAME="Clean"
 # --- Script ---
 
 echo "Reverting to snapshot: '$SNAPSHOT_NAME'..."
-"$VMRUN" revertToSnapshot "$VMX_PATH" "$SNAPSHOT_NAME"
-
-if [ $? -ne 0 ]; then
+if ! "$VMRUN" revertToSnapshot "$VMX_PATH" "$SNAPSHOT_NAME"
+then
   echo "Error: Failed to revert to snapshot. Please check the VM path and snapshot name."
   exit 1
 fi
 
 echo "Starting the virtual machine in headless mode..."
-"$VMRUN" start "$VMX_PATH" nogui
-
-if [ $? -ne 0 ]; then
+if ! "$VMRUN" start "$VMX_PATH" nogui
+then
   echo "Error: Failed to start the virtual machine."
   exit 1
 fi
