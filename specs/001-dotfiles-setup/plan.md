@@ -10,9 +10,9 @@
 
 This plan outlines the technical implementation for creating a cross-platform
 dotfiles repository managed by `chezmoi`. The goal is to provide a consistent
-Zsh shell experience (OhMyZsh + Starship) across macOS, Debian/Ubuntu, and
-WSL, with Ghostty as the terminal emulator and secure secret management using
-age encryption for development-related secrets.
+Zsh shell experience (OhMyZsh with productivity plugins + Starship prompt)
+across macOS, Debian/Ubuntu, and WSL, with Ghostty as the terminal emulator
+and secure secret management using age encryption for development-related secrets.
 
 ## Technical Context
 

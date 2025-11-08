@@ -69,3 +69,29 @@ Document the process of configuring custom prompt elements in Starship's configu
 - What is the basic installation and setup process for Starship?
 - How do you translate specific prompt features (e.g., git status, Kubernetes context, AWS profile) from the old setup to `starship.toml`?
 - What are the common pitfalls or differences in configuration philosophy between Starship and other prompts?
+
+### 5. Oh My Zsh Plugins
+
+**Task**: Research and select Oh My Zsh plugins that enhance productivity and
+developer experience.
+
+**Selected Plugins**:
+
+- **zsh-autosuggestions**: Suggests commands as you type based on command history
+  and completions. Requires custom installation in `~/.oh-my-zsh/custom/plugins/`.
+- **zsh-syntax-highlighting**: Provides real-time syntax highlighting for
+  commands. Requires custom installation in `~/.oh-my-zsh/custom/plugins/`.
+- **colored-man-pages**: Adds color to man pages for easier reading. Built-in
+  plugin.
+- **command-not-found**: Suggests which package to install when a command is not
+  found. Built-in plugin (Ubuntu/Debian only).
+- **history**: Enhances history searching with shortcuts. Built-in plugin.
+- **copypath**: Adds commands to copy file paths to clipboard. Built-in plugin.
+- **copyfile**: Adds commands to copy file contents to clipboard. Built-in plugin.
+- **git**: Enhanced git aliases and completions. Built-in plugin.
+
+**Installation Requirements**:
+
+- Custom plugins (autosuggestions, syntax-highlighting) must be cloned from
+  GitHub into `~/.oh-my-zsh/custom/plugins/`
+- Built-in plugins only need to be added to the `plugins=()` array in `.zshrc`

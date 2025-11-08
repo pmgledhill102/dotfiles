@@ -41,14 +41,14 @@ configured by cloning the repository and running one command.
 ### User Story 2 - Consistent Shell Experience (Priority: P1)
 
 As a developer, I want a consistent Zsh shell experience across all my
-machines, using Ghostty as the terminal emulator, complete with OhMyZsh and the
-Starship prompt, so that I can work efficiently without needing to adjust
-to different shell environments.
+machines, using Ghostty as the terminal emulator, complete with OhMyZsh,
+useful productivity plugins, and the Starship prompt, so that I can work
+efficiently without needing to adjust to different shell environments.
 
 **Why this priority**: This provides a consistent and productive user
 experience.
 
-**Independent Test**: The shell prompt, theme, and aliases are identical on
+**Independent Test**: The shell prompt, theme, plugins, and aliases are identical on
 macOS, Ubuntu, and WSL.
 
 **Acceptance Scenarios**:
@@ -58,7 +58,10 @@ macOS, Ubuntu, and WSL.
 2. **Given** the Zsh shell is open, **When** the user views the prompt, **Then**
    the Starship prompt is displayed correctly.
 3. **Given** an installed system, **When** the user opens a terminal, **Then**
-   Ghostty is available and configured.
+   Ghostty is available and configured (on macOS/Windows only).
+4. **Given** an installed system, **When** the user types commands, **Then**
+   Oh My Zsh plugins provide autosuggestions, syntax highlighting, and enhanced
+   functionality.
 
 ---
 
@@ -131,8 +134,10 @@ macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/
   Debian/Ubuntu, WSL) and install the appropriate dependencies.
 - **FR-003**: The system MUST install and configure Zsh as the default shell.
 - **FR-004**: The system MUST install and configure OhMyZsh.
-- **FR-005**: The system MUST install and configure the Powerlevel10k theme for
-  OhMyZsh.
+- **FR-004a**: The system MUST install and configure Oh My Zsh plugins including:
+  zsh-autosuggestions, zsh-syntax-highlighting, colored-man-pages,
+  command-not-found, history, copypath, and copyfile.
+- **FR-005**: The system MUST install and configure the Starship prompt.
 - **FR-006**: The system MUST provide a mechanism for managing development
   secrets using age encryption with a passphrase. Highly sensitive secrets
   will be managed manually in Bitwarden.
@@ -144,8 +149,8 @@ macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/
   installation and configuration of all components.
 - **FR-010**: The repository MUST include GitHub Actions workflows for
   continuous integration testing.
-- **FR-011**: The system MUST install and configure WezTerm as the default
-  terminal emulator.
+- **FR-011**: The system MUST install and configure Ghostty as the terminal
+  emulator on macOS and Windows (not required for Linux).
 
 ## Non-Functional Requirements
 
@@ -160,17 +165,20 @@ macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/
 - **NFR-TEST-004**: All tests MUST include validation of the complete user
   experience, from installation to functional shell usage.
 - **NFR-TEST-005**: Test execution time MUST not exceed 10 minutes per platform
-  in the CI environment.
+   in the CI environment.
 
-## Success Criteria *(mandatory)*
+### Performance Requirements
 
-### Measurable Outcomes
+- **NFR-PERF-001**: Shell startup time MUST not exceed 1 second on modern
+  hardware after all plugins and configurations are loaded.
+
+## Success Criteria *(mandatory)*### Measurable Outcomes
 
 - **SC-001**: A new machine (macOS, Ubuntu, or WSL) can be fully set up with the
   dotfiles by running a single command in under 5 minutes.
-- **SC-002**: After installation, the Zsh shell with the Powerlevel10k theme is
-  the default shell and is visually and functionally identical across macOS,
-  Ubuntu, and WSL.
+- **SC-002**: After installation, the Zsh shell with the Starship prompt and
+  Oh My Zsh plugins is the default shell and is visually and functionally
+  identical across macOS, Ubuntu, and WSL.
 - **SC-003**: No plaintext development secrets are stored within the
   version-controlled repository. Encrypted secrets are decrypted at runtime
   using a passphrase.
