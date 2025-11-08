@@ -130,7 +130,7 @@ style = "bold green"
 
 [time]
 disabled = false
-format = "at [$time]($style) "
+format = "[$time]($style) "
 style = "fg:#2e9599"
 use_12hr = false
 
