@@ -45,7 +45,7 @@ platforms.
 
 - [x] T011 [US2] Add `.zshrc` to `chezmoi` in `home/dot_zshrc`
 - [x] T012 [US2] Add OhMyZsh installation to `run_once_install-packages.sh.tmpl`
-- [ ] T012a [US2] Configure Oh My Zsh plugins (autosuggestions, syntax-highlighting, etc.)
+- [x] T012a [US2] Configure Oh My Zsh plugins (autosuggestions, syntax-highlighting, etc.)
 - [x] T013 [US2] Add Starship installation to
   `run_once_install-packages.sh.tmpl`
 - [x] T014 [US2] Add Starship configuration file (`starship.toml`) to `chezmoi`
