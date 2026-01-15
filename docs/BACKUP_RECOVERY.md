@@ -207,7 +207,7 @@ crontab -e
 
 ### Schedule with launchd (macOS)
 
-Create `~/Library/LaunchAgents/com.user.dotfiles-backup.plist`:
+Create `~/Library/LaunchAgents/com.user.dotfiles-backup.plist` (replace `USERNAME` with your actual username):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -234,6 +234,8 @@ Create `~/Library/LaunchAgents/com.user.dotfiles-backup.plist`:
 </dict>
 </plist>
 ```
+
+**Note**: Replace `USERNAME` with your actual username, or use `$HOME` in the paths where appropriate.
 
 Load the agent:
 
