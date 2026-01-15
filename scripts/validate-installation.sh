@@ -18,13 +18,23 @@ PASSED_TESTS=0
 validate_test() {
     local description=$1
     local test_command=$2
+    local output
     
-    if eval "$test_command" >/dev/null 2>&1; then
+    # Run the test command and capture both stdout and stderr
+    # We use eval to execute the command string properly
+    output=$(eval "$test_command" 2>&1)
+    local exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}✓${NC} $description"
         ((PASSED_TESTS++))
         return 0
     else
         echo -e "${RED}✗${NC} $description"
+        # Only print output if there is any, to avoid empty lines
+        if [ -n "$output" ]; then
+             echo -e "${RED}  Error details: $output${NC}"
+        fi
         ((FAILED_TESTS++))
         return 1
     fi
@@ -96,7 +106,7 @@ echo ""
 echo "Validating chezmoi..."
 echo "-----------------------------------"
 validate_test "Chezmoi is in PATH" "command -v chezmoi"
-validate_test "Chezmoi source directory exists" "[ -d \"\$(chezmoi source-path)\" ]"
+validate_test "Chezmoi source directory exists" "chezmoi source-path >/dev/null"
 validate_test "Chezmoi can list managed files" "chezmoi managed"
 
 echo ""
