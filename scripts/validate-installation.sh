@@ -96,7 +96,7 @@ echo ""
 echo "Validating chezmoi..."
 echo "-----------------------------------"
 validate_test "Chezmoi is in PATH" "command -v chezmoi"
-validate_test "Chezmoi source directory exists" "[ -d \"\$HOME/.local/share/chezmoi\" ]"
+validate_test "Chezmoi source directory exists" "[ -d \"\$(chezmoi source-path)\" ]"
 validate_test "Chezmoi can list managed files" "chezmoi managed"
 
 echo ""
