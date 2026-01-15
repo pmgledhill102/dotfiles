@@ -2,8 +2,6 @@
 # Post-installation validation script for dotfiles
 # Validates that the installation is working correctly
 
-set -e
-
 echo "================================"
 echo "Post-Installation Validation"
 echo "================================"
