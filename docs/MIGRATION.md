@@ -15,6 +15,7 @@ This guide helps you migrate from other dotfile management systems or manual con
 ## Overview
 
 This migration guide covers:
+
 - Moving from manually managed dotfiles
 - Migrating from other dotfile managers (GNU Stow, yadm, etc.)
 - Adapting existing configurations to chezmoi
@@ -104,47 +105,56 @@ Choose the strategy that fits your situation:
 ### Strategy 1: Fresh Start (Recommended for Beginners)
 
 **When to use:**
+
 - First time using a dotfile manager
 - Want a clean, tested configuration
 - Can manually migrate specific customizations
 
 **Pros:**
+
 - Cleanest approach
 - Starts with working configuration
 - Less troubleshooting
 
 **Cons:**
+
 - Need to manually migrate customizations
 - May lose some settings initially
 
 ### Strategy 2: Gradual Migration (Recommended for Advanced Users)
 
 **When to use:**
+
 - Have extensive customizations
 - Need to maintain productivity
 - Want to migrate incrementally
 
 **Pros:**
+
 - Keep working setup
 - Migrate at your own pace
 - Less disruptive
 
 **Cons:**
+
 - Takes longer
 - Need to manage two systems temporarily
 
 ### Strategy 3: Import Existing (For Experienced Users)
 
 **When to use:**
+
 - Already using a dotfile manager
 - Have organized dotfiles repository
 - Comfortable with chezmoi
 
 **Pros:**
+
 - Preserve existing setup
 - Faster migration
 
 **Cons:**
+
 - May need cleanup
 - Requires chezmoi knowledge
 
@@ -564,25 +574,30 @@ If you encounter issues:
 ## Example Migration Timeline
 
 **Day 1:**
+
 - Backup current setup
 - Install new dotfiles
 - Basic verification
 
 **Day 2-3:**
+
 - Migrate custom aliases and functions
 - Test daily workflows
 
 **Day 4-7:**
+
 - Migrate additional config files
 - Fine-tune configurations
 - Test thoroughly
 
 **Week 2-4:**
+
 - Use new setup daily
 - Fix any issues
 - Keep backup accessible
 
 **After 1 Month:**
+
 - If stable, clean up old system
 - Archive backups
 - Celebrate! 🎉
@@ -590,6 +605,7 @@ If you encounter issues:
 ## Conclusion
 
 Migration to this dotfiles setup gives you:
+
 - ✅ Consistent setup across machines
 - ✅ Secure secret management
 - ✅ Easy installation

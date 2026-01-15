@@ -79,16 +79,19 @@ If you need to update the installation script to reflect new plugin versions:
 Update Starship prompt:
 
 **macOS:**
+
 ```bash
 brew upgrade starship
 ```
 
 **Linux:**
+
 ```bash
 curl -sS https://starship.rs/install.sh | sh
 ```
 
 **Verify version:**
+
 ```bash
 starship --version
 ```
@@ -96,6 +99,7 @@ starship --version
 ### Ghostty
 
 **macOS:**
+
 ```bash
 brew upgrade ghostty
 ```
@@ -105,11 +109,13 @@ Check [Ghostty releases](https://github.com/mitchellh/ghostty/releases) for upda
 ### Age (Encryption Tool)
 
 **macOS:**
+
 ```bash
 brew upgrade age
 ```
 
 **Linux:**
+
 ```bash
 # Check for latest release at https://github.com/FiloSottile/age/releases
 # Download and install manually or via package manager
@@ -118,11 +124,13 @@ brew upgrade age
 ### Chezmoi
 
 **macOS:**
+
 ```bash
 brew upgrade chezmoi
 ```
 
 **Linux:**
+
 ```bash
 # Check https://www.chezmoi.io/install/ for latest version
 sh -c "$(curl -fsLS get.chezmoi.io)"
@@ -140,7 +148,7 @@ When adding a new tool to your dotfiles:
    - Review configuration requirements
 
 2. **Update installation script**
-   
+
    Edit `run_once_install-packages.sh.tmpl`:
 
    ```bash
@@ -199,6 +207,7 @@ When adding a new tool to your dotfiles:
    - Update CONTRIBUTING.md if needed
 
 6. **Commit changes**
+
    ```bash
    git add .
    git commit -m "feat(tool): add newtool configuration"
@@ -296,6 +305,7 @@ omz plugin list
 If shell startup becomes slow:
 
 1. **Profile the startup**
+
    ```bash
    # Add to top of ~/.zshrc
    zmodload zsh/zprof
@@ -351,6 +361,7 @@ brew install starship@1.10.0
 ```
 
 **Trade-offs:**
+
 - ✅ Consistent installations
 - ✅ Reproducible environments
 - ❌ Manual updates required
@@ -385,6 +396,7 @@ EOF
 ### Installation Script Failures
 
 **Issue**: Script fails on specific OS
+
 ```bash
 # Debug by running with verbose output
 bash -x run_once_install-packages.sh.tmpl
@@ -395,6 +407,7 @@ uname -m
 ```
 
 **Issue**: Package installation fails
+
 ```bash
 # Update package lists first
 # macOS
@@ -409,6 +422,7 @@ sudo apt-get update
 ### Plugin Update Failures
 
 **Issue**: Oh My Zsh update fails
+
 ```bash
 # Reset to latest
 cd ~/.oh-my-zsh
@@ -417,6 +431,7 @@ git pull
 ```
 
 **Issue**: Custom plugin update fails
+
 ```bash
 # Re-clone the plugin
 cd ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins
@@ -444,12 +459,14 @@ cp ~/.config/chezmoi/key.txt ~/Documents/age-key-backup.txt
 ### Regular Security Tasks
 
 1. **Audit secrets**
+
    ```bash
    # Scan for accidentally committed secrets
    git log -p | grep -i "password\|secret\|key\|token"
    ```
 
 2. **Update encryption**
+
    ```bash
    # Rotate age keys periodically (e.g., annually)
    # Generate new key

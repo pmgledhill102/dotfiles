@@ -13,6 +13,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/001
 ```
 
 This will:
+
 - Install chezmoi
 - Install required packages (Zsh, Oh My Zsh, Starship, age, etc.)
 - Apply your dotfile configurations
@@ -23,7 +24,7 @@ This will:
 - **Shell**: Zsh with Oh My Zsh
 - **Prompt**: Starship (fast, customizable prompt)
 - **Terminal**: Ghostty (macOS/Windows)
-- **Plugins**: 
+- **Plugins**:
   - zsh-autosuggestions
   - zsh-syntax-highlighting
   - colored-man-pages
@@ -120,6 +121,7 @@ chezmoi apply -v
 Having issues? Check the [Troubleshooting Guide](../docs/TROUBLESHOOTING.md) for common problems and solutions.
 
 Quick checks:
+
 ```bash
 # Verify tools are installed
 command -v zsh starship chezmoi age
@@ -144,6 +146,7 @@ See [MAINTENANCE.md](../docs/MAINTENANCE.md) for detailed procedures.
 ## Contributing
 
 Want to improve these dotfiles? See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
+
 - Development workflow
 - Testing procedures
 - Code style guidelines
@@ -152,6 +155,7 @@ Want to improve these dotfiles? See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
 ## Platform Support
 
 Tested and supported on:
+
 - ✅ macOS (Sonoma and later)
 - ✅ Ubuntu 22.04 LTS and later
 - ✅ Debian 11 and later

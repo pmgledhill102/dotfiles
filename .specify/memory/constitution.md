@@ -22,15 +22,19 @@ Sync Impact Report:
 ## Core Principles
 
 ### I. Idempotence
+
 All setup scripts must be safely runnable multiple times without changing the system state after the initial run.
 
 ### II. Portability
+
 The system must provide a consistent user experience across macOS, Debian/Ubuntu Linux, and WSL. Platform-specific logic must be handled declaratively.
 
 ### III. Security
+
 No secrets, API keys, or tokens shall be stored in plain text in the version-controlled repository. Sensitive data must be managed through an external, secure system.
 
 ### IV. Modularity
+
 Configurations for distinct tools (Zsh, Git, etc.) should be organized into logical, self-contained modules.
 
 ## Governance

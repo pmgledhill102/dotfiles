@@ -17,7 +17,7 @@ Before making changes, ensure you have:
 
 ## Repository Structure
 
-```
+```text
 .
 ├── home/                          # Files managed by chezmoi
 │   ├── dot_zshrc                 # Zsh configuration
@@ -65,11 +65,13 @@ chezmoi edit ~/.gitconfig
 ### 3. Modifying the Installation Script
 
 The `run_once_install-packages.sh.tmpl` script is a chezmoi template that:
+
 - Detects the operating system
 - Installs required packages
 - Sets up tools like Oh My Zsh and Starship
 
 When modifying this script:
+
 1. Ensure it remains idempotent (safe to run multiple times)
 2. Test on all supported platforms
 3. Add appropriate error handling
@@ -79,7 +81,7 @@ When modifying this script:
 
 Use chezmoi templates for platform-specific settings:
 
-```bash
+```gotmpl
 {{ if eq .chezmoi.os "darwin" }}
 # macOS-specific configuration
 {{ else if eq .chezmoi.os "linux" }}
@@ -102,6 +104,7 @@ Before committing changes:
 See [docs/VMWARE_TESTING_GUIDE.md](docs/VMWARE_TESTING_GUIDE.md) for detailed instructions on testing with VMware Fusion or UTM.
 
 Quick test procedure:
+
 1. Create a fresh VM (macOS or Ubuntu)
 2. Run the installation command
 3. Verify the shell prompt, tools, and configurations
@@ -110,6 +113,7 @@ Quick test procedure:
 ### Automated Testing
 
 Future: CI/CD pipelines will automatically test changes on:
+
 - macOS (via GitHub Actions)
 - Ubuntu (via GitHub Actions)
 
@@ -135,7 +139,7 @@ Future: CI/CD pipelines will automatically test changes on:
 
 Follow conventional commit format:
 
-```
+```text
 <type>(<scope>): <description>
 
 [optional body]
@@ -144,6 +148,7 @@ Follow conventional commit format:
 ```
 
 Types:
+
 - `feat`: New feature or configuration
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -152,7 +157,8 @@ Types:
 - `chore`: Maintenance tasks
 
 Examples:
-```
+
+```text
 feat(zsh): add git aliases for common workflows
 fix(install): correct Ubuntu package installation
 docs(readme): update installation instructions
@@ -249,15 +255,19 @@ curl -sS https://starship.rs/install.sh | sh
 ### Common Issues
 
 **Issue**: Installation script fails on a specific OS
+
 - **Solution**: Check OS detection logic and platform-specific commands
 
 **Issue**: Shell prompt doesn't appear correctly
+
 - **Solution**: Verify Starship installation and configuration
 
 **Issue**: Oh My Zsh plugins not working
+
 - **Solution**: Ensure plugins are properly sourced in `.zshrc`
 
 **Issue**: Secret decryption fails
+
 - **Solution**: Verify age key is present at `~/.config/chezmoi/key.txt`
 
 ## Getting Help

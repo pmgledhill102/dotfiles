@@ -36,27 +36,27 @@ These items are essential and must be backed up:
 
 These items should be backed up but can be recreated:
 
-4. **Bitwarden Vault**
+1. **Bitwarden Vault**
    - Contains highly sensitive secrets
    - Managed by Bitwarden's own backup system
    - Export periodically as additional backup
 
-5. **SSH Keys** (`~/.ssh/`)
+2. **SSH Keys** (`~/.ssh/`)
    - Can be regenerated but inconvenient
    - Back up private keys securely
 
-6. **Custom Scripts** (if not in dotfiles)
+3. **Custom Scripts** (if not in dotfiles)
    - Any scripts or tools not tracked by chezmoi
 
 ### Optional Data
 
 These items are nice to back up but not critical:
 
-7. **Shell History** (`~/.zsh_history`)
+1. **Shell History** (`~/.zsh_history`)
    - Useful for reference
    - Not critical for functionality
 
-8. **Local Configurations**
+2. **Local Configurations**
    - Machine-specific settings
    - Can be recreated
 
@@ -76,11 +76,13 @@ git push
 ```
 
 **Pros:**
+
 - Automatic version control
 - Easy to restore
 - Synced across machines
 
 **Cons:**
+
 - Secrets must be encrypted
 - Requires internet access
 - Limited to what's tracked
@@ -102,6 +104,7 @@ cp ~/.config/chezmoi/key.txt ~/Documents/age-key-backup-$(date +%Y%m%d).txt
 ```
 
 **Additional backup locations:**
+
 - Encrypted USB drive
 - Password-protected external drive
 - Secure cloud storage (encrypted)
@@ -370,6 +373,7 @@ git clone https://github.com/pmgledhill102/dotfiles.git ~/.local/share/chezmoi
 Full recovery from complete data loss:
 
 **Prerequisites:**
+
 - Age key stored in Bitwarden ✅
 - GitHub repository accessible ✅
 - Bitwarden account accessible ✅
@@ -377,6 +381,7 @@ Full recovery from complete data loss:
 **Recovery Steps:**
 
 1. **Set up new machine basics**
+
    ```bash
    # Install Git (if not present)
    # macOS: xcode-select --install
@@ -384,6 +389,7 @@ Full recovery from complete data loss:
    ```
 
 2. **Install chezmoi**
+
    ```bash
    sh -c "$(curl -fsLS get.chezmoi.io)"
    ```
@@ -394,6 +400,7 @@ Full recovery from complete data loss:
    - Copy key content
 
 4. **Initialize dotfiles**
+
    ```bash
    # Initialize from repository
    chezmoi init https://github.com/pmgledhill102/dotfiles.git
@@ -405,17 +412,20 @@ Full recovery from complete data loss:
    ```
 
 5. **Apply configuration**
+
    ```bash
    chezmoi apply -v
    ```
 
 6. **Run installation script**
+
    ```bash
    # The installation script should run automatically
    # Or run manually if needed
    ```
 
 7. **Verify recovery**
+
    ```bash
    # Check shell
    echo $SHELL
@@ -431,6 +441,7 @@ Full recovery from complete data loss:
    ```
 
 8. **Restore SSH keys** (from backup)
+
    ```bash
    # Copy from backup location
    # Or generate new keys
@@ -517,11 +528,13 @@ Perform a complete recovery test in a virtual machine:
 ## Emergency Contacts
 
 **Key Services:**
-- GitHub Support: https://support.github.com
-- Bitwarden Support: https://bitwarden.com/contact
-- Chezmoi Documentation: https://www.chezmoi.io
+
+- GitHub Support: <https://support.github.com>
+- Bitwarden Support: <https://bitwarden.com/contact>
+- Chezmoi Documentation: <https://www.chezmoi.io>
 
 **Recovery Resources:**
+
 - This guide: `docs/BACKUP_RECOVERY.md`
 - Installation guide: `README.md`
 - Contributing guide: `CONTRIBUTING.md`

@@ -17,6 +17,7 @@ This guide helps you diagnose and fix common issues with your dotfiles setup.
 ### Issue: Installation Script Fails
 
 **Symptoms:**
+
 - Script exits with error
 - Packages fail to install
 - Permission denied errors
@@ -34,6 +35,7 @@ bash -x run_once_install-packages.sh.tmpl
 **Solutions:**
 
 1. **Package manager not updated**
+
    ```bash
    # macOS
    brew update
@@ -43,12 +45,14 @@ bash -x run_once_install-packages.sh.tmpl
    ```
 
 2. **Insufficient permissions**
+
    ```bash
    # Some commands may need sudo
    # Check the script and add sudo where needed
    ```
 
 3. **Missing dependencies**
+
    ```bash
    # Install basic dependencies first
    # macOS: xcode-select --install
@@ -56,6 +60,7 @@ bash -x run_once_install-packages.sh.tmpl
    ```
 
 4. **Network issues**
+
    ```bash
    # Test connectivity
    ping -c 3 github.com
@@ -67,6 +72,7 @@ bash -x run_once_install-packages.sh.tmpl
 ### Issue: chezmoi Not Found After Installation
 
 **Symptoms:**
+
 - `command not found: chezmoi` after installation
 - chezmoi installed but not in PATH
 
@@ -88,6 +94,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)"
 ### Issue: Installation Script Runs Every Time
 
 **Symptoms:**
+
 - `run_once_*` script runs on every shell start
 - Installs packages repeatedly
 
@@ -111,6 +118,7 @@ touch ~/.config/chezmoi/run_once_install-packages.sh.tmpl.run
 ### Issue: Zsh Not Default Shell
 
 **Symptoms:**
+
 - Bash starts instead of Zsh
 - `echo $SHELL` shows `/bin/bash`
 
@@ -133,6 +141,7 @@ chsh -s $(which zsh)
 ### Issue: Starship Prompt Not Showing
 
 **Symptoms:**
+
 - Default shell prompt instead of Starship
 - No custom prompt symbols
 
@@ -150,6 +159,7 @@ grep starship ~/.zshrc
 **Solutions:**
 
 1. **Starship not installed**
+
    ```bash
    # macOS
    brew install starship
@@ -159,6 +169,7 @@ grep starship ~/.zshrc
    ```
 
 2. **Not initialized in .zshrc**
+
    ```bash
    # Add to ~/.zshrc
    eval "$(starship init zsh)"
@@ -168,6 +179,7 @@ grep starship ~/.zshrc
    ```
 
 3. **Configuration file missing**
+
    ```bash
    # Check for config
    ls ~/.config/starship.toml
@@ -179,12 +191,14 @@ grep starship ~/.zshrc
 ### Issue: Prompt Shows Weird Characters
 
 **Symptoms:**
+
 - Boxes, question marks, or broken symbols in prompt
 - Misaligned prompt elements
 
 **Solutions:**
 
 1. **Missing Nerd Font**
+
    ```bash
    # Install a Nerd Font
    # macOS
@@ -197,6 +211,7 @@ grep starship ~/.zshrc
    ```
 
 2. **Terminal doesn't support Unicode**
+
    ```bash
    # Check locale
    locale
@@ -211,6 +226,7 @@ grep starship ~/.zshrc
 ### Issue: Oh My Zsh Not Loading
 
 **Symptoms:**
+
 - Plugins don't work
 - `.zshrc` seems to be ignored
 
@@ -227,6 +243,7 @@ cat ~/.zshrc | grep "oh-my-zsh"
 **Solutions:**
 
 1. **Oh My Zsh not installed**
+
    ```bash
    # Install Oh My Zsh
    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -235,6 +252,7 @@ cat ~/.zshrc | grep "oh-my-zsh"
    ```
 
 2. **Incorrect .zshrc**
+
    ```bash
    # Reapply from chezmoi
    chezmoi apply ~/.zshrc
@@ -244,6 +262,7 @@ cat ~/.zshrc | grep "oh-my-zsh"
    ```
 
 3. **Syntax error in .zshrc**
+
    ```bash
    # Check for errors
    zsh -n ~/.zshrc
@@ -256,6 +275,7 @@ cat ~/.zshrc | grep "oh-my-zsh"
 ### Issue: Age Decryption Fails
 
 **Symptoms:**
+
 - "failed to decrypt" error
 - Prompted for passphrase but fails
 - Cannot access encrypted files
@@ -278,6 +298,7 @@ ls -l ~/.config/chezmoi/key.txt
 **Solutions:**
 
 1. **Age key missing**
+
    ```bash
    # Restore from backup (Bitwarden)
    mkdir -p ~/.config/chezmoi
@@ -286,6 +307,7 @@ ls -l ~/.config/chezmoi/key.txt
    ```
 
 2. **Wrong key file**
+
    ```bash
    # Verify key format
    cat ~/.config/chezmoi/key.txt
@@ -295,11 +317,13 @@ ls -l ~/.config/chezmoi/key.txt
    ```
 
 3. **Incorrect permissions**
+
    ```bash
    chmod 600 ~/.config/chezmoi/key.txt
    ```
 
 4. **Corrupted encrypted file**
+
    ```bash
    # Check file
    file ~/.local/share/chezmoi/home/private_*.age
@@ -310,6 +334,7 @@ ls -l ~/.config/chezmoi/key.txt
 ### Issue: Secrets Not Applying
 
 **Symptoms:**
+
 - Encrypted files not decrypted to home directory
 - Missing configuration files
 
@@ -331,12 +356,14 @@ age -d -i ~/.config/chezmoi/key.txt ~/.local/share/chezmoi/home/private_file.age
 ### Issue: Zsh Autosuggestions Not Working
 
 **Symptoms:**
+
 - No command suggestions as you type
 - Plugin seems inactive
 
 **Solutions:**
 
 1. **Plugin not installed**
+
    ```bash
    # Check installation
    ls ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
@@ -346,6 +373,7 @@ age -d -i ~/.config/chezmoi/key.txt ~/.local/share/chezmoi/home/private_file.age
    ```
 
 2. **Not enabled in .zshrc**
+
    ```bash
    # Check plugins list
    grep "plugins=" ~/.zshrc
@@ -355,6 +383,7 @@ age -d -i ~/.config/chezmoi/key.txt ~/.local/share/chezmoi/home/private_file.age
    ```
 
 3. **Reload configuration**
+
    ```bash
    source ~/.zshrc
    ```
@@ -362,6 +391,7 @@ age -d -i ~/.config/chezmoi/key.txt ~/.local/share/chezmoi/home/private_file.age
 ### Issue: Syntax Highlighting Not Working
 
 **Symptoms:**
+
 - Commands not color-coded
 - No syntax highlighting in terminal
 
@@ -384,6 +414,7 @@ source ~/.zshrc
 ### Issue: Plugin Causing Slow Startup
 
 **Symptoms:**
+
 - Shell takes long time to start
 - Noticeable delay when opening terminal
 
@@ -405,12 +436,14 @@ zprof
 **Solutions:**
 
 1. **Disable problematic plugin**
+
    ```bash
    # Remove from plugins list in .zshrc
    # Test startup time again
    ```
 
 2. **Lazy load plugins**
+
    ```bash
    # Use conditional loading
    # Or async initialization
@@ -441,6 +474,7 @@ zprof
    - Lazy load when possible
 
 2. **Expensive operations in .zshrc**
+
    ```bash
    # Avoid network calls
    # Cache expensive operations
@@ -448,6 +482,7 @@ zprof
    ```
 
 3. **Large history file**
+
    ```bash
    # Trim history
    echo "" > ~/.zsh_history
@@ -459,6 +494,7 @@ zprof
 ### Issue: High Memory Usage
 
 **Symptoms:**
+
 - Terminal uses excessive memory
 - System becomes sluggish
 
@@ -477,6 +513,7 @@ top -p $(pgrep zsh)
    - Update or remove
 
 2. **Too many background jobs**
+
    ```bash
    # Check jobs
    jobs
@@ -576,6 +613,7 @@ echo $PATH
 **Cause:** Tool not installed or not in PATH
 
 **Solution:**
+
 ```bash
 # Check if installed
 which <command>
@@ -591,6 +629,7 @@ echo $PATH
 **Cause:** Insufficient permissions
 
 **Solution:**
+
 ```bash
 # Check file permissions
 ls -l <file>
@@ -607,6 +646,7 @@ chmod 600 <file>  # For secrets
 **Cause:** File missing or incorrect path
 
 **Solution:**
+
 ```bash
 # Check if file exists
 ls -la <path>
@@ -688,9 +728,9 @@ zsh --no-rcs
 
 - **Documentation**: Review [README.md](../README.md) and [CONTRIBUTING.md](../CONTRIBUTING.md)
 - **GitHub Issues**: Open an issue with details
-- **Oh My Zsh**: https://github.com/ohmyzsh/ohmyzsh/wiki
-- **Starship**: https://starship.rs/guide/
-- **Chezmoi**: https://www.chezmoi.io/user-guide/
+- **Oh My Zsh**: <https://github.com/ohmyzsh/ohmyzsh/wiki>
+- **Starship**: <https://starship.rs/guide/>
+- **Chezmoi**: <https://www.chezmoi.io/user-guide/>
 
 ### Information to Provide
 
@@ -780,6 +820,7 @@ Found a bug in the dotfiles? Please report it:
 ## Conclusion
 
 Most issues can be resolved by:
+
 1. Checking this guide
 2. Verifying installations
 3. Reviewing configurations
