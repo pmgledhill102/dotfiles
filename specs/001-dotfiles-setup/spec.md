@@ -149,6 +149,8 @@ macOS and Ubuntu environments through CI/CD (GitHub Actions) workflows.
 - **FR-012**: Installation scripts MUST be idempotent, allowing safe re-execution
   without errors or duplicate installations. Re-running the installation script
   after configuration changes MUST apply those changes correctly.
+- **FR-013**: The system MUST include pre-commit hooks to enforce markdown linting
+  standards on all documentation files.
 
 ## Non-Functional Requirements
 
@@ -162,6 +164,8 @@ macOS and Ubuntu environments through CI/CD (GitHub Actions) workflows.
   experience, from installation to functional shell usage.
 - **NFR-TEST-004**: Test execution time MUST not exceed 10 minutes per platform
    in the CI environment.
+- **NFR-TEST-005**: The CI pipeline MUST include static analysis steps for both
+  shell scripts (ShellCheck) and documentation (Markdown linting).
 
 ### Performance Requirements
 

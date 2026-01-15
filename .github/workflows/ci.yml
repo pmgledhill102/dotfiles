@@ -17,9 +17,19 @@ jobs:
         with:
           scandir: './scripts'
 
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: '**/*.md'
+
   test-install:
     name: Test Install on ${{ matrix.os }}
-    needs: shellcheck
+    needs: [shellcheck, markdown-lint]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
