@@ -102,7 +102,7 @@ and Ubuntu environments in CI.
 
 ## Phase 7: Quality Assurance & Documentation
 
-- [ ] T032 [P] Add ShellCheck linting to the CI pipeline
+- [x] T032 [P] Add ShellCheck linting to the CI pipeline
 - [ ] T033 Test the installation on a clean macOS machine (UTM)
 - [ ] T034 Test the installation on a clean Ubuntu machine (UTM)
 - [ ] T035 Test the installation on a clean WSL instance

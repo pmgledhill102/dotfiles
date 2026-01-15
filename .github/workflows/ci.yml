@@ -7,8 +7,19 @@ on:
     branches: [ "001-dotfiles-setup", "main" ]
 
 jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+
   test-install:
     name: Test Install on ${{ matrix.os }}
+    needs: shellcheck
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -29,8 +40,10 @@ jobs:
       # Homebrew is pre-installed on macOS runners
       run: |
         brew update
-        # Install chezmoi if not present (it might be via the script, but we need it to run the script)
-        brew install chezmoi
+        # Install chezmoi if not present
+        if ! command -v chezmoi >/dev/null 2>&1; then
+          brew install chezmoi
+        fi
 
     - name: Install chezmoi (Ubuntu)
       if: runner.os == 'Linux'

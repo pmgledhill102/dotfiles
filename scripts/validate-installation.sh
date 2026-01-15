@@ -52,7 +52,22 @@ validate_test "Age is installed" "command -v age"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
    # Ghostty is only installed on macOS/Windows in this setup
-    validate_test "Ghostty is installed" "command -v ghostty"
+   if command -v ghostty >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} Ghostty is installed"
+        ((PASSED_TESTS++))
+   else
+        # Ghostty might be a cask or app, command -v might not find it if not in path
+        # But for this test, let's assume valid if strictly found or if strictly required.
+        # Given it is installed via brew, it might be available.
+        # However, checking for the app bundle might be safer if command missing.
+        if [ -d "/Applications/Ghostty.app" ] || [ -d "$HOME/Applications/Ghostty.app" ]; then
+             echo -e "${GREEN}✓${NC} Ghostty.app found"
+             ((PASSED_TESTS++))
+        else
+             echo -e "${RED}✗${NC} Ghostty is installed"
+             ((FAILED_TESTS++))
+        fi
+   fi
 fi
 
 echo ""

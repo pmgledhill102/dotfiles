@@ -10,7 +10,7 @@ case "$(uname -s)" in
     sudo apt-get update
     echo "Installing packages with apt-get..."
     # Add packages here
-    sudo apt-get install -y zsh snapd age
+    sudo apt-get install -y zsh age
     
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
