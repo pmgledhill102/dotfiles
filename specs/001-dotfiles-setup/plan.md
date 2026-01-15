@@ -20,8 +20,7 @@ and secure secret management using age encryption for development-related secret
 **Primary Dependencies**: `chezmoi`, `zsh`, `oh-my-zsh`, `starship`, `git`,
   `age`, `ghostty`
 **Storage**: Filesystem
-**Testing**: Automated testing via GitHub Actions + local VMware Fusion virtual
-  machines, validation scripts, ShellCheck for linting.
+**Testing**: Automated testing via GitHub Actions, validation scripts, ShellCheck for linting.
 **Target Platform**: macOS, Debian/Ubuntu, WSL
 **Project Type**: Dotfiles management
 **Performance Goals**: Installation should take less than 5 minutes on a fresh OS.
@@ -30,25 +29,21 @@ and secure secret management using age encryption for development-related secret
 
 ## Testing Strategy
 
-### Local Testing with VMware Fusion
-
-- **Tool**: VMware Fusion virtual machines on macOS
-- **Environments**:
-  - macOS Sonoma (latest) VM
-  - Ubuntu 22.04 LTS VM
-- **Process**: Automated scripts that provision clean VMs, run installation, and
-  validate results
-- **Validation**: Post-installation scripts verify shell configuration, theme
-  loading, and tool availability
-
 ### CI/CD Testing with GitHub Actions
 
-- **Trigger**: Pull requests and pushes to main branch
+- **Trigger**: Pull requests, pushes to main branch, and scheduled nightly builds
 - **Environments**:
   - `macos-latest` runner
   - `ubuntu-latest` runner
 - **Matrix Testing**: Multiple OS versions where applicable
 - **Artifacts**: Test logs, configuration files, and validation reports
+- **Process**: Automated workflows that provision clean environments, run installation, and
+  validate results using post-installation scripts
+
+### Local Testing (Optional)
+
+- **Tool**: Local VMs (e.g., UTM, VirtualBox) or containers if applicable
+- **Note**: Primary validation is driven by CI/CD to ensuring reproducibility independent of local hardware.
 
 ## Constitution Check
 
