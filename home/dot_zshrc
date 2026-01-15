@@ -14,8 +14,11 @@ export ZSH=$HOME/.oh-my-zsh
 ZSH_THEME=""
 echo "$ZSH_THEME"
 
-# Starship prompt
-eval "$(starship init zsh)"
+# Starship prompt, only if the VSCODE_COPILOT_CHAT_TERMINAL is not set to 1
+if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then
+  export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+  eval "$(starship init zsh)"
+fi
 
 # Set to this to use case-sensitive completion
 # CASE_SENSITIVE="true"
