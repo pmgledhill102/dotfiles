@@ -37,9 +37,11 @@ echo "-----------------------------------"
 # Check using getent/dscl if possible, fallback to ENV check but warn it might be stale
 if command -v getent >/dev/null 2>&1; then
     USER_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+    echo "Detected shell via getent: $USER_SHELL"
     validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ]"
 elif command -v dscl >/dev/null 2>&1; then
     USER_SHELL=$(dscl . -read /Users/"$USER" UserShell | awk '{print $2}')
+    echo "Detected shell via dscl: $USER_SHELL"
     validate_test "Zsh is the configured shell (dscl)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ]"
 else
     validate_test "Zsh is the default shell (\$SHELL)" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ] || [ \"\$SHELL\" = \"$(command -v zsh)\" ]"

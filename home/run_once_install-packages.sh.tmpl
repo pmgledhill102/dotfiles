@@ -18,8 +18,9 @@ case "$(uname -s)" in
 
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
-      # Install to /usr/local/bin which is in path, use sudo if needed
-      curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1
+      # Install to /usr/local/bin to ensure it is in PATH. Requires sudo.
+      # sh -s -- -y automatically tries to use sudo if destination is not writable.
+      curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1 || echo "Starship install failed or required interactive sudo"
     else
       echo "Starship already installed, skipping..."
     fi
@@ -32,14 +33,17 @@ case "$(uname -s)" in
       echo "Oh My Zsh already installed, skipping..."
     fi
     
-    # Change shell to zsh if it isn't already
-    # This requires sudo on specific platforms or might prompt. 
-    # In CI (passwordless sudo), this should work.
+    # Change shell to zsh
     CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
     ZSH_PATH=$(command -v zsh)
     if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
         echo "Changing default shell to $ZSH_PATH..."
-        sudo chsh -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to change shell. Please do it manually with chsh -s $(which zsh)"
+        # Try usermod first on Linux (more script friendly than chsh sometimes)
+        if command -v usermod >/dev/null 2>&1; then
+            sudo usermod -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to change shell with usermod."
+        else
+            sudo chsh -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to change shell with chsh."
+        fi
     fi
     
     echo "Installing Oh My Zsh custom plugins..."
