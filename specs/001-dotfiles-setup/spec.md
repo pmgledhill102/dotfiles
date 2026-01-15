@@ -100,20 +100,15 @@ can confidently make changes without breaking existing functionality.
 development.
 
 **Independent Test**: The installation process succeeds automatically on fresh
-macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/CD
-(GitHub Actions).
+macOS and Ubuntu environments through CI/CD (GitHub Actions) workflows.
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh macOS virtual machine in UTM, **When** the automated test
-   runs the installation script, **Then** the dotfiles are installed
-   successfully and all validation checks pass.
-2. **Given** a fresh Ubuntu virtual machine in UTM, **When** the automated test
-   runs the installation script, **Then** the dotfiles are installed
-   successfully and all validation checks pass.
-3. **Given** a pull request is created, **When** GitHub Actions triggers the test
-   suite, **Then** all platform-specific installation tests pass successfully.
-4. **Given** the installation completes, **When** validation scripts run,
+1. **Given** a new pull request is opened, **When** the GitHub Actions workflow
+   runs, **Then** the dotfiles are installed successfully on a macOS runner.
+2. **Given** a new pull request is opened, **When** the GitHub Actions workflow
+   runs, **Then** the dotfiles are installed successfully on an Ubuntu runner.
+3. **Given** the installation completes in CI, **When** validation scripts run,
    **Then** all expected tools (zsh, oh-my-zsh, powerlevel10k) are properly
    configured and functional.
 
@@ -159,15 +154,13 @@ macOS and Ubuntu environments through both local testing (VMware Fusion) and CI/
 
 ### Testing Requirements
 
-- **NFR-TEST-001**: Local testing MUST be performed using UTM virtual machines
-  for both macOS and Ubuntu environments.
-- **NFR-TEST-002**: Automated testing MUST be implemented using GitHub Actions
-  for pull request validation.
-- **NFR-TEST-003**: Test environments MUST be clean, isolated virtual machines
+- **NFR-TEST-001**: Automated testing MUST be implemented using GitHub Actions
+  for pull request validation on every commit.
+- **NFR-TEST-002**: Test environments MUST be clean, isolated runners
   that simulate fresh OS installations.
-- **NFR-TEST-004**: All tests MUST include validation of the complete user
+- **NFR-TEST-003**: All tests MUST include validation of the complete user
   experience, from installation to functional shell usage.
-- **NFR-TEST-005**: Test execution time MUST not exceed 10 minutes per platform
+- **NFR-TEST-004**: Test execution time MUST not exceed 10 minutes per platform
    in the CI environment.
 
 ### Performance Requirements

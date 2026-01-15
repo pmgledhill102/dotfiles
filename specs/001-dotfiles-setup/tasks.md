@@ -45,12 +45,12 @@ platforms.
 
 - [x] T011 [US2] Add `.zshrc` to `chezmoi` in `home/dot_zshrc`
 - [x] T012 [US2] Add OhMyZsh installation to `run_once_install-packages.sh.tmpl`
-- [x] T012a [US2] Configure Oh My Zsh plugins (autosuggestions, syntax-highlighting, etc.)
-- [x] T013 [US2] Add Starship installation to
+- [x] T013 [US2] Configure Oh My Zsh plugins (autosuggestions, syntax-highlighting, etc.)
+- [x] T014 [US2] Add Starship installation to
   `run_once_install-packages.sh.tmpl`
-- [x] T014 [US2] Add Starship configuration file (`starship.toml`) to `chezmoi`
-- [x] T015 [US2] Add Ghostty installation to `run_once_install-packages.sh.tmpl`
-- [x] T016 [US2] Add Ghostty configuration file to `chezmoi`
+- [x] T015 [US2] Add Starship configuration file (`starship.toml`) to `chezmoi`
+- [x] T016 [US2] Add Ghostty installation to `run_once_install-packages.sh.tmpl`
+- [x] T017 [US2] Add Ghostty configuration file to `chezmoi`
 
 ---
 
@@ -61,54 +61,58 @@ platforms.
 **Independent Test**: A scan of the repository does not find any plaintext
 secrets.
 
-- [x] T017 [US3] Add `age` installation to `run_once_install-packages.sh.tmpl`
-- [x] T018 [US3] Create a template for a secret file (e.g.,
+- [x] T018 [US3] Add `age` installation to `run_once_install-packages.sh.tmpl`
+- [x] T019 [US3] Create a template for a secret file (e.g.,
   `home/.secrets.tmpl`) that will be encrypted with `age`.
-- [x] T019 [US3] Document the age encryption workflow (key generation,
+- [x] T020 [US3] Document the age encryption workflow (key generation,
   encryption, decryption) in `home/README.md`.
-- [x] T020 [US3] Document that highly sensitive secrets are managed manually in
+- [x] T021 [US3] Document that highly sensitive secrets are managed manually in
   Bitwarden.
 
 ---
 
 ## Phase 6: User Story 4 - Automated Testing & Validation (Priority: P2)
 
-**Goal**: Implement comprehensive testing strategy using VMware Fusion and GitHub
-Actions.
+**Goal**: Implement comprehensive testing strategy using GitHub Actions.
 
 **Independent Test**: Installation process succeeds automatically on fresh macOS
-and Ubuntu environments.
-
-### Local Testing Infrastructure (VMware Fusion)
-
-- [x] T021 [US4] Document manual VMware Fusion VM setup for macOS testing in
-  `docs/VMWARE_TESTING_GUIDE.md`
-- [x] T022 [US4] Document manual VMware Fusion VM setup for Ubuntu testing in
-  `docs/VMWARE_TESTING_GUIDE.md`
-- [x] T023 [US4] Create test script to run inside the VMware Fusion VM
-- [x] T024 [US4] Create post-installation validation scripts
-
-### CI/CD Pipeline (GitHub Actions)
-
-- [ ] T025 [US4] Create GitHub Actions workflow for macOS testing
-- [ ] T026 [US4] Create GitHub Actions workflow for Ubuntu testing
-- [ ] T027 [US4] Add matrix testing for multiple OS versions
-- [ ] T028 [US4] Configure artifact collection for test results
+and Ubuntu environments in CI.
 
 ### Validation & Quality Assurance
 
-- [ ] T029 [US4] Create shell configuration validation scripts
-- [ ] T030 [US4] Add theme and prompt functionality tests
-- [ ] T031 [US4] Implement tool availability verification
-- [ ] T032 [US4] Add performance benchmarking for installation time
+- [x] T022 [US4] Create post-installation validation scripts
+- [ ] T023 [US4] Create shell configuration validation scripts
+- [ ] T024 [US4] Add theme and prompt functionality tests
+- [ ] T025 [US4] Implement tool availability verification
+- [ ] T026 [US4] Add performance benchmarking for installation time
+
+### CI/CD Pipeline (GitHub Actions)
+
+- [ ] T027 [US4] Create GitHub Actions workflow for macOS testing
+- [ ] T028 [US4] Create GitHub Actions workflow for Ubuntu testing
+- [ ] T029 [US4] Add matrix testing for multiple OS versions
+- [ ] T030 [US4] Configure artifact collection for test results
+
+### Local Testing Infrastructure
+
+- [ ] T031 [US4] (Optional) Document local testing via manual VM if needed (Low Priority)
+  *(Removed VMware specific requirements as per refactor)*
 
 ---
 
 ## Phase 7: Quality Assurance & Documentation
 
-- [ ] T030 [P] Add ShellCheck linting to the CI pipeline
-- [ ] T031 Test the installation on a clean macOS machine (UTM)
-- [ ] T032 Test the installation on a clean Ubuntu machine (UTM)
-- [ ] T033 Test the installation on a clean WSL instance
-- [ ] T034 [P] Update documentation with testing procedures
-- [x] T035 Refine and update the `README.md`
+- [ ] T032 [P] Add ShellCheck linting to the CI pipeline
+- [ ] T033 Test the installation on a clean macOS machine (UTM)
+- [ ] T034 Test the installation on a clean Ubuntu machine (UTM)
+- [ ] T035 Test the installation on a clean WSL instance
+- [ ] T036 [P] Update documentation with testing procedures
+- [x] T037 Refine and update the `README.md`
+
+---
+
+## Phase 8: Repository Documentation
+
+- [ ] T038 Create root `README.md` with project overview, installation quick start, and directory structure
+- [ ] T039 Add badges for CI status and license to root `README.md`
+- [ ] T040 Link to detailed usage docs and specs from root `README.md`
