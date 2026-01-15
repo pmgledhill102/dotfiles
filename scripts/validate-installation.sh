@@ -34,8 +34,22 @@ validate_test() {
 
 echo "Validating shell configuration..."
 echo "-----------------------------------"
-validate_test "Zsh is the default shell" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ]"
-validate_test "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ]"
+# Check using getent/dscl if possible, fallback to ENV check but warn it might be stale
+if command -v getent >/dev/null 2>&1; then
+    USER_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+    validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ]"
+elif command -v dscl >/dev/null 2>&1; then
+    USER_SHELL=$(dscl . -read /Users/"$USER" UserShell | awk '{print $2}')
+    validate_test "Zsh is the configured shell (dscl)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ]"
+else
+    validate_test "Zsh is the default shell (\$SHELL)" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ] || [ \"\$SHELL\" = \"$(command -v zsh)\" ]"
+fi
+
+validate_test "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ] || [ -d \"\$HOME/.oh-my-zsh\" ]"
+# Note: $ZSH env var is loaded effectively when .zshrc is sourced. 
+# validation script runs in bash, so $ZSH won't be set from the current shell environment
+# unless we source .zshrc (which we can't easily do from bash).
+# So checking directory existence is a safer static check for installation.
 
 echo ""
 echo "Validating Starship prompt..."

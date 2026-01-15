@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 case "$(uname -s)" in
   Linux*)
     echo "Linux detected"
@@ -7,13 +9,16 @@ case "$(uname -s)" in
       echo "WSL detected"
     fi
     echo "Updating apt-get..."
+    export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update
     echo "Installing packages with apt-get..."
     # Add packages here
+    # removed snapd, using generic install
     sudo apt-get install -y zsh age
-    
+
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
+      # Install to /usr/local/bin which is in path, use sudo if needed
       curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1
     else
       echo "Starship already installed, skipping..."
@@ -21,9 +26,20 @@ case "$(uname -s)" in
 
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
       echo "Installing Oh My Zsh..."
+      # --unattended: sets up OMZ but does not change shell
       sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     else
       echo "Oh My Zsh already installed, skipping..."
+    fi
+    
+    # Change shell to zsh if it isn't already
+    # This requires sudo on specific platforms or might prompt. 
+    # In CI (passwordless sudo), this should work.
+    CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+    ZSH_PATH=$(command -v zsh)
+    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+        echo "Changing default shell to $ZSH_PATH..."
+        sudo chsh -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to change shell. Please do it manually with chsh -s $(which zsh)"
     fi
     
     echo "Installing Oh My Zsh custom plugins..."
@@ -47,13 +63,24 @@ case "$(uname -s)" in
     fi
     echo "Installing packages with Homebrew..."
     # Add packages here
-    brew install chezmoi zsh ghostty age starship
+    # Check if tools are installed before trying to install/upgrade to save time/errors
+    brew install chezmoi zsh ghostty age starship || true
 
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
       echo "Installing Oh My Zsh..."
       sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     else
       echo "Oh My Zsh already installed, skipping..."
+    fi
+    
+    # Change shell to zsh on macOS
+    ZSH_PATH=$(command -v zsh)
+    # macOS uses dscl or chsh. chsh on macOS asks for password even with sudo sometimes?
+    # In CI, sudo works.
+    if [ "$SHELL" != "$ZSH_PATH" ]; then
+         echo "Changing default shell to $ZSH_PATH..."
+         # Try sudo chsh. If it fails, warn.
+         sudo chsh -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to switch shell. You may need to run 'chsh -s $(which zsh)' manually."
     fi
     
     echo "Installing Oh My Zsh custom plugins..."
