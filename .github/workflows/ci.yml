@@ -1,0 +1,64 @@
+name: Dotfiles CI
+
+on:
+  push:
+    branches: [ "001-dotfiles-setup", "main" ]
+  pull_request:
+    branches: [ "001-dotfiles-setup", "main" ]
+
+jobs:
+  test-install:
+    name: Test Install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zsh
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      # Homebrew is pre-installed on macOS runners
+      run: |
+        brew update
+        # Install chezmoi if not present (it might be via the script, but we need it to run the script)
+        brew install chezmoi
+
+    - name: Install chezmoi (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sh -c "$(curl -fsLS get.chezmoi.io)"
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Initialize and Apply Dotfiles
+      run: |
+        # Use 'time' to benchmarking installation (T026)
+        # We use --source . to use the checked-out repo
+        # We assume no secrets are strictly blocking for this basic CI smoke test
+        if [ "$RUNNER_OS" == "Linux" ]; then
+           export PATH=$HOME/.local/bin:$PATH
+        fi
+        
+        echo "Starting Chezmoi Apply..."
+        time chezmoi init --apply --source . --verbose
+
+    - name: Run Validation Script
+      run: |
+        chmod +x scripts/validate-installation.sh
+        ./scripts/validate-installation.sh
+
+    - name: Upload Test Results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.os }}
+        path: |
+          home/

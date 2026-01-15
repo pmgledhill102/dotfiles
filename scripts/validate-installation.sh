@@ -45,6 +45,25 @@ validate_test "Starship config exists" "[ -f \"\$HOME/.config/starship.toml\" ]"
 validate_test "Starship version can be queried" "starship --version"
 
 echo ""
+echo "Validating tools..."
+echo "-----------------------------------"
+validate_test "Git is installed" "command -v git"
+validate_test "Age is installed" "command -v age"
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+   # Ghostty is only installed on macOS/Windows in this setup
+    validate_test "Ghostty is installed" "command -v ghostty"
+fi
+
+echo ""
+echo "Validating Zsh plugins..."
+echo "-----------------------------------"
+# Check custom plugins
+ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+validate_test "zsh-autosuggestions installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-autosuggestions\" ]"
+validate_test "zsh-syntax-highlighting installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-syntax-highlighting\" ]"
+
+echo ""
 echo "Validating chezmoi..."
 echo "-----------------------------------"
 validate_test "Chezmoi is in PATH" "command -v chezmoi"

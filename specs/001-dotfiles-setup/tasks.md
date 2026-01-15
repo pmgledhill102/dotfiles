@@ -81,17 +81,17 @@ and Ubuntu environments in CI.
 ### Validation & Quality Assurance
 
 - [x] T022 [US4] Create post-installation validation scripts
-- [ ] T023 [US4] Create shell configuration validation scripts
+- [x] T023 [US4] Create shell configuration validation scripts
 - [ ] T024 [US4] Add theme and prompt functionality tests
-- [ ] T025 [US4] Implement tool availability verification
-- [ ] T026 [US4] Add performance benchmarking for installation time
+- [x] T025 [US4] Implement tool availability verification
+- [x] T026 [US4] Add performance benchmarking for installation time
 
 ### CI/CD Pipeline (GitHub Actions)
 
-- [ ] T027 [US4] Create GitHub Actions workflow for macOS testing
-- [ ] T028 [US4] Create GitHub Actions workflow for Ubuntu testing
-- [ ] T029 [US4] Add matrix testing for multiple OS versions
-- [ ] T030 [US4] Configure artifact collection for test results
+- [x] T027 [US4] Create GitHub Actions workflow for macOS testing
+- [x] T028 [US4] Create GitHub Actions workflow for Ubuntu testing
+- [x] T029 [US4] Add matrix testing for multiple OS versions
+- [x] T030 [US4] Configure artifact collection for test results
 
 ### Local Testing Infrastructure
 
@@ -102,12 +102,12 @@ and Ubuntu environments in CI.
 
 ## Phase 7: Quality Assurance & Documentation
 
-- [ ] T030 [P] Add ShellCheck linting to the CI pipeline
-- [ ] T031 Test the installation on a clean macOS machine (UTM)
-- [ ] T032 Test the installation on a clean Ubuntu machine (UTM)
-- [ ] T033 Test the installation on a clean WSL instance
-- [ ] T034 [P] Update documentation with testing procedures
-- [x] T035 Refine and update the `README.md`
+- [ ] T032 [P] Add ShellCheck linting to the CI pipeline
+- [ ] T033 Test the installation on a clean macOS machine (UTM)
+- [ ] T034 Test the installation on a clean Ubuntu machine (UTM)
+- [ ] T035 Test the installation on a clean WSL instance
+- [ ] T036 [P] Update documentation with testing procedures
+- [x] T037 Refine and update the `README.md`
 
 ---
 
@@ -117,15 +117,15 @@ and Ubuntu environments in CI.
 
 **Independent Test**: The repository is fully documented, includes maintenance procedures, and is ready for daily use.
 
-- [x] T036 [P8] Create CONTRIBUTING.md with guidelines for maintaining the dotfiles
-- [x] T037 [P8] Add maintenance documentation (updating dependencies, adding new tools)
-- [x] T038 [P8] Create backup and recovery procedures documentation
-- [ ] T039 [P8] Set up repository maintenance workflows (dependency updates, etc.)
-- [x] T040 [P8] Create troubleshooting guide for common issues
-- [ ] T041 [P8] Final validation: Run complete installation test on all platforms
-- [x] T042 [P8] Update all documentation to reflect final state
-- [x] T043 [P8] Create migration guide for users switching from other dotfiles
-- [x] T044 [P8] Mark Phase 8 as complete
+- [x] T038 [P8] Create CONTRIBUTING.md with guidelines for maintaining the dotfiles
+- [x] T039 [P8] Add maintenance documentation (updating dependencies, adding new tools)
+- [x] T040 [P8] Create backup and recovery procedures documentation
+- [ ] T041 [P8] Set up repository maintenance workflows (dependency updates, etc.)
+- [x] T042 [P8] Create troubleshooting guide for common issues
+- [ ] T043 [P8] Final validation: Run complete installation test on all platforms
+- [x] T044 [P8] Update all documentation to reflect final state
+- [x] T045 [P8] Create migration guide for users switching from other dotfiles
+- [x] T046 [P8] Mark Phase 8 as complete
 
 ---
 
@@ -140,5 +140,5 @@ and Ubuntu environments in CI.
 - Updated README with better organization and links to all documentation
 
 **Remaining Optional Tasks**:
-- T039: Set up automated dependency update workflows (e.g., Dependabot, Renovate)
-- T041: Comprehensive platform testing (can be done as part of Phase 6/7 CI/CD work)
+- T041: Set up automated dependency update workflows (e.g., Dependabot, Renovate)
+- T043: Comprehensive platform testing (can be done as part of Phase 6/7 CI/CD work)
