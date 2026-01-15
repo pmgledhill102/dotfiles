@@ -1,7 +1,7 @@
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Cross-Platform Dotfiles Setup
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Branch**: `001-dotfiles-setup` | **Date**: 2025-10-25 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/001-dotfiles-setup/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See
 `.specify/templates/commands/plan.md` for the execution workflow.
@@ -98,7 +98,7 @@ templating engine.
 
 > **Fill ONLY if Constitution Check has violations that must be justified**
 
-| Violation           | Why Needed         | Simpler Alternative Rejected Because |
-|---------------------|--------------------|--------------------------------------|
-| [e.g., 4th project] | [current need]     | [why 3 projects insufficient]        |
+| Violation                  | Why Needed         | Simpler Alternative Rejected Because |
+|----------------------------|--------------------|--------------------------------------|
+| [e.g., 4th project]        | [current need]     | [why 3 projects insufficient]        |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient]  |

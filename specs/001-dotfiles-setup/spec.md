@@ -172,7 +172,9 @@ macOS and Ubuntu environments through CI/CD (GitHub Actions) workflows.
 - **NFR-PERF-001**: Shell startup time MUST not exceed 1 second on modern
   hardware after all plugins and configurations are loaded.
 
-## Success Criteria *(mandatory)*### Measurable Outcomes
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
 
 - **SC-001**: A new machine (macOS, Ubuntu, or WSL) can be fully set up with the
   dotfiles by running a single command in under 5 minutes.
