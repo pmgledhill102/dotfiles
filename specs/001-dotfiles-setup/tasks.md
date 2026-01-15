@@ -112,3 +112,21 @@ and Ubuntu environments.
 - [ ] T033 Test the installation on a clean WSL instance
 - [ ] T034 [P] Update documentation with testing procedures
 - [x] T035 Refine and update the `README.md`
+
+---
+
+## Phase 8: Final Integration & Maintenance Setup
+
+**Goal**: Complete the project setup with maintenance tooling, final documentation, and production readiness checks.
+
+**Independent Test**: The repository is fully documented, includes maintenance procedures, and is ready for daily use.
+
+- [x] T036 [P8] Create CONTRIBUTING.md with guidelines for maintaining the dotfiles
+- [x] T037 [P8] Add maintenance documentation (updating dependencies, adding new tools)
+- [x] T038 [P8] Create backup and recovery procedures documentation
+- [ ] T039 [P8] Set up repository maintenance workflows (dependency updates, etc.)
+- [x] T040 [P8] Create troubleshooting guide for common issues
+- [ ] T041 [P8] Final validation: Run complete installation test on all platforms
+- [ ] T042 [P8] Update all documentation to reflect final state
+- [x] T043 [P8] Create migration guide for users switching from other dotfiles
+- [ ] T044 [P8] Mark Phase 8 as complete
