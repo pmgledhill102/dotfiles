@@ -25,8 +25,9 @@ case "$(uname -s)" in
       echo "Starship already installed, skipping..."
     fi
 
-    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
       echo "Installing Oh My Zsh..."
+      rm -rf "$HOME/.oh-my-zsh"
       # --unattended: sets up OMZ but does not change shell
       sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     else
@@ -70,8 +71,9 @@ case "$(uname -s)" in
     # Check if tools are installed before trying to install/upgrade to save time/errors
     brew install chezmoi zsh ghostty age starship || true
 
-    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
       echo "Installing Oh My Zsh..."
+      rm -rf "$HOME/.oh-my-zsh"
       sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     else
       echo "Oh My Zsh already installed, skipping..."
