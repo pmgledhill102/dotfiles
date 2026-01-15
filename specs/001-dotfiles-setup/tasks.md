@@ -93,21 +93,13 @@ and Ubuntu environments in CI.
 - [x] T029 [US4] Add matrix testing for multiple OS versions
 - [x] T030 [US4] Configure artifact collection for test results
 
-### Local Testing Infrastructure
-
-- [ ] T031 [US4] (Optional) Document local testing via manual VM if needed (Low Priority)
-  *(Removed VMware specific requirements as per refactor)*
-
 ---
 
 ## Phase 7: Quality Assurance & Documentation
 
-- [x] T032 [P] Add ShellCheck linting to the CI pipeline
-- [ ] T033 Test the installation on a clean macOS machine (UTM)
-- [ ] T034 Test the installation on a clean Ubuntu machine (UTM)
-- [ ] T035 Test the installation on a clean WSL instance
-- [ ] T036 [P] Update documentation with testing procedures
-- [x] T037 Refine and update the `README.md`
+- [x] T031 [P] Add ShellCheck linting to the CI pipeline
+- [ ] T032 [P] Update documentation with testing procedures
+- [x] T033 Refine and update the `README.md`
 
 ---
 
@@ -117,15 +109,15 @@ and Ubuntu environments in CI.
 
 **Independent Test**: The repository is fully documented, includes maintenance procedures, and is ready for daily use.
 
-- [x] T038 [P8] Create CONTRIBUTING.md with guidelines for maintaining the dotfiles
-- [x] T039 [P8] Add maintenance documentation (updating dependencies, adding new tools)
-- [x] T040 [P8] Create backup and recovery procedures documentation
-- [ ] T041 [P8] Set up repository maintenance workflows (dependency updates, etc.)
-- [x] T042 [P8] Create troubleshooting guide for common issues
-- [ ] T043 [P8] Final validation: Run complete installation test on all platforms
-- [x] T044 [P8] Update all documentation to reflect final state
-- [x] T045 [P8] Create migration guide for users switching from other dotfiles
-- [x] T046 [P8] Mark Phase 8 as complete
+- [x] T034 [P8] Create CONTRIBUTING.md with guidelines for maintaining the dotfiles
+- [x] T035 [P8] Add maintenance documentation (updating dependencies, adding new tools)
+- [x] T036 [P8] Create backup and recovery procedures documentation
+- [ ] T037 [P8] Set up repository maintenance workflows (dependency updates, etc.)
+- [x] T038 [P8] Create troubleshooting guide for common issues
+- [ ] T039 [P8] Final validation: Run complete installation test on all platforms
+- [x] T040 [P8] Update all documentation to reflect final state
+- [x] T041 [P8] Create migration guide for users switching from other dotfiles
+- [x] T042 [P8] Mark Phase 8 as complete
 
 ---
 
@@ -142,5 +134,5 @@ and Ubuntu environments in CI.
 
 **Remaining Optional Tasks**:
 
-- T041: Set up automated dependency update workflows (e.g., Dependabot, Renovate)
-- T043: Comprehensive platform testing (can be done as part of Phase 6/7 CI/CD work)
+- T037: Set up automated dependency update workflows (e.g., Dependabot, Renovate)
+- T039: Comprehensive platform testing (can be done as part of Phase 6/7 CI/CD work)
