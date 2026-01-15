@@ -57,7 +57,7 @@ not be integrated directly into the automated dotfiles setup.
   different platforms (macOS, Debian/Ubuntu, WSL)?
 - How do we configure Starship to replicate the features from the existing
   prompt?
-- How does Starship integrate with OhMyZsh?
+- How does Starship integrate with Oh My Zsh?
 
 ### 4. Experimenting with Starship
 
@@ -81,7 +81,7 @@ developer experience.
   and completions. Requires custom installation in `~/.oh-my-zsh/custom/plugins/`.
 - **zsh-syntax-highlighting**: Provides real-time syntax highlighting for
   commands. Requires custom installation in `~/.oh-my-zsh/custom/plugins/`.
-- **colored-man-pages**: Adds color to man pages for easier reading. Built-in
+- **colored-man-pages**: Adds colour to man pages for easier reading. Built-in
   plugin.
 - **command-not-found**: Suggests which package to install when a command is not
   found. Built-in plugin (Ubuntu/Debian only).
@@ -93,9 +93,9 @@ developer experience.
 **Installation Requirements**:
 
 - Custom plugins (autosuggestions, syntax-highlighting) must be cloned from
-  GitHub into `~/.oh-my-zsh/custom/plugins/`
-- Built-in plugins only need to be added to the `plugins=()` array in `.zshrc`
-- Installation scripts must be idempotent to handle updates and re-runs
+  GitHub into `~/.oh-my-zsh/custom/plugins/`.
+- Built-in plugins only need to be added to the `plugins=()` array in `.zshrc`.
+- Installation scripts must be idempotent to handle updates and re-runs.
 
 ### 6. Installation Script Idempotency
 
@@ -119,7 +119,7 @@ installations to ensure safe re-execution.
 
 **Implementation Pattern**:
 
-- Check if package/tool is already installed before attempting installation
-- Use conditional checks for directory existence before git clone operations
+- Check if package/tool is already installed before attempting installation.
+- Use conditional checks for directory existence before git clone operations.
 - Package managers (apt-get, brew) should be invoked with appropriate flags to
-  handle already-installed packages gracefully
+  handle already-installed packages gracefully.
