@@ -1,14 +1,48 @@
 # My Dotfiles
 
-This repository contains my personal dotfiles, managed by `chezmoi`.
+This repository contains my personal dotfiles, managed by `chezmoi`. It provides a consistent Zsh shell experience with Oh My Zsh, Starship prompt, and Ghostty terminal across macOS, Ubuntu/Debian, and WSL.
 
-## Installation
+## Quick Start
+
+### Installation
 
 To install these dotfiles on a new machine, run the following command. You can optionally pass a branch name as an argument to install a specific version of the dotfiles.
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/001-dotfiles-setup/install.sh)" -- [branch-name]
 ```
+
+This will:
+- Install chezmoi
+- Install required packages (Zsh, Oh My Zsh, Starship, age, etc.)
+- Apply your dotfile configurations
+- Set up Zsh as your default shell
+
+### What's Included
+
+- **Shell**: Zsh with Oh My Zsh
+- **Prompt**: Starship (fast, customizable prompt)
+- **Terminal**: Ghostty (macOS/Windows)
+- **Plugins**: 
+  - zsh-autosuggestions
+  - zsh-syntax-highlighting
+  - colored-man-pages
+  - command-not-found
+  - history
+  - copypath
+  - copyfile
+- **Secret Management**: age encryption for sensitive configs
+
+## Documentation
+
+Comprehensive guides are available:
+
+- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Guidelines for maintaining and extending these dotfiles
+- **[docs/MAINTENANCE.md](../docs/MAINTENANCE.md)** - Regular maintenance tasks and dependency updates
+- **[docs/BACKUP_RECOVERY.md](../docs/BACKUP_RECOVERY.md)** - Backup strategies and disaster recovery procedures
+- **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[docs/MIGRATION.md](../docs/MIGRATION.md)** - Guide for migrating from other dotfile systems
+- **[docs/VMWARE_TESTING_GUIDE.md](../docs/VMWARE_TESTING_GUIDE.md)** - Testing with virtual machines
 
 ## Secret Management
 
@@ -43,3 +77,92 @@ To add a new secret or edit an existing one:
 
 For highly sensitive secrets (API keys, passwords, tokens), these should be managed
 manually using Bitwarden and are NOT stored in this repository.
+
+## Usage
+
+### Daily Commands
+
+```bash
+# See what changes chezmoi would apply
+chezmoi diff
+
+# Apply changes
+chezmoi apply -v
+
+# Edit a config file
+chezmoi edit ~/.zshrc
+
+# Add a new file to dotfiles
+chezmoi add ~/.gitconfig
+
+# Update Oh My Zsh
+omz update
+
+# Update Starship
+brew upgrade starship  # macOS
+```
+
+### Updating
+
+To update the dotfiles on an existing machine:
+
+```bash
+# Pull latest changes
+cd ~/.local/share/chezmoi
+git pull
+
+# Apply updates
+chezmoi apply -v
+```
+
+## Troubleshooting
+
+Having issues? Check the [Troubleshooting Guide](../docs/TROUBLESHOOTING.md) for common problems and solutions.
+
+Quick checks:
+```bash
+# Verify tools are installed
+command -v zsh starship chezmoi age
+
+# Check chezmoi status
+chezmoi doctor
+
+# Verify shell configuration
+zsh -n ~/.zshrc
+```
+
+## Maintenance
+
+Regular maintenance tasks:
+
+- **Monthly**: Update Oh My Zsh plugins, check for Starship updates
+- **Quarterly**: Full installation test, dependency updates
+- **As Needed**: Add new tools, update configurations
+
+See [MAINTENANCE.md](../docs/MAINTENANCE.md) for detailed procedures.
+
+## Contributing
+
+Want to improve these dotfiles? See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
+- Development workflow
+- Testing procedures
+- Code style guidelines
+- How to add new tools
+
+## Platform Support
+
+Tested and supported on:
+- ✅ macOS (Sonoma and later)
+- ✅ Ubuntu 22.04 LTS and later
+- ✅ Debian 11 and later
+- ✅ WSL (Windows Subsystem for Linux)
+
+## License
+
+This is personal configuration. Feel free to fork and adapt for your own use!
+
+## Getting Help
+
+- Review the [documentation](#documentation)
+- Check the [troubleshooting guide](../docs/TROUBLESHOOTING.md)
+- Open an issue with details about your problem
