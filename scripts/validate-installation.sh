@@ -68,6 +68,30 @@ validate_test "Starship is in PATH" "command -v starship"
 validate_test "Starship config exists" "[ -f \"\$HOME/.config/starship.toml\" ]"
 validate_test "Starship version can be queried" "starship --version"
 
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    # Check for the macOS symbol () which is specific to our custom config
+    validate_test "Starship prompt uses custom config" "starship prompt | grep -q ''"
+elif [[ "$(uname -s)" == "Linux" ]]; then
+    # Check for Ubuntu () or generic Linux () symbol
+    validate_test "Starship prompt uses custom config" "starship prompt | grep -q -E '|'"
+fi
+
+# Verify Starship is actually loaded in the Zsh prompt
+PROMPT_CHECK_FILE="/tmp/zsh_prompt_check_$(date +%s)"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    # macOS syntax: script [file] [command]
+    # We clear VSCODE_COPILOT_CHAT_TERMINAL to ensure starship loads even if running from VS Code
+    script -q "$PROMPT_CHECK_FILE" env VSCODE_COPILOT_CHAT_TERMINAL="" zsh -ic "echo \"PROMPT=\$PROMPT\"" >/dev/null 2>&1
+elif [[ "$(uname -s)" == "Linux" ]]; then
+    # Linux syntax: script -c [command] [file]
+    script -q -c "env VSCODE_COPILOT_CHAT_TERMINAL='' zsh -ic 'echo \"PROMPT=\$PROMPT\"'" "$PROMPT_CHECK_FILE" >/dev/null 2>&1
+fi
+
+validate_test "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
+rm -f "$PROMPT_CHECK_FILE"
+
+
+
 echo ""
 echo "Validating tools..."
 echo "-----------------------------------"

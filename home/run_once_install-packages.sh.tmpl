@@ -19,7 +19,7 @@ case "$(uname -s)" in
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
       # Install to /usr/local/bin to ensure it is in PATH. Requires sudo.
-      # sh -s -- -y automatically tries to use sudo if destination is not writable.
+      # sh -s -- -y automatically tries to use sudo if destination is not writeable.
       curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1 || echo "Starship install failed or required interactive sudo"
     else
       echo "Starship already installed, skipping..."
@@ -29,7 +29,8 @@ case "$(uname -s)" in
       echo "Installing Oh My Zsh..."
       rm -rf "$HOME/.oh-my-zsh"
       # --unattended: sets up OMZ but does not change shell
-      sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      # KEEP_ZSHRC=yes: prevents replacing existing .zshrc
+      KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     else
       echo "Oh My Zsh already installed, skipping..."
     fi
@@ -74,7 +75,7 @@ case "$(uname -s)" in
     if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
       echo "Installing Oh My Zsh..."
       rm -rf "$HOME/.oh-my-zsh"
-      sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     else
       echo "Oh My Zsh already installed, skipping..."
     fi
