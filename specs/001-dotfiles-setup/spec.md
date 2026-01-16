@@ -133,6 +133,7 @@ macOS and Ubuntu environments through CI/CD (GitHub Actions) workflows.
   zsh-autosuggestions, zsh-syntax-highlighting, colored-man-pages,
   command-not-found, history, copypath, and copyfile.
 - **FR-005**: The system MUST install and configure the Starship prompt.
+- **FR-005a**: The system MUST configure PowerShell to use the Starship prompt.
 - **FR-006**: The system MUST provide a mechanism for managing development
   secrets using age encryption with a passphrase. Highly sensitive secrets
   will be managed manually in Bitwarden.

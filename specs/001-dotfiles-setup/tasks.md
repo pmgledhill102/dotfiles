@@ -51,6 +51,7 @@ platforms.
 - [x] T015 [US2] Add Starship configuration file (`starship.toml`) to `chezmoi`
 - [x] T016 [US2] Add Ghostty installation to `run_once_install-packages.sh.tmpl`
 - [x] T017 [US2] Add Ghostty configuration file to `chezmoi`
+- [x] T043 [US2] Configure PowerShell to use Starship prompt
 
 ---
 
@@ -85,6 +86,7 @@ and Ubuntu environments in CI.
 - [ ] T024 [US4] Add theme and prompt functionality tests
 - [x] T025 [US4] Implement tool availability verification
 - [x] T026 [US4] Add performance benchmarking for installation time
+- [x] T044 [US4] Add validation for PowerShell Starship configuration
 
 ### CI/CD Pipeline (GitHub Actions)
 

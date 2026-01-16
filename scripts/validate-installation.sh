@@ -46,13 +46,13 @@ echo "-----------------------------------"
 if command -v getent >/dev/null 2>&1; then
     USER_SHELL=$(getent passwd "$USER" | cut -d: -f7)
     echo "Detected shell via getent: $USER_SHELL"
-    validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ]"
+    validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
 elif command -v dscl >/dev/null 2>&1; then
     USER_SHELL=$(dscl . -read /Users/"$USER" UserShell | awk '{print $2}')
     echo "Detected shell via dscl: $USER_SHELL"
-    validate_test "Zsh is the configured shell (dscl)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ]"
+    validate_test "Zsh is the configured shell (dscl)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
 else
-    validate_test "Zsh is the default shell (\$SHELL)" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ] || [ \"\$SHELL\" = \"$(command -v zsh)\" ]"
+    validate_test "Zsh is the default shell (\$SHELL)" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ] || [ \"\$SHELL\" = \"$(command -v zsh)\" ] || [ \"\$SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"\$SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
 fi
 
 validate_test "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ] || [ -d \"\$HOME/.oh-my-zsh\" ]"
@@ -89,6 +89,32 @@ fi
 
 validate_test "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
 rm -f "$PROMPT_CHECK_FILE"
+
+if command -v pwsh >/dev/null 2>&1; then
+    echo ""
+    echo "Validating PowerShell configuration..."
+    echo "-----------------------------------"
+    PWSH_PROFILE="$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
+    validate_test "PowerShell profile exists" "[ -f \"$PWSH_PROFILE\" ]"
+    if [ -f "$PWSH_PROFILE" ]; then
+        validate_test "PowerShell profile uses Starship" "grep -q 'starship init powershell' \"$PWSH_PROFILE\""
+    fi
+    
+    # Verify Starship loads in PowerShell by capturing the prompt output
+    PWSH_CHECK_FILE="/tmp/pwsh_check_$(date +%s)"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        script -q "$PWSH_CHECK_FILE" env VSCODE_COPILOT_CHAT_TERMINAL="" pwsh -Command "prompt" >/dev/null 2>&1
+    elif [[ "$(uname -s)" == "Linux" ]]; then
+        script -q -c "env VSCODE_COPILOT_CHAT_TERMINAL='' pwsh -Command 'prompt'" "$PWSH_CHECK_FILE" >/dev/null 2>&1
+    fi
+    
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+         validate_test "PowerShell prompt renders Starship symbol" "grep -q '' \"$PWSH_CHECK_FILE\""
+    elif [[ "$(uname -s)" == "Linux" ]]; then
+         validate_test "PowerShell prompt renders Starship symbol" "grep -q -E '|' \"$PWSH_CHECK_FILE\""
+    fi
+    rm -f "$PWSH_CHECK_FILE"
+fi
 
 
 
