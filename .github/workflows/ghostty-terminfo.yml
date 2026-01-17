@@ -30,13 +30,24 @@ jobs:
       - name: Generate terminfo file
         run: |
           echo "Generating xterm-ghostty.terminfo..."
+          # Verify xterm-ghostty terminfo is available
+          if ! infocmp xterm-ghostty >/dev/null 2>&1; then
+            echo "Error: xterm-ghostty terminfo not found in system database"
+            echo "Attempting to list available terminfo entries..."
+            infocmp -l | grep -i ghostty || echo "No Ghostty entries found"
+            exit 1
+          fi
           infocmp -x xterm-ghostty > xterm-ghostty.terminfo
           echo "Terminfo file generated successfully"
 
       - name: Check for changes
         id: check_changes
         run: |
-          if git diff --quiet xterm-ghostty.terminfo; then
+          # Check if file exists and has changes, or is new
+          if [ ! -f xterm-ghostty.terminfo ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "New terminfo file created"
+          elif git diff --quiet xterm-ghostty.terminfo; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No changes detected in xterm-ghostty.terminfo"
           else
