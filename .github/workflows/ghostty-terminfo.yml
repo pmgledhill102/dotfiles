@@ -43,8 +43,9 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          # Check if file exists and has changes, or is new
-          if [ ! -f xterm-ghostty.terminfo ]; then
+          # Check if file is tracked in git and has changes, or is new
+          if ! git ls-files --error-unmatch xterm-ghostty.terminfo \
+              >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "New terminfo file created"
           elif git diff --quiet xterm-ghostty.terminfo; then
