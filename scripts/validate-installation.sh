@@ -90,6 +90,14 @@ fi
 validate_test "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
 rm -f "$PROMPT_CHECK_FILE"
 
+echo ""
+echo "Validating Terminal capabilities..."
+echo "-----------------------------------"
+# Check if xterm-ghostty terminfo is available (important for SSH from Ghostty)
+# We test this even if NOT currently running in Ghostty, as it's a system requirement 
+# for seamless SSH access into this machine.
+validate_test "xterm-ghostty terminfo is installed" "infocmp xterm-ghostty >/dev/null 2>&1"
+
 if command -v pwsh >/dev/null 2>&1; then
     echo ""
     echo "Validating PowerShell configuration..."
