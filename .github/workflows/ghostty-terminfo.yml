@@ -1,0 +1,62 @@
+name: Generate Ghostty Term Info
+
+on:
+  # Run weekly to keep terminfo up to date
+  schedule:
+    - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+  # Allow manual trigger
+  workflow_dispatch:
+  # Run on push to main to ensure file exists
+  push:
+    branches:
+      - main
+
+jobs:
+  generate-terminfo:
+    name: Generate Ghostty Terminfo
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Ghostty
+        run: |
+          echo "Installing Ghostty via Homebrew..."
+          brew install ghostty
+
+      - name: Generate terminfo file
+        run: |
+          echo "Generating xterm-ghostty.terminfo..."
+          infocmp -x xterm-ghostty > xterm-ghostty.terminfo
+          echo "Terminfo file generated successfully"
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet xterm-ghostty.terminfo; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in xterm-ghostty.terminfo"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in xterm-ghostty.terminfo"
+          fi
+
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email \
+            "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add xterm-ghostty.terminfo
+          git commit -m "chore: update xterm-ghostty.terminfo"
+          git push
+
+      - name: Upload terminfo as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xterm-ghostty-terminfo
+          path: xterm-ghostty.terminfo
+          retention-days: 30
