@@ -66,10 +66,15 @@ case "$(uname -s)" in
     # This allows remote servers to recognize the 'xterm-ghostty' terminal type
     echo "Installing Ghostty terminfo..."
     if ! infocmp xterm-ghostty >/dev/null 2>&1; then
-      curl -sL https://raw.githubusercontent.com/ghostty-org/ghostty/main/terminfo/ghostty.terminfo -o /tmp/ghostty.terminfo
-      tic -x /tmp/ghostty.terminfo
-      rm /tmp/ghostty.terminfo
-      echo "Ghostty terminfo installed successfully"
+      # Try to download the terminfo file from the Ghostty repository
+      if curl -fsSL https://raw.githubusercontent.com/ghostty-org/ghostty/main/terminfo/ghostty.terminfo -o /tmp/ghostty.terminfo 2>/dev/null; then
+        tic -x /tmp/ghostty.terminfo
+        rm /tmp/ghostty.terminfo
+        echo "Ghostty terminfo installed successfully"
+      else
+        echo "Warning: Could not download Ghostty terminfo. You may need to install it manually."
+        echo "See: https://ghostty.org/docs/help/terminfo for instructions"
+      fi
     else
       echo "Ghostty terminfo already installed, skipping..."
     fi
@@ -120,10 +125,15 @@ case "$(uname -s)" in
     # This allows remote servers to recognize the 'xterm-ghostty' terminal type
     echo "Installing Ghostty terminfo..."
     if ! infocmp xterm-ghostty >/dev/null 2>&1; then
-      curl -sL https://raw.githubusercontent.com/ghostty-org/ghostty/main/terminfo/ghostty.terminfo -o /tmp/ghostty.terminfo
-      tic -x /tmp/ghostty.terminfo
-      rm /tmp/ghostty.terminfo
-      echo "Ghostty terminfo installed successfully"
+      # Try to download the terminfo file from the Ghostty repository
+      if curl -fsSL https://raw.githubusercontent.com/ghostty-org/ghostty/main/terminfo/ghostty.terminfo -o /tmp/ghostty.terminfo 2>/dev/null; then
+        tic -x /tmp/ghostty.terminfo
+        rm /tmp/ghostty.terminfo
+        echo "Ghostty terminfo installed successfully"
+      else
+        echo "Warning: Could not download Ghostty terminfo. You may need to install it manually."
+        echo "See: https://ghostty.org/docs/help/terminfo for instructions"
+      fi
     else
       echo "Ghostty terminfo already installed, skipping..."
     fi
