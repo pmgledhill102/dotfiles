@@ -28,11 +28,15 @@ jobs:
       - name: Generate terminfo file
         run: |
           echo "Generating xterm-ghostty.terminfo..."
+          # Point infocmp to Ghostty's terminfo content
+          export TERMINFO=/Applications/Ghostty.app/Contents/Resources/terminfo
+          
           # Verify xterm-ghostty terminfo is available
           if ! infocmp xterm-ghostty >/dev/null 2>&1; then
-            echo "Error: xterm-ghostty terminfo not found in system database"
+            echo "Error: xterm-ghostty terminfo not found in system database or $TERMINFO"
             echo "Attempting to list available terminfo entries..."
             infocmp -l | grep -i ghostty || echo "No Ghostty entries found"
+            ls -R /Applications/Ghostty.app/Contents/Resources/terminfo || echo "Ghostty terminfo dir not found"
             exit 1
           fi
           mkdir -p home/dot_config/ghostty
