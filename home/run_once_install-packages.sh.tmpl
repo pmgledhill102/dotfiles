@@ -14,7 +14,8 @@ case "$(uname -s)" in
     echo "Installing packages with apt-get..."
     # Add packages here
     # removed snapd, using generic install
-    sudo apt-get install -y zsh age
+    # ncurses-term provides terminal definitions for modern terminals like Ghostty
+    sudo apt-get install -y zsh age ncurses-term
 
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
