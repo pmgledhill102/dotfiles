@@ -100,6 +100,13 @@ jobs:
         # We use --source . to use the checked-out repo
         # We assume no secrets are strictly blocking for this basic CI smoke test
         
+        # Create a .chezmoi.toml with default values for CI
+        cat > .chezmoi.toml << EOF
+        [data]
+            name = "CI Test User"
+            email = "ci@example.com"
+        EOF
+        
         echo "Starting Chezmoi Apply..."
         time chezmoi init --apply --source . --verbose
 
