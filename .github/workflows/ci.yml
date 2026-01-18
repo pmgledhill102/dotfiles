@@ -135,7 +135,8 @@ jobs:
         # Also show breakdown of major directories
         echo ""
         echo "Top directories by size in home:"
-        find "$HOME" -maxdepth 1 -exec du -sh {} + 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
+        # Using du directly is faster than find with -exec
+        du -sh "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
 
     - name: Upload Test Results
       if: failure()
