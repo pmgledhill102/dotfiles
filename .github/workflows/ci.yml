@@ -115,7 +115,13 @@ jobs:
         
         FINAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
         OVERHEAD_BYTES=$((FINAL_HOME_SIZE - INITIAL_HOME_SIZE))
-        OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
+        
+        # Handle sign separately for MB calculation to avoid truncation issues
+        if [ $OVERHEAD_BYTES -ge 0 ]; then
+          OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
+        else
+          OVERHEAD_MB=$((-1 * (-OVERHEAD_BYTES / 1024 / 1024)))
+        fi
         
         echo "==================================="
         echo "Disk Space Overhead Summary"
@@ -132,7 +138,8 @@ jobs:
         # Also show breakdown of major directories
         echo ""
         echo "Top directories by size in home:"
-        du -sh "$HOME"/.* "$HOME"/* 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
+        # Use find to avoid . and .. entries
+        find "$HOME" -maxdepth 1 \( -type d -o -type f \) -not -name "." -not -name ".." -exec du -sh {} + 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
 
     - name: Upload Test Results
       if: failure()
