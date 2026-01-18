@@ -39,6 +39,21 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Check disk space before installation
+      run: |
+        echo "==================================="
+        echo "Disk Space Before Installation"
+        echo "==================================="
+        df -h
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+        echo ""
+        # Store initial disk usage in bytes for accurate calculation
+        INITIAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
+        echo "$INITIAL_HOME_SIZE" > /tmp/initial_home_size.txt
+        echo "Initial home directory size: $INITIAL_HOME_SIZE bytes"
+
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
@@ -73,6 +88,37 @@ jobs:
       run: |
         chmod +x scripts/validate-installation.sh
         ./scripts/validate-installation.sh
+
+    - name: Check disk space after installation
+      run: |
+        echo ""
+        echo "==================================="
+        echo "Disk Space After Installation"
+        echo "==================================="
+        df -h
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+        echo ""
+        
+        # Calculate disk overhead
+        INITIAL_HOME_SIZE=$(cat /tmp/initial_home_size.txt)
+        FINAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
+        OVERHEAD_BYTES=$((FINAL_HOME_SIZE - INITIAL_HOME_SIZE))
+        OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
+        
+        echo "==================================="
+        echo "Disk Space Overhead Summary"
+        echo "==================================="
+        echo "Initial home directory size: $(numfmt --to=iec-i --suffix=B $INITIAL_HOME_SIZE)"
+        echo "Final home directory size:   $(numfmt --to=iec-i --suffix=B $FINAL_HOME_SIZE)"
+        echo "Disk overhead:               $(numfmt --to=iec-i --suffix=B $OVERHEAD_BYTES) (${OVERHEAD_MB} MB)"
+        echo "==================================="
+        
+        # Also show breakdown of major directories
+        echo ""
+        echo "Top directories by size in home:"
+        du -sh "$HOME"/.* "$HOME"/* 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
 
     - name: Upload Test Results
       if: failure()
