@@ -26,6 +26,7 @@ This will:
 ### What's Included
 
 #### Core Shell Environment
+
 - **Shell**: Zsh with Oh My Zsh
 - **Prompt**: Starship (fast, customizable prompt)
 - **Terminal**: Ghostty (macOS/Windows)
@@ -40,7 +41,8 @@ This will:
   - copyfile
 
 #### Development Tools
-- **Package Management**: 
+
+- **Package Management**:
   - macOS: Brewfile for automated Homebrew package management
   - Linux: Ubuntu package list for apt-based installations
 - **Git Enhancements**:
@@ -51,6 +53,7 @@ This will:
 - **Fonts**: JetBrains Mono Nerd Font (macOS only, via Brewfile)
 
 #### Security & Configuration
+
 - **Secret Management**: age encryption for sensitive configs
 - **macOS Defaults**: Developer-optimized system settings (macOS only)
 
@@ -135,6 +138,7 @@ git diff  # delta is automatically used via gitconfig
 ### Package Management
 
 #### macOS - Brewfile
+
 The `Brewfile` in your home directory lists all Homebrew packages. To install or update packages:
 
 ```bash
@@ -149,6 +153,7 @@ chezmoi add ~/Brewfile
 The `run_onchange_install-brewfile.sh.tmpl` script automatically runs `brew bundle` when the Brewfile changes.
 
 #### Linux - Package Lists
+
 The Ubuntu package list is located at `~/.config/ubuntu_pkglist`. To add packages:
 
 ```bash
