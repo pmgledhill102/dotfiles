@@ -120,7 +120,8 @@ jobs:
         if [ $OVERHEAD_BYTES -ge 0 ]; then
           OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
         else
-          OVERHEAD_MB=$((-1 * (-OVERHEAD_BYTES / 1024 / 1024)))
+          # For negative values, preserve the sign through division
+          OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
         fi
         
         echo "==================================="
@@ -138,8 +139,7 @@ jobs:
         # Also show breakdown of major directories
         echo ""
         echo "Top directories by size in home:"
-        # Use find to avoid . and .. entries
-        find "$HOME" -maxdepth 1 \( -type d -o -type f \) -not -name "." -not -name ".." -exec du -sh {} + 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
+        find "$HOME" -maxdepth 1 -exec du -sh {} + 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
 
     - name: Upload Test Results
       if: failure()
