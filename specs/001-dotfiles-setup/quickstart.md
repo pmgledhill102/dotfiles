@@ -16,7 +16,7 @@ your system:
 To install the dotfiles, run the following command in your terminal:
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --branch 001-dotfiles-setup https://github.com/pmgledhill102/dotfiles.git
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --branch main https://github.com/pmgledhill102/dotfiles.git
 ```
 
 This command will:

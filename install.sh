@@ -5,7 +5,8 @@ set -e
 
 # Set default branch name. The script is downloaded from a branch,
 # so we can use that as the default.
-DEFAULT_BRANCH="001-dotfiles-setup"
+DEFAULT_BRANCH="main"
+
 # Use the first argument as the branch name, or the default if not provided
 BRANCH_NAME="${1:-$DEFAULT_BRANCH}"
 

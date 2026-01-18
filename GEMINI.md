@@ -5,7 +5,7 @@ Auto-generated from all feature plans. Last updated: 2025-10-25
 ## Active Technologies
 
 - Shell (Zsh, Bash) + `chezmoi`, `zsh`, `oh-my-zsh`, `starship`, `git`,
-  `bitwarden-cli` (001-dotfiles-setup)
+  `bitwarden-cli` (main)
 
 ## Project Structure
 

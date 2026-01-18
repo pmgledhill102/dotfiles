@@ -2,9 +2,9 @@ name: Dotfiles CI
 
 on:
   push:
-    branches: [ "001-dotfiles-setup", "main" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "001-dotfiles-setup", "main" ]
+    branches: [ "main" ]
 
 jobs:
   shellcheck:
