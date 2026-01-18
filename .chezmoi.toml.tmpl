@@ -1,8 +1,5 @@
 # chezmoi configuration file
 
-{{- $name := promptStringOnce . "name" "Enter your full name" -}}
-{{- $email := promptStringOnce . "email" "Enter your email address" -}}
-
 [data]
-    name = {{ $name | quote }}
-    email = {{ $email | quote }}
+    name = "Paul Gledhill"
+    email = "github@pmgledhill.com"
