@@ -146,6 +146,7 @@ and Ubuntu environments in CI.
 **Goal**: Enhance the dotfiles with advanced tools, better package management, and system customization.
 
 **Independent Test**:
+
 1. `brew bundle` runs on changes.
 2. VS Code settings sync.
 3. `tmux`, `git-delta`, `lazygit` are available and configured.
@@ -169,6 +170,7 @@ and Ubuntu environments in CI.
 **Goal**: Extend the seamless dotfiles experience to Windows native (PowerShell) and WSL environments.
 
 **Independent Test**:
+
 1. PowerShell profile loads correctly with aliases and functions.
 2. Windows packages are installed via Winget or Scoop.
 3. Windows Terminal is configured with the correct theme and fonts.
@@ -197,4 +199,4 @@ and Ubuntu environments in CI.
 - [ ] T065 [Migrate] Automate VS Code extension installation (`vscode-exts.md`)
 - [ ] T066 [Migrate] Integrate Windows Terminal profile configuration (`win-term-profile.ps1`)
 - [ ] T067 [Migrate] Delete `_todo_resources` folder once migration is complete
-- [ ] T068 [Migrate] Add pyhton support, favouring UV rather than pip - package installs for all OS's and any env script setup required
+- [ ] T068 [Migrate] Add python support, favouring UV rather than pip - package installs for all OS's and any env script setup required
