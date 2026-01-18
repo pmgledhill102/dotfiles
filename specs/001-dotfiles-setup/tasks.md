@@ -138,3 +138,63 @@ and Ubuntu environments in CI.
 
 - T037: Set up automated dependency update workflows (e.g., Dependabot, Renovate)
 - T039: Comprehensive platform testing (can be done as part of Phase 6/7 CI/CD work)
+
+---
+
+## Phase 9: Maturity & Power User Features (Priority: P2)
+
+**Goal**: Enhance the dotfiles with advanced tools, better package management, and system customization.
+
+**Independent Test**:
+1. `brew bundle` runs on changes.
+2. VS Code settings sync.
+3. `tmux`, `git-delta`, `lazygit` are available and configured.
+4. macOS defaults are applied.
+5. Fonts are installed.
+
+- [ ] T045 [MacOS] Implement `Brewfile` support via `run_onchange_install-packages.sh.tmpl` for MacOS (see _todo_resources/Brewfile)
+- [ ] T045b [Ubuntu] Implement apt package installs using package list config file (see _todo_resources/ubuntu_pkglist)
+- [ ] T046 [US5] Add VS Code `settings.json` and `keybindings.json` to chezmoi
+- [ ] T047 [US5] Add `tmux` configuration (`.tmux.conf`)
+- [ ] T048 [US5] Create `run_once_macos_defaults.sh` for system defaults
+- [ ] T049 [US5] Add `git-delta` installation and configuration
+- [ ] T050 [US5] Add `lazygit` configuration
+- [ ] T051 [US5] Add global `.gitignore` with system file exclusions
+- [ ] T052 [US5] Automate Nerd Font installation
+
+---
+
+## Phase 10: Windows Support (Priority: P3)
+
+**Goal**: Extend the seamless dotfiles experience to Windows native (PowerShell) and WSL environments.
+
+**Independent Test**:
+1. PowerShell profile loads correctly with aliases and functions.
+2. Windows packages are installed via Winget or Scoop.
+3. Windows Terminal is configured with the correct theme and fonts.
+
+- [ ] T053 [Win] Create `run_once_install-packages-windows.ps1` (Winget/Scoop)
+- [ ] T054 [Win] Full management of `Microsoft.PowerShell_profile.ps1`
+- [ ] T055 [Win] Configure Windows Terminal (`settings.json`)
+- [ ] T056 [Win] Add Windows-specific environment variables
+- [ ] T057 [Win] Automate Nerd Font installation on Windows
+- [ ] T058 [Win] Registry tweaks for developer experience (e.g. Long Paths, Developer Mode)
+- [ ] T059 [Win] Use winget to install packages - use the import action, with a package json file
+- [ ] T060 [win] install JetBrainsMonoNerdFont using winget approach
+
+---
+
+## Phase 11: Legacy Resource Migration (Priority: P2)
+
+**Goal**: Seamlessly integrate existing configuration resources into the new chezmoi-based system.
+
+**Independent Test**: All resources in `_todo_resources` have been processed and the folder is deleted.
+
+- [ ] T061 [Migrate] Migrate `Brewfile` dependencies to `run_onchange_install-packages.sh.tmpl` (macOS)
+- [ ] T062 [Migrate] Implement WSL PATH fix script (`fix-wsl-path.sh`)
+- [ ] T063 [Migrate] Automate PowerShell installation on Ubuntu (`pwsh.sh.md`)
+- [ ] T064 [Migrate] Ensure base Ubuntu packages are installed (`ubuntu_pkglist`)
+- [ ] T065 [Migrate] Automate VS Code extension installation (`vscode-exts.md`)
+- [ ] T066 [Migrate] Integrate Windows Terminal profile configuration (`win-term-profile.ps1`)
+- [ ] T067 [Migrate] Delete `_todo_resources` folder once migration is complete
+- [ ] T068 [Migrate] Add pyhton support, favouring UV rather than pip - package installs for all OS's and any env script setup required
