@@ -115,14 +115,7 @@ jobs:
         
         FINAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
         OVERHEAD_BYTES=$((FINAL_HOME_SIZE - INITIAL_HOME_SIZE))
-        
-        # Handle sign separately for MB calculation to avoid truncation issues
-        if [ $OVERHEAD_BYTES -ge 0 ]; then
-          OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
-        else
-          # For negative values, preserve the sign through division
-          OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
-        fi
+        OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
         
         echo "==================================="
         echo "Disk Space Overhead Summary"
