@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# This script runs whenever the Brewfile changes (run_onchange)
+# It installs/updates packages using brew bundle
+
+set -e
+
+case "$(uname -s)" in
+  Darwin*)
+    echo "macOS detected - running brew bundle..."
+    
+    if ! command -v brew >/dev/null 2>&1; then
+      echo "Error: Homebrew is not installed. Please run the main install script first."
+      exit 1
+    fi
+    
+    # Run brew bundle from the home directory where Brewfile is located
+    cd "$HOME" || exit 1
+    
+    if [ -f "$HOME/Brewfile" ]; then
+      echo "Installing packages from Brewfile..."
+      brew bundle --no-lock || echo "Warning: Some packages may have failed to install"
+    else
+      echo "Warning: Brewfile not found at $HOME/Brewfile"
+    fi
+    ;;
+  *)
+    echo "Not macOS - skipping brew bundle"
+    ;;
+esac

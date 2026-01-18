@@ -1,0 +1,18 @@
+[
+  {
+    "key": "ctrl+shift+p",
+    "command": "workbench.action.showCommands"
+  },
+  {
+    "key": "ctrl+p",
+    "command": "workbench.action.quickOpen"
+  },
+  {
+    "key": "ctrl+shift+f",
+    "command": "workbench.action.findInFiles"
+  },
+  {
+    "key": "ctrl+`",
+    "command": "workbench.action.terminal.toggleTerminal"
+  }
+]

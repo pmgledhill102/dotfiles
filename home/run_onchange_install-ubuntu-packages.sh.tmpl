@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# This script runs whenever the ubuntu_pkglist changes (run_onchange)
+# It installs packages from the list on Linux systems
+
+set -e
+
+case "$(uname -s)" in
+  Linux*)
+    echo "Linux detected - installing packages from ubuntu_pkglist..."
+    
+    PKGLIST_FILE="$HOME/.config/ubuntu_pkglist"
+    
+    if [ ! -f "$PKGLIST_FILE" ]; then
+      echo "Warning: Package list not found at $PKGLIST_FILE"
+      exit 0
+    fi
+    
+    export DEBIAN_FRONTEND=noninteractive
+    sudo apt-get update
+    
+    echo "Installing packages from ubuntu_pkglist..."
+    # Read package list and install (skip empty lines and comments)
+    grep -v '^#' "$PKGLIST_FILE" | grep -v '^$' | while read -r package; do
+      echo "Installing $package..."
+      sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
+    done
+    
+    echo "Package installation complete"
+    ;;
+  *)
+    echo "Not Linux - skipping apt package installation"
+    ;;
+esac
