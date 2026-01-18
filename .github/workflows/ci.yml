@@ -60,15 +60,15 @@ jobs:
         echo "==================================="
         df -h
         echo ""
-        # Store initial disk usage for root filesystem
+        # Store initial disk usage for volume containing home
         # Use portable df output parsing that works on both Linux and macOS
         if [[ "$(uname -s)" == "Darwin" ]]; then
-          INITIAL_DISK_USED=$(df -k / | tail -n 1 | awk '{print $3}')
+          INITIAL_DISK_USED=$(df -k "$HOME" | tail -n 1 | awk '{print $3}')
         else
-          INITIAL_DISK_USED=$(df --output=used / | tail -n 1)
+          INITIAL_DISK_USED=$(df --output=used "$HOME" | tail -n 1)
         fi
         echo "$INITIAL_DISK_USED" > /tmp/initial_disk_used.txt
-        echo "Initial root filesystem used: $INITIAL_DISK_USED KB"
+        echo "Initial disk usage (home volume): $INITIAL_DISK_USED KB"
         echo ""
         echo "Home directory size:"
         du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
@@ -131,9 +131,9 @@ jobs:
         
         # Get final disk usage using portable df parsing
         if [[ "$(uname -s)" == "Darwin" ]]; then
-          FINAL_DISK_USED=$(df -k / | tail -n 1 | awk '{print $3}')
+          FINAL_DISK_USED=$(df -k "$HOME" | tail -n 1 | awk '{print $3}')
         else
-          FINAL_DISK_USED=$(df --output=used / | tail -n 1)
+          FINAL_DISK_USED=$(df --output=used "$HOME" | tail -n 1)
         fi
         
         OVERHEAD_KB=$((FINAL_DISK_USED - INITIAL_DISK_USED))
