@@ -39,17 +39,51 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Update base system packages (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        echo "Updating base system to exclude package updates from overhead calculation..."
+        sudo apt-get update
+        sudo apt-get upgrade -y
+
+    - name: Update base system packages (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        echo "Updating Homebrew to exclude package updates from overhead calculation..."
+        brew update
+        brew upgrade
+
+    - name: Check disk space before installation
+      run: |
+        echo "==================================="
+        echo "Disk Space Before Installation"
+        echo "==================================="
+        df -h
+        echo ""
+        # Store initial disk usage for root filesystem
+        # Use portable df output parsing that works on both Linux and macOS
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          INITIAL_DISK_USED=$(df -k / | tail -n 1 | awk '{print $3}')
+        else
+          INITIAL_DISK_USED=$(df --output=used / | tail -n 1)
+        fi
+        echo "$INITIAL_DISK_USED" > /tmp/initial_disk_used.txt
+        echo "Initial root filesystem used: $INITIAL_DISK_USED KB"
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get update
+        # Note: apt-get update already run in "Update base system packages (Ubuntu)" step
         sudo apt-get install -y zsh
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       # Homebrew is pre-installed on macOS runners
       run: |
-        brew update
+        # Note: brew update already run in "Update base system packages (macOS)" step
         # Install chezmoi if not present
         if ! command -v chezmoi >/dev/null 2>&1; then
           brew install chezmoi
@@ -73,6 +107,66 @@ jobs:
       run: |
         chmod +x scripts/validate-installation.sh
         ./scripts/validate-installation.sh
+
+    - name: Check disk space after installation
+      run: |
+        echo ""
+        echo "==================================="
+        echo "Disk Space After Installation"
+        echo "==================================="
+        df -h
+        echo ""
+        
+        # Calculate disk overhead for root filesystem
+        if [ ! -f /tmp/initial_disk_used.txt ]; then
+          echo "Error: Initial disk usage file not found"
+          exit 1
+        fi
+        
+        INITIAL_DISK_USED=$(cat /tmp/initial_disk_used.txt)
+        if ! [[ "$INITIAL_DISK_USED" =~ ^[0-9]+$ ]]; then
+          echo "Error: Initial disk usage is not a valid number"
+          exit 1
+        fi
+        
+        # Get final disk usage using portable df parsing
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          FINAL_DISK_USED=$(df -k / | tail -n 1 | awk '{print $3}')
+        else
+          FINAL_DISK_USED=$(df --output=used / | tail -n 1)
+        fi
+        
+        OVERHEAD_KB=$((FINAL_DISK_USED - INITIAL_DISK_USED))
+        # Note: Integer division truncates to nearest MB (rounds down)
+        OVERHEAD_MB=$((OVERHEAD_KB / 1024))
+        
+        echo "==================================="
+        echo "Disk Space Overhead Summary"
+        echo "==================================="
+        echo "Initial disk used: $((INITIAL_DISK_USED / 1024)) MB"
+        echo "Final disk used:   $((FINAL_DISK_USED / 1024)) MB"
+        if [ $OVERHEAD_KB -ge 0 ]; then
+          # Calculate GB with 2 decimal places using shell arithmetic
+          # Rearranged to avoid potential overflow: (KB / 1024) * 100 / 1024
+          OVERHEAD_GB_INT=$((OVERHEAD_KB / 1024 / 1024))
+          OVERHEAD_GB_DEC=$(((OVERHEAD_KB / 1024 * 100 / 1024) % 100))
+          printf "Disk overhead:     %d MB (%d.%02d GB)\n" "$OVERHEAD_MB" "$OVERHEAD_GB_INT" "$OVERHEAD_GB_DEC"
+        else
+          # For negative values, calculate absolute value
+          OVERHEAD_MB_ABS=$(( (-OVERHEAD_KB) / 1024 ))
+          echo "Disk overhead:     -${OVERHEAD_MB_ABS} MB [disk space freed]"
+        fi
+        echo "==================================="
+        
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+        
+        # Also show breakdown of major directories in home
+        echo ""
+        echo "Top directories by size in home:"
+        # Using du directly is faster than find with -exec
+        du -sh "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
 
     - name: Upload Test Results
       if: failure()
