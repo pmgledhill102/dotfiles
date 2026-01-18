@@ -20,6 +20,6 @@ fi
 
 # Run the chezmoi installation
 echo "Running chezmoi installation from branch: $BRANCH_NAME"
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply --branch "$BRANCH_NAME" https://github.com/pmgledhill102/dotfiles.git
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" init --apply --branch "$BRANCH_NAME" https://github.com/pmgledhill102/dotfiles.git
 
 echo "Installation complete!"
