@@ -39,6 +39,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Update base system packages (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        echo "Updating base system to exclude package updates from overhead calculation..."
+        sudo apt-get update
+        sudo apt-get upgrade -y
+
+    - name: Update base system packages (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        echo "Updating Homebrew to exclude package updates from overhead calculation..."
+        brew update
+        brew upgrade
+
     - name: Check disk space before installation
       run: |
         echo "==================================="
@@ -46,25 +60,30 @@ jobs:
         echo "==================================="
         df -h
         echo ""
+        # Store initial disk usage for root filesystem
+        # Use portable df output parsing that works on both Linux and macOS
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          INITIAL_DISK_USED=$(df -k / | tail -n 1 | awk '{print $3}')
+        else
+          INITIAL_DISK_USED=$(df --output=used / | tail -n 1)
+        fi
+        echo "$INITIAL_DISK_USED" > /tmp/initial_disk_used.txt
+        echo "Initial root filesystem used: $INITIAL_DISK_USED KB"
+        echo ""
         echo "Home directory size:"
         du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
-        echo ""
-        # Store initial disk usage in bytes for accurate calculation
-        INITIAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
-        echo "$INITIAL_HOME_SIZE" > /tmp/initial_home_size.txt
-        echo "Initial home directory size: $INITIAL_HOME_SIZE bytes"
 
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get update
+        # apt-get update already run in base system update step
         sudo apt-get install -y zsh
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       # Homebrew is pre-installed on macOS runners
       run: |
-        brew update
+        # brew update already run in base system update step
         # Install chezmoi if not present
         if ! command -v chezmoi >/dev/null 2>&1; then
           brew install chezmoi
@@ -97,42 +116,52 @@ jobs:
         echo "==================================="
         df -h
         echo ""
-        echo "Home directory size:"
-        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
-        echo ""
         
-        # Calculate disk overhead
-        if [ ! -f /tmp/initial_home_size.txt ]; then
-          echo "Error: Initial home size file not found"
+        # Calculate disk overhead for root filesystem
+        if [ ! -f /tmp/initial_disk_used.txt ]; then
+          echo "Error: Initial disk usage file not found"
           exit 1
         fi
         
-        INITIAL_HOME_SIZE=$(cat /tmp/initial_home_size.txt)
-        if ! [[ "$INITIAL_HOME_SIZE" =~ ^[0-9]+$ ]]; then
-          echo "Error: Initial home size is not a valid number"
+        INITIAL_DISK_USED=$(cat /tmp/initial_disk_used.txt)
+        if ! [[ "$INITIAL_DISK_USED" =~ ^[0-9]+$ ]]; then
+          echo "Error: Initial disk usage is not a valid number"
           exit 1
         fi
         
-        FINAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
-        OVERHEAD_BYTES=$((FINAL_HOME_SIZE - INITIAL_HOME_SIZE))
+        # Get final disk usage using portable df parsing
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          FINAL_DISK_USED=$(df -k / | tail -n 1 | awk '{print $3}')
+        else
+          FINAL_DISK_USED=$(df --output=used / | tail -n 1)
+        fi
+        
+        OVERHEAD_KB=$((FINAL_DISK_USED - INITIAL_DISK_USED))
         # Note: Integer division truncates to nearest MB (rounds down)
-        OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
+        OVERHEAD_MB=$((OVERHEAD_KB / 1024))
         
         echo "==================================="
         echo "Disk Space Overhead Summary"
         echo "==================================="
-        echo "Initial home directory size: $(numfmt --to=iec-i --suffix=B $INITIAL_HOME_SIZE)"
-        echo "Final home directory size:   $(numfmt --to=iec-i --suffix=B $FINAL_HOME_SIZE)"
-        if [ $OVERHEAD_BYTES -ge 0 ]; then
-          echo "Disk overhead:               $(numfmt --to=iec-i --suffix=B $OVERHEAD_BYTES) (${OVERHEAD_MB} MB)"
+        echo "Initial disk used: $((INITIAL_DISK_USED / 1024)) MB"
+        echo "Final disk used:   $((FINAL_DISK_USED / 1024)) MB"
+        if [ $OVERHEAD_KB -ge 0 ]; then
+          # Calculate GB with 2 decimal places using shell arithmetic
+          OVERHEAD_GB_INT=$((OVERHEAD_KB / 1024 / 1024))
+          OVERHEAD_GB_DEC=$(((OVERHEAD_KB * 100 / 1024 / 1024) % 100))
+          printf "Disk overhead:     %d MB (%d.%02d GB)\n" "$OVERHEAD_MB" "$OVERHEAD_GB_INT" "$OVERHEAD_GB_DEC"
         else
           # For negative values, show absolute value with negative sign
-          OVERHEAD_MB_ABS=$(( (-OVERHEAD_BYTES) / 1024 / 1024 ))
-          echo "Disk overhead:               -$(numfmt --to=iec-i --suffix=B $((-OVERHEAD_BYTES))) (-${OVERHEAD_MB_ABS} MB) [files were removed]"
+          OVERHEAD_MB_ABS=$(( (-OVERHEAD_KB) / 1024 ))
+          echo "Disk overhead:     -${OVERHEAD_MB_ABS} MB [disk space freed]"
         fi
         echo "==================================="
         
-        # Also show breakdown of major directories
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+        
+        # Also show breakdown of major directories in home
         echo ""
         echo "Top directories by size in home:"
         # Using du directly is faster than find with -exec
