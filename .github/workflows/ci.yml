@@ -102,7 +102,17 @@ jobs:
         echo ""
         
         # Calculate disk overhead
+        if [ ! -f /tmp/initial_home_size.txt ]; then
+          echo "Error: Initial home size file not found"
+          exit 1
+        fi
+        
         INITIAL_HOME_SIZE=$(cat /tmp/initial_home_size.txt)
+        if ! [[ "$INITIAL_HOME_SIZE" =~ ^[0-9]+$ ]]; then
+          echo "Error: Initial home size is not a valid number"
+          exit 1
+        fi
+        
         FINAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
         OVERHEAD_BYTES=$((FINAL_HOME_SIZE - INITIAL_HOME_SIZE))
         OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
@@ -112,7 +122,11 @@ jobs:
         echo "==================================="
         echo "Initial home directory size: $(numfmt --to=iec-i --suffix=B $INITIAL_HOME_SIZE)"
         echo "Final home directory size:   $(numfmt --to=iec-i --suffix=B $FINAL_HOME_SIZE)"
-        echo "Disk overhead:               $(numfmt --to=iec-i --suffix=B $OVERHEAD_BYTES) (${OVERHEAD_MB} MB)"
+        if [ $OVERHEAD_BYTES -ge 0 ]; then
+          echo "Disk overhead:               $(numfmt --to=iec-i --suffix=B $OVERHEAD_BYTES) (${OVERHEAD_MB} MB)"
+        else
+          echo "Disk overhead:               -$(numfmt --to=iec-i --suffix=B $((-OVERHEAD_BYTES))) (${OVERHEAD_MB} MB) [negative - files were removed]"
+        fi
         echo "==================================="
         
         # Also show breakdown of major directories
