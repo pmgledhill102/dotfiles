@@ -127,7 +127,7 @@ jobs:
           echo "Disk overhead:               $(numfmt --to=iec-i --suffix=B $OVERHEAD_BYTES) (${OVERHEAD_MB} MB)"
         else
           # For negative values, show absolute value with negative sign
-          OVERHEAD_MB_ABS=$((-OVERHEAD_BYTES / 1024 / 1024))
+          OVERHEAD_MB_ABS=$(( (-OVERHEAD_BYTES) / 1024 / 1024 ))
           echo "Disk overhead:               -$(numfmt --to=iec-i --suffix=B $((-OVERHEAD_BYTES))) (-${OVERHEAD_MB_ABS} MB) [files were removed]"
         fi
         echo "==================================="
