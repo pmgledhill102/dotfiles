@@ -115,6 +115,7 @@ jobs:
         
         FINAL_HOME_SIZE=$(du -sb "$HOME" 2>/dev/null | awk '{print $1}')
         OVERHEAD_BYTES=$((FINAL_HOME_SIZE - INITIAL_HOME_SIZE))
+        # Note: Integer division truncates to nearest MB (rounds down)
         OVERHEAD_MB=$((OVERHEAD_BYTES / 1024 / 1024))
         
         echo "==================================="
@@ -125,7 +126,9 @@ jobs:
         if [ $OVERHEAD_BYTES -ge 0 ]; then
           echo "Disk overhead:               $(numfmt --to=iec-i --suffix=B $OVERHEAD_BYTES) (${OVERHEAD_MB} MB)"
         else
-          echo "Disk overhead:               -$(numfmt --to=iec-i --suffix=B $((-OVERHEAD_BYTES))) (${OVERHEAD_MB} MB) [negative - files were removed]"
+          # For negative values, show absolute value with negative sign
+          OVERHEAD_MB_ABS=$((-OVERHEAD_BYTES / 1024 / 1024))
+          echo "Disk overhead:               -$(numfmt --to=iec-i --suffix=B $((-OVERHEAD_BYTES))) (-${OVERHEAD_MB_ABS} MB) [files were removed]"
         fi
         echo "==================================="
         
