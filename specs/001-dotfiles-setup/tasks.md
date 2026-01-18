@@ -161,7 +161,7 @@ and Ubuntu environments in CI.
 - [x] T049 [US5] Add `git-delta` installation and configuration
 - [x] T050 [US5] Add `lazygit` configuration
 - [x] T051 [US5] Add global `.gitignore` with system file exclusions
-- [x] T052 [US5] Automate Nerd Font installation
+- [x] T052 [US5] Automate Nerd Font installation (macOS only via Brewfile)
 
 ---
 
@@ -177,9 +177,9 @@ and Ubuntu environments in CI.
 - Git-delta integration for enhanced diff viewing
 - Lazygit configuration for TUI-based Git operations
 - Global gitignore for system-wide file exclusions
-- Automated JetBrains Mono Nerd Font installation for both macOS and Linux
+- JetBrains Mono Nerd Font installation for macOS (via Brewfile)
 
-All Phase 9 tasks are complete and the dotfiles now include comprehensive tooling for power users across macOS and Linux platforms.
+All Phase 9 tasks are complete and the dotfiles now include comprehensive tooling for power users across macOS and Linux platforms. Note: Nerd Font installation is currently macOS-only via Brewfile; Windows support will be added in Phase 10 (T057, T060).
 
 ---
 

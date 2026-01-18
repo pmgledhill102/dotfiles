@@ -214,7 +214,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     validate_test "Ghostty is installed" "[ -d \"/Applications/Ghostty.app\" ] || command -v ghostty"
     validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
     
-    # Check for Nerd Font installation
+    # Check for Nerd Font installation (macOS only via Brewfile)
     if fc-list | grep -qi "JetBrainsMono Nerd"; then
         echo -e "${GREEN}✓${NC} JetBrains Mono Nerd Font is installed"
         ((PASSED_TESTS++))
@@ -230,14 +230,6 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     echo "-----------------------------------"
     validate_test "apt is available" "command -v apt-get"
     validate_test "Ubuntu package list exists" "[ -f \"\$HOME/.config/ubuntu_pkglist\" ]"
-    
-    # Check for Nerd Font installation
-    if fc-list | grep -qi "JetBrainsMono Nerd"; then
-        echo -e "${GREEN}✓${NC} JetBrains Mono Nerd Font is installed"
-        ((PASSED_TESTS++))
-    else
-        echo -e "${RED}✗${NC} JetBrains Mono Nerd Font is installed (optional)"
-    fi
 fi
 
 # VS Code configuration validation (cross-platform)

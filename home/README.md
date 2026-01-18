@@ -20,7 +20,7 @@ This will:
 - Apply your dotfile configurations
 - Set up Zsh as your default shell
 - Configure tmux, git-delta, lazygit, and VS Code
-- Install JetBrains Mono Nerd Font
+- Install JetBrains Mono Nerd Font (macOS only)
 - Apply macOS system defaults (macOS only)
 
 ### What's Included
@@ -48,7 +48,7 @@ This will:
   - lazygit for TUI-based Git operations
   - Global gitignore for system-wide exclusions
 - **Editor**: VS Code with synchronized settings and keybindings
-- **Fonts**: JetBrains Mono Nerd Font (auto-installed)
+- **Fonts**: JetBrains Mono Nerd Font (macOS only, via Brewfile)
 
 #### Security & Configuration
 - **Secret Management**: age encryption for sensitive configs
