@@ -107,9 +107,9 @@ $missingTools = @()
 
 foreach ($tool in $tools) {
     if (Get-Command $tool -ErrorAction SilentlyContinue) {
-        Write-Host "✓ $tool is available"
+        Write-Host "[OK] $tool is available"
     } else {
-        Write-Host "✗ $tool is NOT in PATH"
+        Write-Host "[X] $tool is NOT in PATH"
         $missingTools += $tool
     }
 }

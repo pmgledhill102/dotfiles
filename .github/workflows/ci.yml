@@ -285,15 +285,15 @@ jobs:
         "OVERHEAD_KB=$overheadKB" | Out-File "$env:TEMP\disk_overhead.txt"
         "OVERHEAD_MB=$overheadMB" | Add-Content "$env:TEMP\disk_overhead.txt"
 
-    - name: Generate Installation Report
-      if: always()
+    - name: Generate Installation Report (Unix)
+      if: always() && runner.os != 'Windows'
       run: |
         # Generate Job Summary
         {
           echo "### Installation Report (${{ matrix.os }}) :bar_chart:"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
-        
+
         # Load test counts if available
         if [ -f /tmp/validation_counts.txt ]; then
             source /tmp/validation_counts.txt
@@ -302,7 +302,7 @@ jobs:
             FAILED_TESTS="0"
             TOTAL_TESTS="0"
         fi
-        
+
         # Load disk overhead if available
         if [ -f /tmp/disk_overhead.txt ]; then
             source /tmp/disk_overhead.txt
@@ -311,7 +311,7 @@ jobs:
             OVERHEAD_MB="0"
             OVERHEAD_DISPLAY="N/A"
         fi
-        
+
         # Determine status icon
         # We consider it a success if:
         # 1. Validation ran and reported 0 failures
@@ -322,7 +322,7 @@ jobs:
         else
              STATUS="❌ Failure"
         fi
-        
+
         {
           echo "| Metric | Value |"
           echo "| :--- | :--- |"
@@ -330,7 +330,7 @@ jobs:
           echo "| **Tests Run** | $TOTAL_TESTS |"
           echo "| **Tests Passed** | $PASSED_TESTS |"
         } >> "$GITHUB_STEP_SUMMARY"
-        
+
         if [ "$OVERHEAD_DISPLAY" != "N/A" ]; then
             if [ "$OVERHEAD_KB" -ge 0 ]; then
               OVERHEAD_DISPLAY="${OVERHEAD_MB} MB"
@@ -340,6 +340,61 @@ jobs:
             fi
         fi
         echo "| **Disk Overhead** | $OVERHEAD_DISPLAY |" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Generate Installation Report (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Generate Job Summary
+        @"
+        ### Installation Report (${{ matrix.os }}) :bar_chart:
+
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+        # Load test counts if available
+        $countsFile = "$env:TEMP\validation_counts.txt"
+        if (Test-Path $countsFile) {
+            Get-Content $countsFile | ForEach-Object {
+                if ($_ -match '^(\w+)=(.+)$') {
+                    Set-Variable -Name $matches[1] -Value $matches[2]
+                }
+            }
+        } else {
+            $PASSED_TESTS = "0"
+            $FAILED_TESTS = "0"
+            $TOTAL_TESTS = "0"
+        }
+
+        # Load disk overhead if available
+        $overheadFile = "$env:TEMP\disk_overhead.txt"
+        if (Test-Path $overheadFile) {
+            Get-Content $overheadFile | ForEach-Object {
+                if ($_ -match '^(\w+)=(.+)$') {
+                    Set-Variable -Name $matches[1] -Value $matches[2]
+                }
+            }
+            $OVERHEAD_DISPLAY = "$OVERHEAD_MB MB"
+        } else {
+            $OVERHEAD_KB = "0"
+            $OVERHEAD_MB = "0"
+            $OVERHEAD_DISPLAY = "N/A"
+        }
+
+        # Determine status
+        if ($FAILED_TESTS -eq 0 -and $TOTAL_TESTS -gt 0 -and "${{ job.status }}" -ne "failure") {
+            $STATUS = ":white_check_mark: Success"
+        } else {
+            $STATUS = ":x: Failure"
+        }
+
+        @"
+        | Metric | Value |
+        | :--- | :--- |
+        | **Status** | $STATUS |
+        | **Tests Run** | $TOTAL_TESTS |
+        | **Tests Passed** | $PASSED_TESTS |
+        | **Disk Overhead** | $OVERHEAD_DISPLAY |
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
     - name: Upload Test Results
       if: failure()

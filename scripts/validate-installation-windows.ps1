@@ -28,16 +28,16 @@ function Test-Validation {
     try {
         $result = & $TestCommand
         if ($result -or $LASTEXITCODE -eq 0) {
-            Write-Host "✓ $Description" -ForegroundColor Green
+            Write-Host "[PASS] $Description" -ForegroundColor Green
             $script:PassedTests++
             return $true
         } else {
-            Write-Host "✗ $Description" -ForegroundColor Red
+            Write-Host "[FAIL] $Description" -ForegroundColor Red
             $script:FailedTests++
             return $false
         }
     } catch {
-        Write-Host "✗ $Description" -ForegroundColor Red
+        Write-Host "[FAIL] $Description" -ForegroundColor Red
         if ($Verbose) {
             Write-Host "  Error: $_" -ForegroundColor Red
         }
@@ -168,10 +168,10 @@ Write-Host "-----------------------------------"
 
 foreach ($tool in $optionalTools) {
     if (Get-Command $tool -ErrorAction SilentlyContinue) {
-        Write-Host "✓ $tool is installed" -ForegroundColor Green
+        Write-Host "[PASS] $tool is installed" -ForegroundColor Green
         $script:PassedTests++
     } else {
-        Write-Host "⚠ $tool is not installed (optional)" -ForegroundColor Yellow
+        Write-Host "[WARN] $tool is not installed (optional)" -ForegroundColor Yellow
     }
 }
 
@@ -295,6 +295,15 @@ $totalTests = $script:PassedTests + $script:FailedTests
 $percentPassed = if ($totalTests -gt 0) { [math]::Round(($script:PassedTests / $totalTests) * 100, 2) } else { 0 }
 Write-Host "Success Rate: $percentPassed%" -ForegroundColor $(if ($percentPassed -ge 80) { "Green" } elseif ($percentPassed -ge 50) { "Yellow" } else { "Red" })
 Write-Host ""
+
+# Export test counts for CI reporting
+$countsFile = "$env:TEMP\validation_counts.txt"
+@"
+PASSED_TESTS=$($script:PassedTests)
+FAILED_TESTS=$($script:FailedTests)
+TOTAL_TESTS=$totalTests
+"@ | Out-File -FilePath $countsFile -Encoding utf8
+Write-Verbose "Test counts written to $countsFile"
 
 if ($script:FailedTests -eq 0) {
     Write-Host "All validations passed! Your dotfiles are properly installed." -ForegroundColor Green
