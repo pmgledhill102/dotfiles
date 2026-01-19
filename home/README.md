@@ -16,14 +16,21 @@ This will:
 
 - Install chezmoi
 - Install required packages (Zsh, Oh My Zsh, Starship, age, etc.)
+- Install development tools via Brewfile (macOS) or package lists (Linux)
 - Apply your dotfile configurations
 - Set up Zsh as your default shell
+- Configure tmux, git-delta, lazygit, and VS Code
+- Install JetBrains Mono Nerd Font (macOS only)
+- Apply macOS system defaults (macOS only)
 
 ### What's Included
+
+#### Core Shell Environment
 
 - **Shell**: Zsh with Oh My Zsh
 - **Prompt**: Starship (fast, customizable prompt)
 - **Terminal**: Ghostty (macOS/Windows)
+- **Terminal Multiplexer**: Tmux with optimized configuration
 - **Plugins**:
   - zsh-autosuggestions
   - zsh-syntax-highlighting
@@ -32,7 +39,23 @@ This will:
   - history
   - copypath
   - copyfile
+
+#### Development Tools
+
+- **Package Management**:
+  - macOS: Brewfile for automated Homebrew package management
+  - Linux: Ubuntu package list for apt-based installations
+- **Git Enhancements**:
+  - git-delta for improved diff viewing
+  - lazygit for TUI-based Git operations
+  - Global gitignore for system-wide exclusions
+- **Editor**: VS Code with synchronized settings and keybindings
+- **Fonts**: JetBrains Mono Nerd Font (macOS only, via Brewfile)
+
+#### Security & Configuration
+
 - **Secret Management**: age encryption for sensitive configs
+- **macOS Defaults**: Developer-optimized system settings (macOS only)
 
 ## Documentation
 
@@ -101,6 +124,43 @@ omz update
 
 # Update Starship
 brew upgrade starship  # macOS
+
+# Start tmux session
+tmux
+
+# Use lazygit for interactive Git operations
+lazygit
+
+# View git diff with delta
+git diff  # delta is automatically used via gitconfig
+```
+
+### Package Management
+
+#### macOS - Brewfile
+
+The `Brewfile` in your home directory lists all Homebrew packages. To install or update packages:
+
+```bash
+# Install/update all packages from Brewfile
+brew bundle
+
+# Add a new package to Brewfile
+echo 'brew "package-name"' >> ~/Brewfile
+chezmoi add ~/Brewfile
+```
+
+The `run_onchange_install-brewfile.sh.tmpl` script automatically runs `brew bundle` when the Brewfile changes.
+
+#### Linux - Package Lists
+
+The Ubuntu package list is located at `~/.config/ubuntu_pkglist`. To add packages:
+
+```bash
+# Edit the package list
+chezmoi edit ~/.config/ubuntu_pkglist
+
+# Packages are automatically installed when the list changes
 ```
 
 ### Updating

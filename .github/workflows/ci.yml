@@ -6,30 +6,51 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   shellcheck:
     name: ShellCheck
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # master
         with:
-          scandir: './scripts'
+          scandir: './scripts ./home'
 
   markdown-lint:
     name: Markdown Lint
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@v19
+        uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265 # v19
         with:
           globs: '**/*.md'
 
+  actionlint:
+    name: Action Lint
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Download actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+      - name: Run actionlint
+        run: ./actionlint -color
+
   test-install:
     name: Test Install on ${{ matrix.os }}
-    needs: [shellcheck, markdown-lint]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [shellcheck, markdown-lint, actionlint]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -37,7 +58,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Update base system packages (Ubuntu)
       if: runner.os == 'Linux'
@@ -100,6 +121,10 @@ jobs:
         # We use --source . to use the checked-out repo
         # We assume no secrets are strictly blocking for this basic CI smoke test
         
+        # Create chezmoi config directory and copy config file
+        mkdir -p "$HOME/.config/chezmoi"
+        cp .chezmoi.toml "$HOME/.config/chezmoi/chezmoi.toml"
+        
         echo "Starting Chezmoi Apply..."
         time chezmoi init --apply --source . --verbose
 
@@ -109,6 +134,7 @@ jobs:
         ./scripts/validate-installation.sh
 
     - name: Check disk space after installation
+      if: always()
       run: |
         echo ""
         echo "==================================="
@@ -149,7 +175,7 @@ jobs:
           # Calculate GB with 2 decimal places using shell arithmetic
           # Rearranged to avoid potential overflow: (KB / 1024) * 100 / 1024
           OVERHEAD_GB_INT=$((OVERHEAD_KB / 1024 / 1024))
-          OVERHEAD_GB_DEC=$(((OVERHEAD_KB / 1024 * 100 / 1024) % 100))
+          OVERHEAD_GB_DEC=$(((OVERHEAD_KB * 100 / 1024 / 1024) % 100))
           printf "Disk overhead:     %d MB (%d.%02d GB)\n" "$OVERHEAD_MB" "$OVERHEAD_GB_INT" "$OVERHEAD_GB_DEC"
         else
           # For negative values, calculate absolute value
@@ -167,6 +193,66 @@ jobs:
         echo "Top directories by size in home:"
         # Using du directly is faster than find with -exec
         du -sh "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
+        
+        # Persist disk overhead for summary step
+        echo "OVERHEAD_KB=$OVERHEAD_KB" > /tmp/disk_overhead.txt
+        echo "OVERHEAD_MB=$OVERHEAD_MB" >> /tmp/disk_overhead.txt
+
+    - name: Generate Installation Report
+      if: always()
+      run: |
+        # Generate Job Summary
+        {
+          echo "### Installation Report (${{ matrix.os }}) :bar_chart:"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+        
+        # Load test counts if available
+        if [ -f /tmp/validation_counts.txt ]; then
+            source /tmp/validation_counts.txt
+        else
+            PASSED_TESTS="0"
+            FAILED_TESTS="0"
+            TOTAL_TESTS="0"
+        fi
+        
+        # Load disk overhead if available
+        if [ -f /tmp/disk_overhead.txt ]; then
+            source /tmp/disk_overhead.txt
+        else
+            OVERHEAD_KB="0"
+            OVERHEAD_MB="0"
+            OVERHEAD_DISPLAY="N/A"
+        fi
+        
+        # Determine status icon
+        # We consider it a success if:
+        # 1. Validation ran and reported 0 failures
+        # 2. Total tests > 0 (it actually ran)
+        # 3. The overall job status is not already failure (e.g. from install step)
+        if [ "$FAILED_TESTS" -eq 0 ] && [ "$TOTAL_TESTS" -gt 0 ] && [ "${{ job.status }}" != "failure" ]; then
+             STATUS="✅ Success"
+        else
+             STATUS="❌ Failure"
+        fi
+        
+        {
+          echo "| Metric | Value |"
+          echo "| :--- | :--- |"
+          echo "| **Status** | $STATUS |"
+          echo "| **Tests Run** | $TOTAL_TESTS |"
+          echo "| **Tests Passed** | $PASSED_TESTS |"
+        } >> "$GITHUB_STEP_SUMMARY"
+        
+        if [ "$OVERHEAD_DISPLAY" != "N/A" ]; then
+            if [ "$OVERHEAD_KB" -ge 0 ]; then
+              OVERHEAD_DISPLAY="${OVERHEAD_MB} MB"
+            else
+              OVERHEAD_MB_ABS=$(( (-OVERHEAD_KB) / 1024 ))
+              OVERHEAD_DISPLAY="-${OVERHEAD_MB_ABS} MB (freed)"
+            fi
+        fi
+        echo "| **Disk Overhead** | $OVERHEAD_DISPLAY |" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload Test Results
       if: failure()
@@ -175,3 +261,4 @@ jobs:
         name: test-results-${{ matrix.os }}
         path: |
           home/
+ 

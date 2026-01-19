@@ -1,0 +1,5 @@
+# chezmoi configuration file
+
+[data]
+    name = "Paul Gledhill"
+    email = "github@pmgledhill.com"

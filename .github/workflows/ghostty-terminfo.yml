@@ -50,13 +50,13 @@ jobs:
           TERMINFO_PATH="home/dot_config/ghostty/xterm-ghostty.terminfo"
           if ! git ls-files --error-unmatch "$TERMINFO_PATH" \
               >/dev/null 2>&1; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "New terminfo file created"
           elif git diff --quiet "$TERMINFO_PATH"; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected in $TERMINFO_PATH"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected in $TERMINFO_PATH"
           fi
 

@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# This script runs whenever the ubuntu_pkglist changes (run_onchange)
+# It installs packages from the list on Linux systems
+
+set -e
+
+case "$(uname -s)" in
+  Linux*)
+    echo "Linux detected - installing packages from ubuntu_pkglist..."
+    
+    PKGLIST_FILE="$HOME/.config/ubuntu_pkglist"
+    
+    if [ ! -f "$PKGLIST_FILE" ]; then
+      echo "Warning: Package list not found at $PKGLIST_FILE"
+      exit 0
+    fi
+    
+    export DEBIAN_FRONTEND=noninteractive
+    sudo apt-get update
+    
+    echo "Installing packages from ubuntu_pkglist..."
+    # Read package list and install (skip empty lines and comments)
+    grep -v '^#' "$PKGLIST_FILE" | grep -v '^$' | while read -r package; do
+      echo "Installing $package..."
+      sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
+    done
+    
+    # Install lazygit
+    echo "Installing/Updating lazygit..."
+    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*')
+    echo "Downloading lazygit v${LAZYGIT_VERSION}..."
+    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    tar xf lazygit.tar.gz lazygit
+    sudo install lazygit -D -t /usr/local/bin/
+    rm lazygit.tar.gz lazygit
+    echo "lazygit installed successfully"
+
+    echo "Package installation complete"
+    ;;
+  *)
+    echo "Not Linux - skipping apt package installation"
+    ;;
+esac

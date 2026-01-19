@@ -7,6 +7,15 @@ echo "Post-Installation Validation"
 echo "================================"
 echo ""
 
+# Ensure Homebrew is in PATH for macOS
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    if [ -d "/opt/homebrew/bin" ]; then
+        export PATH="/opt/homebrew/bin:$PATH"
+    elif [ -d "/usr/local/bin" ]; then
+        export PATH="/usr/local/bin:$PATH"
+    fi
+fi
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -132,6 +141,38 @@ echo "-----------------------------------"
 validate_test "Git is installed" "command -v git"
 validate_test "Age is installed" "command -v age"
 
+# Phase 9 tools
+validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
+validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
+validate_test "Tmux config exists" "[ -f \"\$HOME/.tmux.conf\" ]"
+
+# Check for tools that should be installed via Brewfile or apt packages
+if command -v delta >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} git-delta is installed"
+    ((PASSED_TESTS++))
+    validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+else
+    echo -e "${RED}✗${NC} git-delta is installed"
+    ((FAILED_TESTS++))
+fi
+
+if command -v lazygit >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} lazygit is installed"
+    ((PASSED_TESTS++))
+    validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
+else
+    echo -e "${RED}✗${NC} lazygit is installed"
+    ((FAILED_TESTS++))
+fi
+
+if command -v tmux >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} tmux is installed"
+    ((PASSED_TESTS++))
+else
+    echo -e "${RED}✗${NC} tmux is installed"
+    ((FAILED_TESTS++))
+fi
+
 if [[ "$(uname -s)" == "Darwin" ]]; then
    # Ghostty is only installed on macOS/Windows in this setup
    if command -v ghostty >/dev/null 2>&1; then
@@ -180,6 +221,16 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     echo "-----------------------------------"
     validate_test "Homebrew is in PATH" "command -v brew"
     validate_test "Ghostty is installed" "[ -d \"/Applications/Ghostty.app\" ] || command -v ghostty"
+    validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
+    
+    # Check for Nerd Font installation (macOS only via Brewfile)
+    if fc-list | grep -qi "JetBrainsMono Nerd"; then
+        echo -e "${GREEN}✓${NC} JetBrains Mono Nerd Font is installed"
+        ((PASSED_TESTS++))
+    else
+        echo -e "${RED}✗${NC} JetBrains Mono Nerd Font is installed"
+        ((FAILED_TESTS++))
+    fi
 fi
 
 # Linux-specific validations
@@ -188,7 +239,15 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     echo "Validating Linux-specific tools..."
     echo "-----------------------------------"
     validate_test "apt is available" "command -v apt-get"
+    validate_test "Ubuntu package list exists" "[ -f \"\$HOME/.config/ubuntu_pkglist\" ]"
 fi
+
+# VS Code configuration validation (cross-platform)
+echo ""
+echo "Validating VS Code configuration..."
+echo "-----------------------------------"
+validate_test "VS Code settings exist" "[ -f \"\$HOME/.config/Code/User/settings.json\" ]"
+validate_test "VS Code keybindings exist" "[ -f \"\$HOME/.config/Code/User/keybindings.json\" ]"
 
 echo ""
 echo "================================"
@@ -197,6 +256,12 @@ echo "================================"
 echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
 echo -e "${RED}Failed: $FAILED_TESTS${NC}"
 echo ""
+
+# Save counts for CI summary if running in CI environment
+echo "PASSED_TESTS=$PASSED_TESTS" > /tmp/validation_counts.txt
+echo "FAILED_TESTS=$FAILED_TESTS" >> /tmp/validation_counts.txt
+TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS))
+echo "TOTAL_TESTS=$TOTAL_TESTS" >> /tmp/validation_counts.txt
 
 if [ $FAILED_TESTS -eq 0 ]; then
     echo -e "${GREEN}All validations passed! Your dotfiles are properly installed.${NC}"
