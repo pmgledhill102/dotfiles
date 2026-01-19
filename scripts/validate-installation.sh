@@ -7,6 +7,15 @@ echo "Post-Installation Validation"
 echo "================================"
 echo ""
 
+# Ensure Homebrew is in PATH for macOS
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    if [ -d "/opt/homebrew/bin" ]; then
+        export PATH="/opt/homebrew/bin:$PATH"
+    elif [ -d "/usr/local/bin" ]; then
+        export PATH="/usr/local/bin:$PATH"
+    fi
+fi
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -152,16 +161,16 @@ if command -v lazygit >/dev/null 2>&1; then
     ((PASSED_TESTS++))
     validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
 else
-    echo -e "${RED}✗${NC} lazygit is installed (optional)"
-    # Don't fail if lazygit is not installed (it's optional)
+    echo -e "${RED}✗${NC} lazygit is installed"
+    ((FAILED_TESTS++))
 fi
 
 if command -v tmux >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} tmux is installed"
     ((PASSED_TESTS++))
 else
-    echo -e "${RED}✗${NC} tmux is installed (optional)"
-    # Don't fail if tmux is not installed (it's optional)
+    echo -e "${RED}✗${NC} tmux is installed"
+    ((FAILED_TESTS++))
 fi
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -219,7 +228,8 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
         echo -e "${GREEN}✓${NC} JetBrains Mono Nerd Font is installed"
         ((PASSED_TESTS++))
     else
-        echo -e "${RED}✗${NC} JetBrains Mono Nerd Font is installed (optional)"
+        echo -e "${RED}✗${NC} JetBrains Mono Nerd Font is installed"
+        ((FAILED_TESTS++))
     fi
 fi
 
