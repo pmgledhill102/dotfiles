@@ -253,7 +253,7 @@ echo "FAILED_TESTS=$FAILED_TESTS" >> /tmp/validation_counts.txt
 TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS))
 echo "TOTAL_TESTS=$TOTAL_TESTS" >> /tmp/validation_counts.txt
 
-if [ $FAILED_TESTS -eq 0 ]; then:
+if [ $FAILED_TESTS -eq 0 ]; then
     echo -e "${GREEN}All validations passed! Your dotfiles are properly installed.${NC}"
     exit 0
 else
