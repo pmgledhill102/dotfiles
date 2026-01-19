@@ -3,16 +3,22 @@
 # Only apply PowerShell scripts on Windows
 {{- if ne .chezmoi.os "windows" }}
 run_once_install-packages-windows.ps1
+install-packages-windows.ps1
 run_once_setup-windows-environment.ps1
+setup-windows-environment.ps1
 AppData/
 {{- end }}
 
 # Only apply shell scripts on Unix
 {{- if eq .chezmoi.os "windows" }}
 run_once_install-packages.sh
+install-packages.sh
 run_once_macos_defaults.sh
+macos_defaults.sh
 run_onchange_install-brewfile.sh
+install-brewfile.sh
 run_onchange_install-ubuntu-packages.sh
+install-ubuntu-packages.sh
 Brewfile
 .tmux.conf
 {{- end }}
@@ -20,11 +26,14 @@ Brewfile
 # OS-specific files
 {{- if ne .chezmoi.os "darwin" }}
 run_once_macos_defaults.sh
+macos_defaults.sh
 run_onchange_install-brewfile.sh
+install-brewfile.sh
 Brewfile
 {{- end }}
 
 {{- if ne .chezmoi.os "linux" }}
 run_onchange_install-ubuntu-packages.sh
+install-ubuntu-packages.sh
 .config/ubuntu_pkglist
 {{- end }}
