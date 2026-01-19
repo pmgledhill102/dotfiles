@@ -9,7 +9,7 @@ setup-windows-environment.ps1
 AppData/
 {{- end }}
 
-# Only apply shell scripts on Unix
+# Only apply Unix files on Unix (ignore on Windows)
 {{- if eq .chezmoi.os "windows" }}
 run_once_install-packages.sh
 install-packages.sh
@@ -21,6 +21,11 @@ run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
 Brewfile
 .tmux.conf
+{{- end }}
+
+# Only apply Windows files on Windows (ignore on Unix)
+{{- if ne .chezmoi.os "windows" }}
+winget-packages.json
 {{- end }}
 
 # OS-specific files
