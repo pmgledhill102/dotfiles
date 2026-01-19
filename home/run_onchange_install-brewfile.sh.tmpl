@@ -14,14 +14,15 @@ case "$(uname -s)" in
       exit 1
     fi
     
-    # Run brew bundle from the home directory where Brewfile is located
-    cd "$HOME" || exit 1
+    # Use the Brewfile from the chezmoi source directory
+    BREWFILE="{{ .chezmoi.sourceDir }}/Brewfile"
     
-    if [ -f "$HOME/Brewfile" ]; then
-      echo "Installing packages from Brewfile..."
-      brew bundle --no-lock || echo "Warning: Some packages may have failed to install"
+    if [ -f "$BREWFILE" ]; then
+      echo "Installing packages from Brewfile at $BREWFILE..."
+      brew bundle --file="$BREWFILE" --no-lock || echo "Warning: Some packages may have failed to install"
     else
-      echo "Warning: Brewfile not found at $HOME/Brewfile"
+      echo "Warning: Brewfile not found at $BREWFILE"
+      exit 1
     fi
     ;;
   *)
