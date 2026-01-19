@@ -1,0 +1,5 @@
+# Generated from .chezmoi.toml configuration
+# To add/remove packages, edit .chezmoi.toml under [data.packages.apt]
+{{- range .packages.apt.packages }}
+{{ . }}
+{{- end }}

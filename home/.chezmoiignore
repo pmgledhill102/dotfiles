@@ -25,8 +25,9 @@ Brewfile
 
 # Only apply Windows files on Windows (ignore on Unix)
 {{- if ne .chezmoi.os "windows" }}
-winget-packages.json
+.config/winget-packages.json
 {{- end }}
+
 
 # OS-specific files
 {{- if ne .chezmoi.os "darwin" }}

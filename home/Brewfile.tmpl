@@ -1,0 +1,14 @@
+# Generated from .chezmoi.toml configuration
+# To add/remove packages, edit .chezmoi.toml under [data.packages.brew]
+
+{{- range .packages.brew.taps }}
+tap "{{ . }}"
+{{- end }}
+
+{{- range .packages.brew.formulas }}
+brew "{{ . }}"
+{{- end }}
+
+{{- range .packages.brew.casks }}
+cask "{{ . }}"
+{{- end }}
