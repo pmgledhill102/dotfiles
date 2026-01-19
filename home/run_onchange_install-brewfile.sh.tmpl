@@ -19,7 +19,7 @@ case "$(uname -s)" in
     
     if [ -f "$BREWFILE" ]; then
       echo "Installing packages from Brewfile at $BREWFILE..."
-      brew bundle --file="$BREWFILE" --no-lock || echo "Warning: Some packages may have failed to install"
+      brew bundle install --file "$BREWFILE" --no-lock || echo "Warning: Some packages may have failed to install"
     else
       echo "Warning: Brewfile not found at $BREWFILE"
       exit 1
