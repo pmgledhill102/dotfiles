@@ -19,9 +19,9 @@ function Set-UserEnvironmentVariable {
     
     try {
         [System.Environment]::SetEnvironmentVariable($Name, $Value, [System.EnvironmentVariableTarget]::User)
-        Write-Host "✓ Set $Name = $Value" -ForegroundColor Green
+        Write-Host "[OK] Set $Name = $Value" -ForegroundColor Green
     } catch {
-        Write-Host "✗ Failed to set $Name" -ForegroundColor Red
+        Write-Host "[ERROR] Failed to set $Name" -ForegroundColor Red
         Write-Host "  Error: $_"
     }
 }
