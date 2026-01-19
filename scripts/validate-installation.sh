@@ -247,7 +247,13 @@ echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
 echo -e "${RED}Failed: $FAILED_TESTS${NC}"
 echo ""
 
-if [ $FAILED_TESTS -eq 0 ]; then
+# Save counts for CI summary if running in CI environment
+echo "PASSED_TESTS=$PASSED_TESTS" > /tmp/validation_counts.txt
+echo "FAILED_TESTS=$FAILED_TESTS" >> /tmp/validation_counts.txt
+TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS))
+echo "TOTAL_TESTS=$TOTAL_TESTS" >> /tmp/validation_counts.txt
+
+if [ $FAILED_TESTS -eq 0 ]; then:
     echo -e "${GREEN}All validations passed! Your dotfiles are properly installed.${NC}"
     exit 0
 else
