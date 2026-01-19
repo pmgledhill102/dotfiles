@@ -105,9 +105,9 @@ echo "Validating prompt theme functionality..."
 echo "-----------------------------------"
 
 # Test that starship config contains expected customizations
-validate_test "Starship config has directory customization" "grep -q 'directory' \"\$HOME/.config/starship.toml\""
-validate_test "Starship config has git_branch customization" "grep -q 'git_branch' \"\$HOME/.config/starship.toml\""
-validate_test "Starship config has character customization" "grep -q 'character' \"\$HOME/.config/starship.toml\""
+validate_test "Starship config has directory customization" "grep -q 'directory' \$HOME/.config/starship.toml"
+validate_test "Starship config has git_branch customization" "grep -q 'git_branch' \$HOME/.config/starship.toml"
+validate_test "Starship config has character customization" "grep -q 'character' \$HOME/.config/starship.toml"
 
 # Test prompt rendering with common scenarios
 PROMPT_TEST_DIR="/tmp/starship_test_$(date +%s)"

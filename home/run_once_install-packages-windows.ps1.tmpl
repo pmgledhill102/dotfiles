@@ -15,8 +15,8 @@ Write-Host "Windows Package Installation"
 Write-Host "=================================="
 Write-Host ""
 
-# Check if running on Windows
-if ($IsWindows -eq $false -and $null -ne $IsWindows) {
+# Check if running on Windows (only for PowerShell Core cross-platform detection)
+if ($PSVersionTable.PSEdition -eq 'Core' -and $IsWindows -eq $false) {
     Write-Host "This script is intended for Windows only."
     exit 1
 }

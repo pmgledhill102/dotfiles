@@ -1,0 +1,179 @@
+name: Package Updates Check
+
+on:
+  schedule:
+    # Run weekly on Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-homebrew:
+    name: Check Homebrew Package Updates
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Update Homebrew
+        run: brew update
+
+      - name: Check for outdated Homebrew packages
+        id: brew-check
+        run: |
+          cd home
+          if [ -f Brewfile ]; then
+            echo "Checking Brewfile packages..."
+            brew bundle check --file=Brewfile || true
+            
+            # Get list of outdated packages
+            OUTDATED=$(brew outdated --formula)
+            if [ -n "$OUTDATED" ]; then
+              echo "outdated=true" >> $GITHUB_OUTPUT
+              echo "OUTDATED_PACKAGES<<EOF" >> $GITHUB_OUTPUT
+              echo "$OUTDATED" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "outdated=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create issue for outdated Homebrew packages
+        if: steps.brew-check.outputs.outdated == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        env:
+          OUTDATED_PACKAGES: ${{ steps.brew-check.outputs.OUTDATED_PACKAGES }}
+        with:
+          script: |
+            const outdated = process.env.OUTDATED_PACKAGES;
+            const body = `## Outdated Homebrew Packages
+            
+            The following Homebrew packages have updates available:
+            
+            \`\`\`
+            ${outdated}
+            \`\`\`
+            
+            ### Action Required
+            
+            Review and update the \`Brewfile\` if needed:
+            
+            1. Update Brewfile with new versions
+            2. Test on a local macOS system
+            3. Update winget-packages.json and ubuntu_pkglist if applicable
+            4. Commit changes and create a PR
+            
+            ---
+            *This issue was automatically created by the Package Updates Check workflow.*`;
+            
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies,homebrew'
+            });
+            
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes('Outdated Homebrew Packages')
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## Updated Package List\n\n${body}`
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '📦 Outdated Homebrew Packages Detected',
+                body: body,
+                labels: ['dependencies', 'homebrew', 'maintenance']
+              });
+            }
+
+  check-starship:
+    name: Check Starship Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Get latest Starship version
+        id: starship-check
+        run: |
+          # Get latest release from GitHub
+          LATEST=$(curl -s https://api.github.com/repos/starship/starship/releases/latest | jq -r .tag_name)
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Latest Starship version: $LATEST"
+
+      - name: Create issue for Starship update
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const latestVersion = '${{ steps.starship-check.outputs.latest }}';
+            
+            const body = `## Starship Update Available
+            
+            A new version of Starship is available: **${latestVersion}**
+            
+            ### Action Required
+            
+            1. Review [Starship release notes](https://github.com/starship/starship/releases/${latestVersion})
+            2. Test the new version locally
+            3. Update installation scripts if needed
+            4. Update documentation if there are breaking changes
+            
+            The package managers (Homebrew, apt, winget) will automatically pull the latest version, but verify:
+            - \`run_once_install-packages.sh.tmpl\`
+            - \`run_once_install-packages-windows.ps1.tmpl\`
+            - \`.config/starship.toml\` compatibility
+            
+            ---
+            *This issue was automatically created by the Package Updates Check workflow.*`;
+            
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies,starship'
+            });
+            
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes('Starship Update Available')
+            );
+            
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `⭐ Starship Update Available: ${latestVersion}`,
+                body: body,
+                labels: ['dependencies', 'starship', 'maintenance']
+              });
+            }
+
+  summary:
+    name: Update Check Summary
+    runs-on: ubuntu-latest
+    needs: [check-homebrew, check-starship]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "### Package Update Check Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Checked for updates in:" >> $GITHUB_STEP_SUMMARY
+          echo "- Homebrew packages (macOS)" >> $GITHUB_STEP_SUMMARY
+          echo "- Starship prompt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "If updates were found, issues have been created automatically." >> $GITHUB_STEP_SUMMARY

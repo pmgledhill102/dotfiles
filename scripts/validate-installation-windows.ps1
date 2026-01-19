@@ -116,7 +116,7 @@ Test-Validation "Starship config has character customization" {
 
 # Test prompt rendering
 Test-Validation "Prompt renders in current directory" {
-    $prompt = starship prompt --terminal-width=80 2>$null
+    $prompt = starship prompt --terminal-width=80 -ErrorAction SilentlyContinue 2>&1
     -not [string]::IsNullOrWhiteSpace($prompt)
 }
 
