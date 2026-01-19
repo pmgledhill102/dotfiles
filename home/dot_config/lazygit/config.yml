@@ -10,8 +10,6 @@ gui:
       - blue
     selectedLineBgColor:
       - blue
-    selectedRangeBgColor:
-      - blue
   
   # Display settings
   showListFooter: true
@@ -22,17 +20,10 @@ gui:
   showRandomTip: true
   nerdFontsVersion: "3"
   
-  # Window size
-  windowSize: 'normal'
-  
   # Border style
   border: 'rounded'
 
 git:
-  paging:
-    colorArg: always
-    pager: delta --dark --paging=never
-  
   # Commit settings
   commit:
     signOff: false
@@ -91,7 +82,6 @@ keybinding:
     goInto: '<enter>'
     openRecentRepos: '<c-r>'
     confirm: '<enter>'
-    confirm-alt1: 'y'
     remove: 'd'
     new: 'n'
     edit: 'e'
@@ -102,7 +92,6 @@ keybinding:
     scrollDownMain-alt1: 'J'
     scrollUpMain-alt2: '<c-u>'
     scrollDownMain-alt2: '<c-d>'
-    executeCustomCommand: ':'
     createRebaseOptionsMenu: 'm'
     pushFiles: 'P'
     pullFiles: 'p'

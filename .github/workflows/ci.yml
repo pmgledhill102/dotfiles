@@ -36,10 +36,21 @@ jobs:
         with:
           globs: '**/*.md'
 
+  actionlint:
+    name: Action Lint
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Download actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+      - name: Run actionlint
+        run: ./actionlint -color
+
   test-install:
     name: Test Install on ${{ matrix.os }}
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    needs: [shellcheck, markdown-lint]
+    needs: [shellcheck, markdown-lint, actionlint]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
