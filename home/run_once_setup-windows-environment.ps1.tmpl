@@ -1,0 +1,83 @@
+# Windows Environment Variables Setup Script
+# This script configures Windows-specific environment variables for development
+# Run this script to set up your development environment
+
+# Exit on error
+$ErrorActionPreference = "Stop"
+
+Write-Host "=================================="
+Write-Host "Windows Environment Configuration"
+Write-Host "=================================="
+Write-Host ""
+
+# Function to set user environment variable persistently
+function Set-UserEnvironmentVariable {
+    param(
+        [string]$Name,
+        [string]$Value
+    )
+    
+    try {
+        [System.Environment]::SetEnvironmentVariable($Name, $Value, [System.EnvironmentVariableTarget]::User)
+        Write-Host "✓ Set $Name = $Value" -ForegroundColor Green
+    } catch {
+        Write-Host "✗ Failed to set $Name" -ForegroundColor Red
+        Write-Host "  Error: $_"
+    }
+}
+
+# Set common development environment variables
+Write-Host "Setting development environment variables..."
+Write-Host ""
+
+# Editor configuration (VS Code as default if available)
+if (Get-Command code -ErrorAction SilentlyContinue) {
+    Set-UserEnvironmentVariable "EDITOR" "code --wait"
+    Set-UserEnvironmentVariable "VISUAL" "code --wait"
+} elseif (Get-Command notepad++ -ErrorAction SilentlyContinue) {
+    Set-UserEnvironmentVariable "EDITOR" "notepad++"
+    Set-UserEnvironmentVariable "VISUAL" "notepad++"
+}
+
+# Git configuration
+Set-UserEnvironmentVariable "GIT_EDITOR" $env:EDITOR
+
+# Development directory
+$devDir = "$env:USERPROFILE\dev"
+if (-not (Test-Path $devDir)) {
+    New-Item -ItemType Directory -Path $devDir -Force | Out-Null
+    Write-Host "Created development directory: $devDir" -ForegroundColor Cyan
+}
+
+# Set HOME to user profile if not set (some tools expect this)
+if (-not $env:HOME) {
+    Set-UserEnvironmentVariable "HOME" $env:USERPROFILE
+}
+
+# XDG Base Directory specification (for cross-platform config compatibility)
+$xdgConfigHome = "$env:USERPROFILE\.config"
+$xdgDataHome = "$env:USERPROFILE\.local\share"
+$xdgCacheHome = "$env:USERPROFILE\.cache"
+
+if (-not (Test-Path $xdgConfigHome)) {
+    New-Item -ItemType Directory -Path $xdgConfigHome -Force | Out-Null
+}
+if (-not (Test-Path $xdgDataHome)) {
+    New-Item -ItemType Directory -Path $xdgDataHome -Force | Out-Null
+}
+if (-not (Test-Path $xdgCacheHome)) {
+    New-Item -ItemType Directory -Path $xdgCacheHome -Force | Out-Null
+}
+
+Set-UserEnvironmentVariable "XDG_CONFIG_HOME" $xdgConfigHome
+Set-UserEnvironmentVariable "XDG_DATA_HOME" $xdgDataHome
+Set-UserEnvironmentVariable "XDG_CACHE_HOME" $xdgCacheHome
+
+Write-Host ""
+Write-Host "=================================="
+Write-Host "Configuration Complete!"
+Write-Host "=================================="
+Write-Host ""
+Write-Host "IMPORTANT: Restart your terminal or PowerShell session"
+Write-Host "for environment variable changes to take effect."
+Write-Host ""

@@ -1,10 +1,12 @@
 # My Dotfiles
 
-This repository contains my personal dotfiles, managed by `chezmoi`. It provides a consistent Zsh shell experience with Oh My Zsh, Starship prompt, and Ghostty terminal across macOS, Ubuntu/Debian, and WSL.
+This repository contains my personal dotfiles, managed by `chezmoi`. It provides a consistent shell experience with Starship prompt across macOS, Linux (Ubuntu/Debian), Windows, and WSL.
 
 ## Quick Start
 
 ### Installation
+
+#### macOS / Linux / WSL
 
 To install these dotfiles on a new machine, run the following command. You can optionally pass a branch name as an argument to install a specific version of the dotfiles.
 
@@ -12,26 +14,42 @@ To install these dotfiles on a new machine, run the following command. You can o
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/install.sh)" -- [branch-name]
 ```
 
+#### Windows (PowerShell)
+
+For Windows, run the following in PowerShell as Administrator:
+
+```powershell
+# Install chezmoi via winget first
+winget install --id twpayne.chezmoi
+
+# Initialize and apply dotfiles
+chezmoi init --apply pmgledhill102
+```
+
 This will:
 
 - Install chezmoi
-- Install required packages (Zsh, Oh My Zsh, Starship, age, etc.)
-- Install development tools via Brewfile (macOS) or package lists (Linux)
+- Install required packages (Zsh/PowerShell, Oh My Zsh, Starship, age, etc.)
+- Install development tools via Brewfile (macOS), package lists (Linux), or winget (Windows)
 - Apply your dotfile configurations
-- Set up Zsh as your default shell
+- Set up Zsh as your default shell (Unix) or enhance PowerShell (Windows)
 - Configure tmux, git-delta, lazygit, and VS Code
-- Install JetBrains Mono Nerd Font (macOS only)
-- Apply macOS system defaults (macOS only)
+- Install JetBrains Mono Nerd Font
+- Apply system defaults (macOS) or registry tweaks (Windows)
 
 ### What's Included
 
 #### Core Shell Environment
 
-- **Shell**: Zsh with Oh My Zsh
-- **Prompt**: Starship (fast, customizable prompt)
-- **Terminal**: Ghostty (macOS/Windows)
-- **Terminal Multiplexer**: Tmux with optimized configuration
-- **Plugins**:
+- **Shell**: 
+  - Unix: Zsh with Oh My Zsh
+  - Windows: PowerShell Core with enhanced configuration
+- **Prompt**: Starship (fast, customizable prompt) - works on all platforms
+- **Terminal**: 
+  - macOS: Ghostty
+  - Windows: Windows Terminal with custom configuration
+- **Terminal Multiplexer**: Tmux (Unix only)
+- **Zsh Plugins** (Unix):
   - zsh-autosuggestions
   - zsh-syntax-highlighting
   - colored-man-pages
@@ -45,17 +63,20 @@ This will:
 - **Package Management**:
   - macOS: Brewfile for automated Homebrew package management
   - Linux: Ubuntu package list for apt-based installations
+  - Windows: winget packages JSON for automated Windows package management
 - **Git Enhancements**:
   - git-delta for improved diff viewing
   - lazygit for TUI-based Git operations
   - Global gitignore for system-wide exclusions
 - **Editor**: VS Code with synchronized settings and keybindings
-- **Fonts**: JetBrains Mono Nerd Font (macOS only, via Brewfile)
+- **Fonts**: JetBrains Mono Nerd Font (all platforms)
 
 #### Security & Configuration
 
 - **Secret Management**: age encryption for sensitive configs
-- **macOS Defaults**: Developer-optimized system settings (macOS only)
+- **Platform-Specific**:
+  - macOS: Developer-optimized system settings
+  - Windows: Registry tweaks for Long Paths and Developer Mode
 
 ## Documentation
 

@@ -54,7 +54,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - name: Checkout repository
@@ -74,7 +74,8 @@ jobs:
         brew update
         brew upgrade
 
-    - name: Check disk space before installation
+    - name: Check disk space before installation (Unix)
+      if: runner.os != 'Windows'
       run: |
         echo "==================================="
         echo "Disk Space Before Installation"
@@ -93,6 +94,20 @@ jobs:
         echo ""
         echo "Home directory size:"
         du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+
+    - name: Check disk space before installation (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "==================================="
+        Write-Host "Disk Space Before Installation"
+        Write-Host "==================================="
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Format-Table -AutoSize
+        Write-Host ""
+        $drive = (Get-Item $HOME).PSDrive
+        $initialUsed = $drive.Used
+        $initialUsed | Out-File "$env:TEMP\initial_disk_used.txt"
+        Write-Host "Initial disk usage (home volume): $([math]::Round($initialUsed / 1KB, 2)) KB"
 
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
@@ -115,7 +130,15 @@ jobs:
       run: |
         sudo sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
 
-    - name: Initialize and Apply Dotfiles
+    - name: Install chezmoi (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Install chezmoi via winget
+        winget install --id twpayne.chezmoi --accept-source-agreements --accept-package-agreements
+
+    - name: Initialize and Apply Dotfiles (Unix)
+      if: runner.os != 'Windows'
       run: |
         # Use 'time' to benchmarking installation (T026)
         # We use --source . to use the checked-out repo
@@ -128,13 +151,34 @@ jobs:
         echo "Starting Chezmoi Apply..."
         time chezmoi init --apply --source . --verbose
 
-    - name: Run Validation Script
+    - name: Initialize and Apply Dotfiles (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Create chezmoi config directory and copy config file
+        New-Item -ItemType Directory -Path "$HOME\.config\chezmoi" -Force | Out-Null
+        Copy-Item .chezmoi.toml "$HOME\.config\chezmoi\chezmoi.toml"
+        
+        Write-Host "Starting Chezmoi Apply..."
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        chezmoi init --apply --source . --verbose
+        $stopwatch.Stop()
+        Write-Host "Installation took $($stopwatch.Elapsed.TotalSeconds) seconds"
+
+    - name: Run Validation Script (Unix)
+      if: runner.os != 'Windows'
       run: |
         chmod +x scripts/validate-installation.sh
         ./scripts/validate-installation.sh
 
-    - name: Check disk space after installation
-      if: always()
+    - name: Run Validation Script (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        & scripts/validate-installation-windows.ps1
+
+    - name: Check disk space after installation (Unix)
+      if: always() && runner.os != 'Windows'
       run: |
         echo ""
         echo "==================================="
@@ -197,6 +241,44 @@ jobs:
         # Persist disk overhead for summary step
         echo "OVERHEAD_KB=$OVERHEAD_KB" > /tmp/disk_overhead.txt
         echo "OVERHEAD_MB=$OVERHEAD_MB" >> /tmp/disk_overhead.txt
+
+    - name: Check disk space after installation (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host ""
+        Write-Host "==================================="
+        Write-Host "Disk Space After Installation"
+        Write-Host "==================================="
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Format-Table -AutoSize
+        Write-Host ""
+        
+        $initialFile = "$env:TEMP\initial_disk_used.txt"
+        if (-not (Test-Path $initialFile)) {
+          Write-Host "Error: Initial disk usage file not found"
+          exit 1
+        }
+        
+        $initialUsed = [decimal](Get-Content $initialFile)
+        $drive = (Get-Item $HOME).PSDrive
+        $finalUsed = $drive.Used
+        
+        $overheadBytes = $finalUsed - $initialUsed
+        $overheadKB = [math]::Round($overheadBytes / 1KB, 2)
+        $overheadMB = [math]::Round($overheadBytes / 1MB, 2)
+        $overheadGB = [math]::Round($overheadBytes / 1GB, 2)
+        
+        Write-Host "==================================="
+        Write-Host "Disk Space Overhead Summary"
+        Write-Host "==================================="
+        Write-Host "Initial disk used: $([math]::Round($initialUsed / 1MB, 2)) MB"
+        Write-Host "Final disk used:   $([math]::Round($finalUsed / 1MB, 2)) MB"
+        Write-Host "Disk overhead:     $overheadMB MB ($overheadGB GB)"
+        Write-Host "==================================="
+        
+        # Persist for summary
+        "OVERHEAD_KB=$overheadKB" | Out-File "$env:TEMP\disk_overhead.txt"
+        "OVERHEAD_MB=$overheadMB" | Add-Content "$env:TEMP\disk_overhead.txt"
 
     - name: Generate Installation Report
       if: always()

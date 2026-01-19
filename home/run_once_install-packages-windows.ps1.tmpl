@@ -1,0 +1,134 @@
+# Windows Package Installation Script
+# This script runs once to install packages on Windows using winget
+
+# Exit on error
+$ErrorActionPreference = "Stop"
+
+# Enable verbose output if RUNNER_DEBUG is set
+if ($env:RUNNER_DEBUG -eq "1") {
+    $VerbosePreference = "Continue"
+    $DebugPreference = "Continue"
+}
+
+Write-Host "=================================="
+Write-Host "Windows Package Installation"
+Write-Host "=================================="
+Write-Host ""
+
+# Check if running on Windows
+if ($IsWindows -eq $false -and $null -ne $IsWindows) {
+    Write-Host "This script is intended for Windows only."
+    exit 1
+}
+
+# Ensure winget is available
+if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    Write-Host "ERROR: winget is not installed or not in PATH."
+    Write-Host "Please install App Installer from the Microsoft Store."
+    exit 1
+}
+
+Write-Host "Winget version:"
+winget --version
+Write-Host ""
+
+# Path to winget packages JSON file
+$packagesJson = Join-Path $HOME "winget-packages.json"
+
+if (-not (Test-Path $packagesJson)) {
+    Write-Host "ERROR: winget-packages.json not found at $packagesJson"
+    exit 1
+}
+
+Write-Host "Installing packages from winget-packages.json..."
+Write-Host ""
+
+# Import packages using winget import
+# --ignore-unavailable: Skip packages that are not available
+# --ignore-versions: Install latest versions even if JSON specifies different versions
+# --accept-source-agreements: Auto-accept source agreements
+# --accept-package-agreements: Auto-accept package agreements
+try {
+    winget import --import-file $packagesJson `
+        --ignore-unavailable `
+        --ignore-versions `
+        --accept-source-agreements `
+        --accept-package-agreements
+    Write-Host ""
+    Write-Host "Packages installed successfully."
+} catch {
+    Write-Host "WARNING: Some packages may have failed to install."
+    Write-Host "Error: $_"
+}
+
+Write-Host ""
+Write-Host "=================================="
+Write-Host "Registry Tweaks for Developer Experience"
+Write-Host "=================================="
+Write-Host ""
+
+# Enable Long Paths support (required for many development tools)
+Write-Host "Enabling Long Paths support..."
+try {
+    $longPathsKey = "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"
+    Set-ItemProperty -Path $longPathsKey -Name "LongPathsEnabled" -Value 1 -Type DWord -Force
+    Write-Host "Long Paths enabled successfully."
+} catch {
+    Write-Host "WARNING: Failed to enable Long Paths. You may need to run as Administrator."
+    Write-Host "Error: $_"
+}
+
+# Enable Developer Mode (allows symlinks without admin privileges, sideloading apps, etc.)
+Write-Host ""
+Write-Host "Enabling Developer Mode..."
+try {
+    $devModeKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+    if (-not (Test-Path $devModeKey)) {
+        New-Item -Path $devModeKey -Force | Out-Null
+    }
+    Set-ItemProperty -Path $devModeKey -Name "AllowDevelopmentWithoutDevLicense" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $devModeKey -Name "AllowAllTrustedApps" -Value 1 -Type DWord -Force
+    Write-Host "Developer Mode enabled successfully."
+} catch {
+    Write-Host "WARNING: Failed to enable Developer Mode. You may need to run as Administrator."
+    Write-Host "Error: $_"
+}
+
+Write-Host ""
+Write-Host "=================================="
+Write-Host "Post-Installation Configuration"
+Write-Host "=================================="
+Write-Host ""
+
+# Verify critical tools are in PATH
+Write-Host "Verifying installed tools..."
+$tools = @("pwsh", "git", "chezmoi", "starship", "age", "delta", "lazygit")
+$missingTools = @()
+
+foreach ($tool in $tools) {
+    if (Get-Command $tool -ErrorAction SilentlyContinue) {
+        Write-Host "✓ $tool is available"
+    } else {
+        Write-Host "✗ $tool is NOT in PATH"
+        $missingTools += $tool
+    }
+}
+
+if ($missingTools.Count -gt 0) {
+    Write-Host ""
+    Write-Host "WARNING: Some tools are not in PATH. You may need to:"
+    Write-Host "1. Restart your terminal or PowerShell session"
+    Write-Host "2. Log out and log back in to refresh environment variables"
+    Write-Host "3. Manually add tool paths to your PATH environment variable"
+    Write-Host ""
+    Write-Host "Missing tools: $($missingTools -join ', ')"
+}
+
+Write-Host ""
+Write-Host "=================================="
+Write-Host "Installation Complete!"
+Write-Host "=================================="
+Write-Host ""
+Write-Host "IMPORTANT: You may need to restart your terminal or log out/in"
+Write-Host "for all PATH changes to take effect."
+Write-Host ""

@@ -1,1 +1,31 @@
 .secrets
+
+# Only apply PowerShell scripts on Windows
+{{- if ne .chezmoi.os "windows" }}
+run_once_install-packages-windows.ps1.tmpl
+run_once_setup-windows-environment.ps1.tmpl
+AppData/
+{{- end }}
+
+# Only apply shell scripts on Unix
+{{- if eq .chezmoi.os "windows" }}
+run_once_install-packages.sh.tmpl
+run_once_macos_defaults.sh
+run_onchange_install-brewfile.sh.tmpl
+run_onchange_install-ubuntu-packages.sh.tmpl
+Brewfile
+.tmux.conf
+{{- end }}
+
+# OS-specific files
+{{- if ne .chezmoi.os "darwin" }}
+run_once_macos_defaults.sh
+run_onchange_install-brewfile.sh.tmpl
+Brewfile
+{{- end }}
+
+{{- if ne .chezmoi.os "linux" }}
+run_onchange_install-ubuntu-packages.sh.tmpl
+.config/ubuntu_pkglist
+{{- end }}
+
