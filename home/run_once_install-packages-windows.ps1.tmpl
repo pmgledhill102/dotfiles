@@ -41,27 +41,57 @@ if (-not (Test-Path $packagesJson)) {
     exit 1
 }
 
-Write-Host "Using winget packages list from $packagesJson..."
-Write-Host "Installing packages from winget-packages.json..."
+Write-Host "Loading package list from $packagesJson..."
+
+# Read and parse the JSON file to get package list
+$packagesData = Get-Content $packagesJson | ConvertFrom-Json
+$packages = $packagesData.Sources[0].Packages | ForEach-Object { $_.PackageIdentifier }
+
+Write-Host "Found $($packages.Count) packages to install"
 Write-Host ""
 
-# Import packages using winget import
-# --ignore-unavailable: Skip packages that are not available
-# --ignore-versions: Install latest versions even if JSON specifies different versions
-# --accept-source-agreements: Auto-accept source agreements
-# --accept-package-agreements: Auto-accept package agreements
-try {
-    winget import --import-file $packagesJson `
-        --ignore-unavailable `
-        --ignore-versions `
+$successCount = 0
+$failureCount = 0
+$skippedCount = 0
+
+foreach ($package in $packages) {
+    Write-Host "Installing $package..." -ForegroundColor Cyan
+
+    # Check if already installed
+    $installed = winget list --id $package --exact --accept-source-agreements 2>$null
+    if ($LASTEXITCODE -eq 0 -and $installed -match $package) {
+        Write-Host "  Already installed, skipping" -ForegroundColor Yellow
+        $skippedCount++
+        continue
+    }
+
+    # Install the package
+    # --silent: No interactive prompts
+    # --accept-source-agreements: Auto-accept source agreements
+    # --accept-package-agreements: Auto-accept package agreements
+    $result = winget install --id $package `
+        --exact `
+        --silent `
         --accept-source-agreements `
-        --accept-package-agreements
-    Write-Host ""
-    Write-Host "Packages installed successfully."
-} catch {
-    Write-Host "WARNING: Some packages may have failed to install."
-    Write-Host "Error: $_"
+        --accept-package-agreements 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  Installed successfully" -ForegroundColor Green
+        $successCount++
+    } else {
+        Write-Host "  Failed to install (exit code: $LASTEXITCODE)" -ForegroundColor Red
+        if ($result) {
+            Write-Host "  Error: $result" -ForegroundColor Red
+        }
+        $failureCount++
+    }
 }
+
+Write-Host ""
+Write-Host "Installation Summary:" -ForegroundColor Cyan
+Write-Host "  Success: $successCount" -ForegroundColor Green
+Write-Host "  Failed:  $failureCount" -ForegroundColor Red
+Write-Host "  Skipped: $skippedCount" -ForegroundColor Yellow
 
 Write-Host ""
 Write-Host "=================================="
