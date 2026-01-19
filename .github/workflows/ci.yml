@@ -136,6 +136,11 @@ jobs:
       run: |
         # Install chezmoi via winget
         winget install --id twpayne.chezmoi --accept-source-agreements --accept-package-agreements
+        
+        # Add WinGet links directory to PATH for subsequent steps
+        $wingetPath = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+        Write-Host "Adding $wingetPath to PATH"
+        echo "$wingetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Initialize and Apply Dotfiles (Unix)
       if: runner.os != 'Windows'
