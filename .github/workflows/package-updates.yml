@@ -25,9 +25,10 @@ jobs:
         id: brew-check
         run: |
           cd home
-          if [ -f Brewfile ]; then
+          if [ -f Brewfile.tmpl ]; then
             echo "Checking Brewfile packages..."
-            brew bundle check --file=Brewfile || true
+            # Note: Brewfile.tmpl is a template, so we can't directly use brew bundle check
+            # Instead, we'll just check for outdated packages in general
             
             # Get list of outdated packages
             OUTDATED=$(brew outdated --formula)

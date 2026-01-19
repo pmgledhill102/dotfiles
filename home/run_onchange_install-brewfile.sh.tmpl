@@ -14,8 +14,8 @@ case "$(uname -s)" in
       exit 1
     fi
     
-    # Use the Brewfile from the chezmoi source directory
-    BREWFILE="{{ .chezmoi.sourceDir }}/Brewfile"
+    # Use the Brewfile from the home directory (after chezmoi applies it)
+    BREWFILE="$HOME/Brewfile"
     
     if [ -f "$BREWFILE" ]; then
       echo "Installing packages from Brewfile at $BREWFILE..."
