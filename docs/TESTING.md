@@ -58,6 +58,7 @@ chmod +x scripts/validate-installation.sh
 ```
 
 The script validates:
+
 - Shell configuration (Zsh, Oh My Zsh)
 - Starship prompt installation and configuration
 - Theme and prompt functionality
@@ -78,6 +79,7 @@ The script validates:
 ```
 
 The script validates:
+
 - PowerShell profile and configuration
 - Starship prompt installation and configuration
 - Windows Terminal settings
@@ -99,6 +101,7 @@ The most reliable way to test is on a fresh system:
    - Verify all features work as expected
 
 2. **Using Containers** (Linux only)
+
    ```bash
    docker run -it --rm ubuntu:latest bash
    # Run installation commands
@@ -112,6 +115,7 @@ The most reliable way to test is on a fresh system:
 #### Test Specific Features
 
 1. **Shell Configuration**
+
    ```bash
    # Start a new shell session
    zsh  # or pwsh on Windows
@@ -122,6 +126,7 @@ The most reliable way to test is on a fresh system:
    ```
 
 2. **Git Configuration**
+
    ```bash
    # Check git config
    git config --list
@@ -131,6 +136,7 @@ The most reliable way to test is on a fresh system:
    ```
 
 3. **Starship Prompt**
+
    ```bash
    # Check version
    starship --version
@@ -142,6 +148,7 @@ The most reliable way to test is on a fresh system:
    ```
 
 4. **Chezmoi Operations**
+
    ```bash
    # Check status
    chezmoi status
@@ -161,6 +168,7 @@ The most reliable way to test is on a fresh system:
 ### Before Submitting a PR
 
 1. **Run Local Validation**
+
    ```bash
    # Unix
    ./scripts/validate-installation.sh
@@ -170,6 +178,7 @@ The most reliable way to test is on a fresh system:
    ```
 
 2. **Check Linting**
+
    ```bash
    # Install shellcheck (if not already installed)
    # macOS: brew install shellcheck
@@ -181,6 +190,7 @@ The most reliable way to test is on a fresh system:
    ```
 
 3. **Test on Target Platform**
+
    - If modifying macOS-specific code, test on macOS
    - If modifying Linux-specific code, test on Ubuntu/Debian
    - If modifying Windows-specific code, test on Windows
@@ -188,6 +198,7 @@ The most reliable way to test is on a fresh system:
 ### PR Testing
 
 When you open a PR:
+
 1. GitHub Actions automatically runs the full test suite
 2. Review the workflow results in the PR checks
 3. Fix any failures before merging
@@ -218,10 +229,12 @@ When you open a PR:
 ## Performance Benchmarks
 
 The CI pipeline tracks:
+
 - **Installation Time**: Total time for `chezmoi init --apply`
 - **Disk Space Overhead**: Additional disk space used by dotfiles and tools
 
 Typical performance metrics:
+
 - **macOS**: ~5-10 minutes (includes Homebrew package installation)
 - **Linux**: ~3-5 minutes (includes apt packages)
 - **Windows**: ~10-15 minutes (includes winget package installation)
@@ -267,12 +280,14 @@ Typical performance metrics:
 ### Adding Validation Tests
 
 1. **For Unix (scripts/validate-installation.sh)**
+
    ```bash
    # Add a new validation test
    validate_test "Description of test" "test_command"
    ```
 
 2. **For Windows (scripts/validate-installation-windows.ps1)**
+
    ```powershell
    # Add a new validation test
    Test-Validation "Description of test" {
@@ -310,6 +325,7 @@ Edit `.github/workflows/ci.yml` to add new test steps:
 ## Support
 
 If you encounter testing issues:
+
 1. Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 2. Review [GitHub Issues](https://github.com/pmgledhill102/dotfiles/issues)
 3. Open a new issue with test logs and details

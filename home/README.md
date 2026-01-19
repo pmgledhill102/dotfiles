@@ -41,11 +41,11 @@ This will:
 
 #### Core Shell Environment
 
-- **Shell**: 
+- **Shell**:
   - Unix: Zsh with Oh My Zsh
   - Windows: PowerShell Core with enhanced configuration
 - **Prompt**: Starship (fast, customizable prompt) - works on all platforms
-- **Terminal**: 
+- **Terminal**:
   - macOS: Ghostty
   - Windows: Windows Terminal with custom configuration
 - **Terminal Multiplexer**: Tmux (Unix only)

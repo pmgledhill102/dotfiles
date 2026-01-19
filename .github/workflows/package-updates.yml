@@ -32,12 +32,14 @@ jobs:
             # Get list of outdated packages
             OUTDATED=$(brew outdated --formula)
             if [ -n "$OUTDATED" ]; then
-              echo "outdated=true" >> $GITHUB_OUTPUT
-              echo "OUTDATED_PACKAGES<<EOF" >> $GITHUB_OUTPUT
-              echo "$OUTDATED" >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
+              {
+                echo "outdated=true"
+                echo "OUTDATED_PACKAGES<<EOF"
+                echo "$OUTDATED"
+                echo "EOF"
+              } >> "$GITHUB_OUTPUT"
             else
-              echo "outdated=false" >> $GITHUB_OUTPUT
+              echo "outdated=false" >> "$GITHUB_OUTPUT"
             fi
           fi
 
@@ -112,7 +114,7 @@ jobs:
         run: |
           # Get latest release from GitHub
           LATEST=$(curl -s https://api.github.com/repos/starship/starship/releases/latest | jq -r .tag_name)
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
           echo "Latest Starship version: $LATEST"
 
       - name: Create issue for Starship update
@@ -170,10 +172,12 @@ jobs:
     steps:
       - name: Summary
         run: |
-          echo "### Package Update Check Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Checked for updates in:" >> $GITHUB_STEP_SUMMARY
-          echo "- Homebrew packages (macOS)" >> $GITHUB_STEP_SUMMARY
-          echo "- Starship prompt" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "If updates were found, issues have been created automatically." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Package Update Check Complete"
+            echo ""
+            echo "Checked for updates in:"
+            echo "- Homebrew packages (macOS)"
+            echo "- Starship prompt"
+            echo ""
+            echo "If updates were found, issues have been created automatically."
+          } >> "$GITHUB_STEP_SUMMARY"
