@@ -82,6 +82,44 @@ Test-Validation "Starship version can be queried" {
     $LASTEXITCODE -eq 0
 }
 
+# Additional prompt functionality tests (T024)
+Write-Host ""
+Write-Host "Validating prompt theme functionality..."
+Write-Host "-----------------------------------"
+
+Test-Validation "Starship config has directory customization" {
+    $configPath = "$HOME\.config\starship.toml"
+    if (Test-Path $configPath) {
+        (Get-Content $configPath -Raw) -match "directory"
+    } else {
+        $false
+    }
+}
+
+Test-Validation "Starship config has git_branch customization" {
+    $configPath = "$HOME\.config\starship.toml"
+    if (Test-Path $configPath) {
+        (Get-Content $configPath -Raw) -match "git_branch"
+    } else {
+        $false
+    }
+}
+
+Test-Validation "Starship config has character customization" {
+    $configPath = "$HOME\.config\starship.toml"
+    if (Test-Path $configPath) {
+        (Get-Content $configPath -Raw) -match "character"
+    } else {
+        $false
+    }
+}
+
+# Test prompt rendering
+Test-Validation "Prompt renders in current directory" {
+    $prompt = starship prompt --terminal-width=80 2>$null
+    -not [string]::IsNullOrWhiteSpace($prompt)
+}
+
 # Validate Windows Terminal Configuration
 Write-Host ""
 Write-Host "Validating Windows Terminal configuration..."

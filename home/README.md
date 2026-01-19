@@ -83,11 +83,11 @@ This will:
 Comprehensive guides are available:
 
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Guidelines for maintaining and extending these dotfiles
+- **[docs/TESTING.md](../docs/TESTING.md)** - Testing procedures and automation
 - **[docs/MAINTENANCE.md](../docs/MAINTENANCE.md)** - Regular maintenance tasks and dependency updates
 - **[docs/BACKUP_RECOVERY.md](../docs/BACKUP_RECOVERY.md)** - Backup strategies and disaster recovery procedures
 - **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[docs/MIGRATION.md](../docs/MIGRATION.md)** - Guide for migrating from other dotfile systems
-- **[docs/VMWARE_TESTING_GUIDE.md](../docs/VMWARE_TESTING_GUIDE.md)** - Testing with virtual machines
 
 ## Secret Management
 
