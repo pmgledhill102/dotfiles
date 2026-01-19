@@ -6,6 +6,7 @@
   ],
   "words": [
     "avahi",
+    "bbwe",
     "Bitwarden",
     "Bonjour",
     "catppuccin",
@@ -24,9 +25,11 @@
     "getent",
     "getutm",
     "Ghostty",
+    "HKLM",
     "infocmp",
     "keybinding",
     "keygen",
+    "LASTEXITCODE",
     "ludeeus",
     "nogui",
     "noninteractive",
@@ -52,6 +55,7 @@
     "vicmd",
     "vmrun",
     "vmwarevm",
+    "wekyb",
     "winget",
     "xterm"
   ],
