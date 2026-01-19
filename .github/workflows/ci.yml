@@ -121,6 +121,10 @@ jobs:
         # We use --source . to use the checked-out repo
         # We assume no secrets are strictly blocking for this basic CI smoke test
         
+        # Create chezmoi config directory and copy config file
+        mkdir -p "$HOME/.config/chezmoi"
+        cp .chezmoi.toml "$HOME/.config/chezmoi/chezmoi.toml"
+        
         echo "Starting Chezmoi Apply..."
         time chezmoi init --apply --source . --verbose
 
