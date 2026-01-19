@@ -115,9 +115,13 @@ Test-Validation "Starship config has character customization" {
 }
 
 # Test prompt rendering
-Test-Validation "Prompt renders in current directory" {
-    $prompt = starship prompt --terminal-width=80 -ErrorAction SilentlyContinue 2>&1
-    -not [string]::IsNullOrWhiteSpace($prompt)
+if (Get-Command starship -ErrorAction SilentlyContinue) {
+    Test-Validation "Prompt renders in current directory" {
+        $prompt = starship prompt --terminal-width=80 -ErrorAction SilentlyContinue 2>&1
+        -not [string]::IsNullOrWhiteSpace($prompt)
+    }
+} else {
+    Write-Host "⚠ Prompt rendering test skipped (starship not in PATH)" -ForegroundColor Yellow
 }
 
 # Validate Windows Terminal Configuration

@@ -3,8 +3,10 @@
 
 # Initialize Starship prompt (unless in VS Code Copilot Chat terminal)
 if ($env:VSCODE_COPILOT_CHAT_TERMINAL -ne "1") {
-    $env:STARSHIP_CONFIG = "$HOME/.config/starship.toml"
-    Invoke-Expression (&starship init powershell)
+    if (Get-Command starship -ErrorAction SilentlyContinue) {
+        $env:STARSHIP_CONFIG = "$HOME/.config/starship.toml"
+        Invoke-Expression (&starship init powershell)
+    }
 }
 
 # Set PSReadLine options for better command line editing
