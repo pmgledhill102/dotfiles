@@ -54,7 +54,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - name: Checkout repository
@@ -74,7 +74,8 @@ jobs:
         brew update
         brew upgrade
 
-    - name: Check disk space before installation
+    - name: Check disk space before installation (Unix)
+      if: runner.os != 'Windows'
       run: |
         echo "==================================="
         echo "Disk Space Before Installation"
@@ -93,6 +94,20 @@ jobs:
         echo ""
         echo "Home directory size:"
         du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+
+    - name: Check disk space before installation (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "==================================="
+        Write-Host "Disk Space Before Installation"
+        Write-Host "==================================="
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Format-Table -AutoSize
+        Write-Host ""
+        $drive = (Get-Item $HOME).PSDrive
+        $initialUsed = $drive.Used
+        $initialUsed | Out-File "$env:TEMP\initial_disk_used.txt"
+        Write-Host "Initial disk usage (home volume): $([math]::Round($initialUsed / 1KB, 2)) KB"
 
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
@@ -115,7 +130,20 @@ jobs:
       run: |
         sudo sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
 
-    - name: Initialize and Apply Dotfiles
+    - name: Install chezmoi (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Install chezmoi via winget
+        winget install --id twpayne.chezmoi --accept-source-agreements --accept-package-agreements
+        
+        # Add WinGet links directory to PATH for subsequent steps
+        $wingetPath = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+        Write-Host "Adding $wingetPath to PATH"
+        echo "$wingetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Initialize and Apply Dotfiles (Unix)
+      if: runner.os != 'Windows'
       run: |
         # Use 'time' to benchmarking installation (T026)
         # We use --source . to use the checked-out repo
@@ -128,13 +156,34 @@ jobs:
         echo "Starting Chezmoi Apply..."
         time chezmoi init --apply --source . --verbose
 
-    - name: Run Validation Script
+    - name: Initialize and Apply Dotfiles (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Create chezmoi config directory and copy config file
+        New-Item -ItemType Directory -Path "$HOME\.config\chezmoi" -Force | Out-Null
+        Copy-Item .chezmoi.toml "$HOME\.config\chezmoi\chezmoi.toml"
+        
+        Write-Host "Starting Chezmoi Apply..."
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        chezmoi init --apply --source . --verbose
+        $stopwatch.Stop()
+        Write-Host "Installation took $($stopwatch.Elapsed.TotalSeconds) seconds"
+
+    - name: Run Validation Script (Unix)
+      if: runner.os != 'Windows'
       run: |
         chmod +x scripts/validate-installation.sh
         ./scripts/validate-installation.sh
 
-    - name: Check disk space after installation
-      if: always()
+    - name: Run Validation Script (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        & scripts/validate-installation-windows.ps1
+
+    - name: Check disk space after installation (Unix)
+      if: always() && runner.os != 'Windows'
       run: |
         echo ""
         echo "==================================="
@@ -198,15 +247,53 @@ jobs:
         echo "OVERHEAD_KB=$OVERHEAD_KB" > /tmp/disk_overhead.txt
         echo "OVERHEAD_MB=$OVERHEAD_MB" >> /tmp/disk_overhead.txt
 
-    - name: Generate Installation Report
-      if: always()
+    - name: Check disk space after installation (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host ""
+        Write-Host "==================================="
+        Write-Host "Disk Space After Installation"
+        Write-Host "==================================="
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Format-Table -AutoSize
+        Write-Host ""
+        
+        $initialFile = "$env:TEMP\initial_disk_used.txt"
+        if (-not (Test-Path $initialFile)) {
+          Write-Host "Error: Initial disk usage file not found"
+          exit 1
+        }
+        
+        $initialUsed = [decimal](Get-Content $initialFile)
+        $drive = (Get-Item $HOME).PSDrive
+        $finalUsed = $drive.Used
+        
+        $overheadBytes = $finalUsed - $initialUsed
+        $overheadKB = [math]::Round($overheadBytes / 1KB, 2)
+        $overheadMB = [math]::Round($overheadBytes / 1MB, 2)
+        $overheadGB = [math]::Round($overheadBytes / 1GB, 2)
+        
+        Write-Host "==================================="
+        Write-Host "Disk Space Overhead Summary"
+        Write-Host "==================================="
+        Write-Host "Initial disk used: $([math]::Round($initialUsed / 1MB, 2)) MB"
+        Write-Host "Final disk used:   $([math]::Round($finalUsed / 1MB, 2)) MB"
+        Write-Host "Disk overhead:     $overheadMB MB ($overheadGB GB)"
+        Write-Host "==================================="
+        
+        # Persist for summary
+        "OVERHEAD_KB=$overheadKB" | Out-File "$env:TEMP\disk_overhead.txt"
+        "OVERHEAD_MB=$overheadMB" | Add-Content "$env:TEMP\disk_overhead.txt"
+
+    - name: Generate Installation Report (Unix)
+      if: always() && runner.os != 'Windows'
       run: |
         # Generate Job Summary
         {
           echo "### Installation Report (${{ matrix.os }}) :bar_chart:"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
-        
+
         # Load test counts if available
         if [ -f /tmp/validation_counts.txt ]; then
             source /tmp/validation_counts.txt
@@ -215,7 +302,7 @@ jobs:
             FAILED_TESTS="0"
             TOTAL_TESTS="0"
         fi
-        
+
         # Load disk overhead if available
         if [ -f /tmp/disk_overhead.txt ]; then
             source /tmp/disk_overhead.txt
@@ -224,7 +311,7 @@ jobs:
             OVERHEAD_MB="0"
             OVERHEAD_DISPLAY="N/A"
         fi
-        
+
         # Determine status icon
         # We consider it a success if:
         # 1. Validation ran and reported 0 failures
@@ -235,7 +322,7 @@ jobs:
         else
              STATUS="❌ Failure"
         fi
-        
+
         {
           echo "| Metric | Value |"
           echo "| :--- | :--- |"
@@ -243,7 +330,7 @@ jobs:
           echo "| **Tests Run** | $TOTAL_TESTS |"
           echo "| **Tests Passed** | $PASSED_TESTS |"
         } >> "$GITHUB_STEP_SUMMARY"
-        
+
         if [ "$OVERHEAD_DISPLAY" != "N/A" ]; then
             if [ "$OVERHEAD_KB" -ge 0 ]; then
               OVERHEAD_DISPLAY="${OVERHEAD_MB} MB"
@@ -253,6 +340,61 @@ jobs:
             fi
         fi
         echo "| **Disk Overhead** | $OVERHEAD_DISPLAY |" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Generate Installation Report (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Generate Job Summary
+        @"
+        ### Installation Report (${{ matrix.os }}) :bar_chart:
+
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+        # Load test counts if available
+        $countsFile = "$env:TEMP\validation_counts.txt"
+        if (Test-Path $countsFile) {
+            Get-Content $countsFile | ForEach-Object {
+                if ($_ -match '^(\w+)=(.+)$') {
+                    Set-Variable -Name $matches[1] -Value $matches[2]
+                }
+            }
+        } else {
+            $PASSED_TESTS = "0"
+            $FAILED_TESTS = "0"
+            $TOTAL_TESTS = "0"
+        }
+
+        # Load disk overhead if available
+        $overheadFile = "$env:TEMP\disk_overhead.txt"
+        if (Test-Path $overheadFile) {
+            Get-Content $overheadFile | ForEach-Object {
+                if ($_ -match '^(\w+)=(.+)$') {
+                    Set-Variable -Name $matches[1] -Value $matches[2]
+                }
+            }
+            $OVERHEAD_DISPLAY = "$OVERHEAD_MB MB"
+        } else {
+            $OVERHEAD_KB = "0"
+            $OVERHEAD_MB = "0"
+            $OVERHEAD_DISPLAY = "N/A"
+        }
+
+        # Determine status
+        if ($FAILED_TESTS -eq 0 -and $TOTAL_TESTS -gt 0 -and "${{ job.status }}" -ne "failure") {
+            $STATUS = ":white_check_mark: Success"
+        } else {
+            $STATUS = ":x: Failure"
+        }
+
+        @"
+        | Metric | Value |
+        | :--- | :--- |
+        | **Status** | $STATUS |
+        | **Tests Run** | $TOTAL_TESTS |
+        | **Tests Passed** | $PASSED_TESTS |
+        | **Disk Overhead** | $OVERHEAD_DISPLAY |
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
     - name: Upload Test Results
       if: failure()

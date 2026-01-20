@@ -99,6 +99,33 @@ fi
 validate_test "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
 rm -f "$PROMPT_CHECK_FILE"
 
+# Additional prompt functionality tests (T024)
+echo ""
+echo "Validating prompt theme functionality..."
+echo "-----------------------------------"
+
+# Test that starship config contains expected customizations
+validate_test "Starship config has directory customization" "grep -q 'directory' \$HOME/.config/starship.toml"
+validate_test "Starship config has git_branch customization" "grep -q 'git_branch' \$HOME/.config/starship.toml"
+validate_test "Starship config has character customization" "grep -q 'character' \$HOME/.config/starship.toml"
+
+# Test prompt rendering with common scenarios
+PROMPT_TEST_DIR="/tmp/starship_test_$(date +%s)"
+mkdir -p "$PROMPT_TEST_DIR"
+cd "$PROMPT_TEST_DIR" || exit 1
+
+# Test basic directory prompt
+validate_test "Prompt renders in non-git directory" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
+
+# Test git directory prompt
+if command -v git >/dev/null 2>&1; then
+    git init >/dev/null 2>&1
+    validate_test "Prompt renders in git repository" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
+fi
+
+cd - >/dev/null 2>&1 || exit 1
+rm -rf "$PROMPT_TEST_DIR"
+
 echo ""
 echo "Validating Terminal capabilities..."
 echo "-----------------------------------"
