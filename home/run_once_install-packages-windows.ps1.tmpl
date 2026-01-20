@@ -94,6 +94,21 @@ Write-Host "  Failed:  $failureCount" -ForegroundColor Red
 Write-Host "  Skipped: $skippedCount" -ForegroundColor Yellow
 
 Write-Host ""
+Write-Host "Refreshing environment PATH..."
+# Refresh PATH from registry to pick up newly installed tools
+# This is necessary because winget installs update the registry PATH,
+# but the current PowerShell session doesn't see those changes
+try {
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machinePath;$userPath"
+    Write-Host "PATH refreshed from registry"
+} catch {
+    Write-Host "WARNING: Failed to refresh PATH. Some tools may not be available until you restart."
+    Write-Host "Error: $_"
+}
+
+Write-Host ""
 Write-Host "=================================="
 Write-Host "Registry Tweaks for Developer Experience"
 Write-Host "=================================="
