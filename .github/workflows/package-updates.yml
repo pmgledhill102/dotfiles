@@ -46,7 +46,7 @@ jobs:
 
       - name: Create issue for outdated Homebrew packages
         if: steps.brew-check.outputs.outdated == 'true'
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
         env:
           OUTDATED_PACKAGES: ${{ steps.brew-check.outputs.OUTDATED_PACKAGES }}
         with:
@@ -119,7 +119,7 @@ jobs:
           echo "Latest Starship version: $LATEST"
 
       - name: Create issue for Starship update
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
         with:
           script: |
             const latestVersion = '${{ steps.starship-check.outputs.latest }}';
