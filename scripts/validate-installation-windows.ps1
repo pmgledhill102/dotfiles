@@ -11,6 +11,21 @@ if ($Verbose) {
     $VerbosePreference = "Continue"
 }
 
+# Refresh PATH from registry to pick up newly installed tools
+# This is necessary because the installation runs in a different session
+Write-Host "Refreshing environment PATH..."
+try {
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machinePath;$userPath"
+    Write-Host "PATH refreshed from registry"
+    Write-Host ""
+} catch {
+    Write-Host "WARNING: Failed to refresh PATH"
+    Write-Host "Error: $_"
+    Write-Host ""
+}
+
 Write-Host "=================================="
 Write-Host "Post-Installation Validation (Windows)"
 Write-Host "=================================="
