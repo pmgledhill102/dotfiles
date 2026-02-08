@@ -49,7 +49,7 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 |----------|-----------|---------|---------------|----------|------------|
 | **Common** | — | — | — | gitleaks | — |
 | **Markdown** | prettier | markdownlint-cli2 | — | — | — |
-| **Shell** | — | shellcheck | — | — | — |
+| **Shell** | shfmt | shellcheck | — | — | — |
 | **Docker** | — | hadolint | — | trivy | — |
 | **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec, checkov | — |
 | **Go** | gofmt / goimports | golangci-lint | — | — | govulncheck |

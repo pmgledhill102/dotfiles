@@ -57,7 +57,35 @@ Append these repos to the existing `.pre-commit-config.yaml`:
 
 Look up the latest release tag for each repo and use those for the `rev:` values.
 
-### 4. Verify
+### 4. GitHub Actions workflow
+
+Create or update the CI workflow to include a markdown lint job that only runs when markdown files change.
+
+```yaml
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v19
+```
+
+Add a path filter on the workflow trigger so this job only runs when relevant files change:
+
+```yaml
+on:
+  push:
+    paths: ['**/*.md']
+  pull_request:
+    paths: ['**/*.md']
+```
+
+If there's already a CI workflow with broader triggers, add the job there and use a job-level `if` with `github.event.pull_request` changed files, or create a separate workflow file (e.g., `.github/workflows/markdown.yml`) with the path filter. Don't duplicate if a markdown lint job already exists.
+
+### 5. Verify
 
 Run `pre-commit run --all-files` to confirm. Fix any markdown lint issues that surface.
 

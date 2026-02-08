@@ -40,7 +40,23 @@ run:
 
 Tell the user to set `local-prefixes` under `goimports` to their Go module path.
 
-### 2. Add pre-commit hooks
+### 2. .gitignore
+
+Append these lines to `.gitignore` if they aren't already present:
+
+```gitignore
+# Go
+bin/
+dist/
+*.exe
+*.test
+*.out
+coverage.out
+coverage.html
+vendor/
+```
+
+### 3. Add pre-commit hooks
 
 Append these repos to the existing `.pre-commit-config.yaml`:
 
@@ -58,18 +74,50 @@ Append these repos to the existing `.pre-commit-config.yaml`:
 
 Look up the latest release tag for each repo and use those for the `rev:` values.
 
-### 3. govulncheck
+### 4. GitHub Actions workflow
 
-Check if `govulncheck` is installed (`go install golang.org/x/vuln/cmd/govulncheck@latest`). If not, tell the user to install it. It's run manually or in CI, not as a pre-commit hook (too slow).
-
-Suggest adding to CI:
+Create or update the CI workflow to include Go lint and vulnerability scanning jobs that only run when Go files change. Use a separate workflow file (e.g., `.github/workflows/go.yml`) with path filters, or add jobs to an existing workflow.
 
 ```yaml
-- name: Run govulncheck
-  run: govulncheck ./...
+name: Go
+on:
+  push:
+    paths: ['**/*.go', 'go.mod', 'go.sum']
+  pull_request:
+    paths: ['**/*.go', 'go.mod', 'go.sum']
+
+jobs:
+  lint:
+    name: Go Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v6
+
+  govulncheck:
+    name: Govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: govulncheck ./...
 ```
 
-### 4. Verify
+Don't duplicate if Go lint jobs already exist. Look up latest action versions.
+
+### 5. govulncheck (local)
+
+Check if `govulncheck` is installed (`go install golang.org/x/vuln/cmd/govulncheck@latest`). If not, tell the user to install it. It's run manually or in CI (above), not as a pre-commit hook (too slow).
+
+### 6. Verify
 
 Run `pre-commit run --all-files` to confirm hooks work. Fix any lint issues.
 
