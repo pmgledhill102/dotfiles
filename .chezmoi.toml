@@ -45,6 +45,7 @@
                 "insomnia",
                 "visual-studio-code",
                 "ghostty",
+                "rectangle",
             ]
 
         # Ubuntu - apt packages
