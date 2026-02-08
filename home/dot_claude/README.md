@@ -51,9 +51,9 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 | **Markdown** | prettier | markdownlint-cli2 | — | — | — |
 | **Shell** | — | shellcheck | — | — | — |
 | **Docker** | — | hadolint | — | trivy | — |
-| **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec / trivy, checkov | — |
+| **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec, checkov | — |
 | **Go** | gofmt / goimports | golangci-lint | — | — | govulncheck |
-| **Python** | ruff | ruff | mypy / pyright | bandit | pip-audit |
+| **Python** | ruff | ruff | mypy / pyright | bandit | — |
 | **.NET / C#** | dotnet format | Roslyn analyzers | — | SecurityCodeScan | dotnet outdated |
 | **Rust** | rustfmt | clippy | — | — | cargo-audit, cargo-deny |
 | **Java** | google-java-format / spotless | checkstyle, SpotBugs, PMD | — | — | OWASP dependency-check |
