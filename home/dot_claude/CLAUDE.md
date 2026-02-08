@@ -11,12 +11,14 @@ This directory (`home/dot_claude/`) maps to `~/.claude/` when chezmoi applies do
 ## Repository Architecture
 
 The parent dotfiles repo uses **chezmoi** with `.chezmoiroot` set to `home/`, meaning files in `home/` map to `$HOME`. Chezmoi naming conventions:
+
 - `dot_` prefix = `.` in target (e.g., `dot_zshrc` -> `~/.zshrc`)
 - `.tmpl` suffix = Go template processed with data from `.chezmoi.toml`
 - `run_once_` prefix = script runs once per machine
 - `run_onchange_` prefix = script re-runs when its contents (or watched files) change
 
 Key paths relative to repo root:
+
 - `.chezmoi.toml` — config data (user info, package lists per platform)
 - `home/` — all managed dotfiles and scripts
 - `home/dot_claude/` — this directory, Claude Code config
@@ -27,6 +29,7 @@ Key paths relative to repo root:
 ## CI/CD and Linting
 
 CI runs on push/PR to `main` via `.github/workflows/ci.yml`:
+
 - **ShellCheck** on `scripts/` and `home/`
 - **markdownlint-cli2** on all `*.md` files (config: `.markdownlint.yaml`)
 - **actionlint** on GitHub Actions workflows
@@ -42,6 +45,7 @@ Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
 ## Claude Code Config Architecture (This Directory)
 
 The design separates concerns by context cost:
+
 - **Slash commands** (`/setup-python`, etc.) — loaded only when invoked, set up language tooling
 - **Hooks** — run tools automatically (pre-commit, formatters) with zero context cost
 - **CLAUDE.md** — lean universal policy, always loaded

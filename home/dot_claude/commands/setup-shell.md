@@ -6,7 +6,7 @@ Set up shell script linting and formatting for this project. Assumes `/setup-com
 
 Create `.shellcheckrc` in the project root (if it doesn't already exist). If one exists, review and suggest additions.
 
-```
+```ini
 # Default shell dialect
 shell=bash
 

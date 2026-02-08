@@ -2,7 +2,7 @@ Set up .NET / C# linting, formatting, and security scanning for this project. As
 
 ## What to install and configure
 
-### 1. EditorConfig for C#
+### 1. EditorConfig for CSharp
 
 Append C#-specific settings to `.editorconfig` (merge with existing):
 

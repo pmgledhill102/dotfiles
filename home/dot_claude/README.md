@@ -9,7 +9,7 @@ When linting, formatting, and security tools are configured, they become the enf
 This configuration separates **one-time setup** from **ongoing enforcement**, keeping context costs low:
 
 | Concern | Solution | Context Cost |
-|---------|----------|--------------|
+| ------- | -------- | ------------ |
 | Setting up a new project | Slash commands (`/setup-python`) | Loaded only when invoked |
 | Enforcing standards during coding | Hooks that run tools automatically | Zero — tool output is the context |
 | High-level policy | Lean CLAUDE.md | ~20-30 lines |
@@ -46,7 +46,7 @@ Claude Code hooks provide **immediate feedback during editing**. Only use these 
 Each `/setup-*` slash command configures the tools listed below. All commands are **additive and composable** — run `/setup-common` first for the foundation, then stack any combination.
 
 | Language | Formatting | Linting | Type Checking | Security | Deps Audit |
-|----------|-----------|---------|---------------|----------|------------|
+| -------- | ---------- | ------- | ------------- | -------- | ---------- |
 | **Common** | — | — | — | gitleaks | — |
 | **Markdown** | prettier | markdownlint-cli2 | — | — | — |
 | **Shell** | shfmt | shellcheck | — | — | — |
@@ -65,7 +65,7 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 ### Which Layer Runs What
 
 | Tool Category | CI | Pre-commit | Claude Hook |
-|---------------|:--:|:----------:|:-----------:|
+| ------------- | :-: | :--------: | :---------: |
 | Formatters | yes | yes | yes (auto-fix on write) |
 | Fast linters | yes | yes | optional (auto-fix on write) |
 | Type checkers | yes | yes | no |
@@ -74,7 +74,7 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 
 ## Directory Structure
 
-```
+```text
 ~/.claude/
 ├── settings.json              # Universal hooks (runs on every repo)
 ├── CLAUDE.md                  # Universal policy (loaded on every repo)
@@ -106,7 +106,7 @@ Each `/setup-*` command contains:
 
 **New project setup:**
 
-```
+```text
 /setup-common
 /setup-python
 ```
