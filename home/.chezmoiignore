@@ -1,5 +1,8 @@
 .secrets
 
+# Documentation files — keep in repo, don't deploy to $HOME
+.claude/README.md
+
 # Only apply PowerShell scripts on Windows
 {{- if ne .chezmoi.os "windows" }}
 run_once_install-packages-windows.ps1

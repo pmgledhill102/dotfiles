@@ -1,0 +1,13 @@
+#!/bin/sh
+# No set -e — post-checkout failures should not block
+
+# Source dispatch library (central first, local fallback)
+_lib="${HOME}/.git-templates/hooks/_lib/dispatch.sh"
+[ -f "$_lib" ] || _lib="$(dirname "$0")/_lib/dispatch.sh"
+# shellcheck source=_lib/dispatch.sh
+. "$_lib"
+
+# Only run on branch checkout ($3 = "1"), not file checkout
+[ "${3:-0}" = "1" ] || exit 0
+
+run_beads post-checkout "$@"
