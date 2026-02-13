@@ -26,7 +26,7 @@ dotnet_naming_style.underscore_prefix.capitalization = camel_case
 dotnet_naming_style.underscore_prefix.required_prefix = _
 ```
 
-### 2. Directory.Build.props (Roslyn analyzers + SecurityCodeScan)
+### 2. Directory.Build.props (Roslyn analysers + SecurityCodeScan)
 
 Create or update `Directory.Build.props` in the solution root:
 
@@ -131,7 +131,7 @@ Adjust `dotnet-version` to match the project. Don't duplicate if .NET build jobs
 
 ### 6. Verify
 
-Run `dotnet build` to confirm analyzers are active and no warnings are emitted. Run `dotnet format --verify-no-changes` to confirm formatting.
+Run `dotnet build` to confirm analysers are active and no warnings are emitted. Run `dotnet format --verify-no-changes` to confirm formatting.
 
 ## Important
 

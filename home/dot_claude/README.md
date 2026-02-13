@@ -54,7 +54,7 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 | **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec, checkov | — |
 | **Go** | gofmt / goimports | golangci-lint | — | — | govulncheck |
 | **Python** | ruff | ruff | mypy / pyright | bandit | — |
-| **.NET / C#** | dotnet format | Roslyn analyzers | — | SecurityCodeScan | dotnet outdated |
+| **.NET / C#** | dotnet format | Roslyn analysers | — | SecurityCodeScan | dotnet outdated |
 | **Rust** | rustfmt | clippy | — | — | cargo-audit, cargo-deny |
 | **Java** | google-java-format / spotless | checkstyle, SpotBugs, PMD | — | — | OWASP dependency-check |
 | **Ruby** | rubocop | rubocop | — | brakeman | bundler-audit |
@@ -145,7 +145,7 @@ Claude Code edits files -> hooks auto-run -> Claude sees failures -> fixes them.
 }
 ```
 
-## Customization
+## Customisation
 
 - **Project overrides**: Add `.claude/settings.json` in any repo to extend/override user-level hooks
 - **Subdirectory context**: Add `CLAUDE.md` files in subdirectories for monorepo language-specific context

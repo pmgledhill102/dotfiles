@@ -62,7 +62,7 @@ Create `cspell.json` in the project root (if it doesn't already exist). If one e
 ```json
 {
   "version": "0.2",
-  "language": "en",
+  "language": "en-GB",
   "files": "\\.(md|txt|rst|yaml|yml)$",
   "ignorePaths": [
     "node_modules",
@@ -71,7 +71,7 @@ Create `cspell.json` in the project root (if it doesn't already exist). If one e
     ".git"
   ],
   "words": [],
-  "dictionaries": ["en_US", "softwareTerms", "companies", "misc"]
+  "dictionaries": ["en_GB", "softwareTerms", "companies", "misc"]
 }
 ```
 
