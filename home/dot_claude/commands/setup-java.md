@@ -154,7 +154,28 @@ jobs:
 
 Adjust for Maven if the project uses `pom.xml` instead of Gradle. Don't duplicate if Java lint jobs already exist. Look up latest action versions.
 
-### 7. Verify
+### 7. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `maven` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "java"
+    open-pull-requests-limit: 5
+```
+
+If the project uses Gradle instead of Maven, use `gradle` as the `package-ecosystem` value.
+
+### 8. Verify
 
 Run `./gradlew spotlessCheck` (or `mvn spotless:check`) to confirm formatting. Fix any issues with `./gradlew spotlessApply`.
 

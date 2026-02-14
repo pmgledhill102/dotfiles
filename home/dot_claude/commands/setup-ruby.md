@@ -111,7 +111,26 @@ Don't duplicate if Ruby lint jobs already exist. Look up latest action versions.
 
 Brakeman is only relevant for Rails applications. If the project is not a Rails app, skip the brakeman job.
 
-### 5. Verify
+### 5. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `bundler` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "bundler"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ruby"
+    open-pull-requests-limit: 5
+```
+
+### 6. Verify
 
 Run `bundle exec rubocop` to confirm. Fix any issues with `bundle exec rubocop --auto-correct`.
 

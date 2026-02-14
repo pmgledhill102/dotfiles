@@ -206,7 +206,58 @@ Don't duplicate if any of these jobs already exist. Look up latest action versio
 - uses: actions/checkout@<full-sha> # v4
 ```
 
-### 8. Verify
+### 8. Dependabot auto-merge
+
+Create `.github/workflows/dependabot-auto-merge.yml` (if it doesn't already exist):
+
+```yaml
+name: Dependabot Auto-merge
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: gh pr merge --auto --squash --delete-branch "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Also ensure `.github/dependabot.yml` exists with the base structure. If it doesn't exist, create it:
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    open-pull-requests-limit: 5
+```
+
+If `.github/dependabot.yml` already exists, read it first and ensure the `github-actions` ecosystem entry is present. Don't duplicate entries.
+
+> **Note:** Auto-merge requires branch protection or rulesets with required status checks enabled on the default branch. Without this, `--auto` merges immediately without waiting for CI.
+
+### 9. Verify
 
 Run `pre-commit run --all-files` to confirm everything works. Fix any issues that come up.
 

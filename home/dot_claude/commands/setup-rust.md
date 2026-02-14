@@ -149,7 +149,26 @@ jobs:
 
 Don't duplicate if Rust lint jobs already exist. Look up latest action versions.
 
-### 7. Verify
+### 7. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `cargo` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "rust"
+    open-pull-requests-limit: 5
+```
+
+### 8. Verify
 
 Run `cargo fmt --all --check` and `cargo clippy --all-targets --all-features -- -D warnings` to confirm. Fix any issues.
 

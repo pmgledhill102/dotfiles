@@ -20,7 +20,7 @@ Checks are enforced at three layers, from most authoritative to most immediate. 
 
 ### Layer 1: CI (Always Enforced)
 
-CI runs on every push/PR. This is the **source of truth** — nothing merges without passing. Each `/setup-*` slash command includes a CI workflow snippet for the relevant language.
+CI runs on every push/PR. This is the **source of truth** — nothing merges without passing. Each `/setup-*` slash command includes a CI workflow snippet for the relevant language. The `/setup-common` command also installs a Dependabot auto-merge workflow that approves and squash-merges Dependabot PRs once CI passes.
 
 ### Layer 2: Git Pre-commit Hooks
 
@@ -45,22 +45,22 @@ Claude Code hooks provide **immediate feedback during editing**. Only use these 
 
 Each `/setup-*` slash command configures the tools listed below. All commands are **additive and composable** — run `/setup-common` first for the foundation, then stack any combination.
 
-| Language | Formatting | Linting | Type Checking | Security | Deps Audit |
-| -------- | ---------- | ------- | ------------- | -------- | ---------- |
-| **Common** | — | — | — | gitleaks | — |
-| **Markdown** | prettier | markdownlint-cli2 | — | — | — |
-| **Shell** | shfmt | shellcheck | — | — | — |
-| **Docker** | — | hadolint | — | trivy | — |
-| **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec, checkov | — |
-| **Go** | gofmt / goimports | golangci-lint | — | — | govulncheck |
-| **Python** | ruff | ruff | mypy / pyright | bandit | — |
-| **.NET / C#** | dotnet format | Roslyn analysers | — | SecurityCodeScan | dotnet outdated |
-| **Rust** | rustfmt | clippy | — | — | cargo-audit, cargo-deny |
-| **Java** | google-java-format / spotless | checkstyle, SpotBugs, PMD | — | — | OWASP dependency-check |
-| **Ruby** | rubocop | rubocop | — | brakeman | bundler-audit |
-| **PHP** | PHP-CS-Fixer / PHP_CodeSniffer | PHPStan / Psalm | — | — | composer audit |
-| **Node.js** | prettier | eslint | — | — | npm audit |
-| **TypeScript** | prettier | eslint + typescript-eslint | tsc --noEmit | — | npm audit |
+| Language | Formatting | Linting | Type Checking | Security | Deps Audit | Dependabot |
+| -------- | ---------- | ------- | ------------- | -------- | ---------- | ---------- |
+| **Common** | — | — | — | gitleaks | — | github-actions |
+| **Markdown** | prettier | markdownlint-cli2 | — | — | — | — |
+| **Shell** | shfmt | shellcheck | — | — | — | — |
+| **Docker** | — | hadolint | — | trivy | — | docker |
+| **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec, checkov | — | terraform |
+| **Go** | gofmt / goimports | golangci-lint | — | — | govulncheck | gomod |
+| **Python** | ruff | ruff | mypy / pyright | bandit | — | pip |
+| **.NET / C#** | dotnet format | Roslyn analysers | — | SecurityCodeScan | dotnet outdated | nuget |
+| **Rust** | rustfmt | clippy | — | — | cargo-audit, cargo-deny | cargo |
+| **Java** | google-java-format / spotless | checkstyle, SpotBugs, PMD | — | — | OWASP dependency-check | maven |
+| **Ruby** | rubocop | rubocop | — | brakeman | bundler-audit | bundler |
+| **PHP** | PHP-CS-Fixer / PHP_CodeSniffer | PHPStan / Psalm | — | — | composer audit | composer |
+| **Node.js** | prettier | eslint | — | — | npm audit | npm |
+| **TypeScript** | prettier | eslint + typescript-eslint | tsc --noEmit | — | npm audit | npm |
 
 ### Which Layer Runs What
 
@@ -103,6 +103,7 @@ Each `/setup-*` command contains:
 2. Configuration file contents
 3. Pre-commit hook registration
 4. CI workflow snippet
+5. Dependabot ecosystem configuration
 
 **New project setup:**
 

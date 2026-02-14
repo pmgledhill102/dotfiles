@@ -102,7 +102,26 @@ jobs:
 
 Don't duplicate if Terraform lint jobs already exist. Look up latest action versions.
 
-### 5. Verify
+### 5. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `terraform` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "terraform"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "terraform"
+    open-pull-requests-limit: 5
+```
+
+### 6. Verify
 
 Run `pre-commit run --all-files` to confirm hooks work. Fix any lint or formatting issues.
 

@@ -117,7 +117,26 @@ Don't duplicate if Go lint jobs already exist. Look up latest action versions.
 
 Check if `govulncheck` is installed (`go install golang.org/x/vuln/cmd/govulncheck@latest`). If not, tell the user to install it. It's run manually or in CI (above), not as a pre-commit hook (too slow).
 
-### 6. Verify
+### 6. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `gomod` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "go"
+    open-pull-requests-limit: 5
+```
+
+### 7. Verify
 
 Run `pre-commit run --all-files` to confirm hooks work. Fix any lint issues.
 
