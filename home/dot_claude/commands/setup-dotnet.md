@@ -129,7 +129,26 @@ jobs:
 
 Adjust `dotnet-version` to match the project. Don't duplicate if .NET build jobs already exist. Look up latest action versions.
 
-### 6. Verify
+### 6. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `nuget` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "dotnet"
+    open-pull-requests-limit: 5
+```
+
+### 7. Verify
 
 Run `dotnet build` to confirm analysers are active and no warnings are emitted. Run `dotnet format --verify-no-changes` to confirm formatting.
 

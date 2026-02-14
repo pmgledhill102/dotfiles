@@ -124,7 +124,26 @@ jobs:
 
 Adjust `php-version` to match the project. Don't duplicate if PHP lint jobs already exist. Look up latest action versions.
 
-### 6. Verify
+### 6. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `composer` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "php"
+    open-pull-requests-limit: 5
+```
+
+### 7. Verify
 
 Run `vendor/bin/php-cs-fixer fix --dry-run --diff` and `vendor/bin/phpstan analyse` to confirm. Fix any issues.
 

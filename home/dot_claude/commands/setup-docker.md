@@ -71,7 +71,26 @@ Don't duplicate if Docker lint jobs already exist. Look up latest action version
 
 If the project builds container images, suggest also adding an image scan step that runs `trivy image` after the build.
 
-### 5. Verify
+### 5. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `docker` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+    open-pull-requests-limit: 5
+```
+
+### 6. Verify
 
 Run `pre-commit run --all-files` to confirm hooks work. Fix any lint issues.
 

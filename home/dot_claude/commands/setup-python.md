@@ -151,7 +151,28 @@ exclude_dirs = ["tests", ".venv", "venv"]
 skips = []
 ```
 
-### 7. Verify
+### 7. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `pip` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    open-pull-requests-limit: 5
+```
+
+If `pyproject.toml` is in a subdirectory rather than the repo root, adjust `directory` accordingly.
+
+### 8. Verify
 
 Run `pre-commit run --all-files` to confirm hooks work. Fix any lint or type issues.
 

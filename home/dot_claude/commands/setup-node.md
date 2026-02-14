@@ -126,7 +126,26 @@ jobs:
 
 If the project doesn't have `.node-version`, use a fixed `node-version: '22'` (or whatever the project uses). Don't duplicate if Node.js lint jobs already exist. Look up latest action versions.
 
-### 6. Verify
+### 6. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `npm` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "javascript"
+    open-pull-requests-limit: 5
+```
+
+### 7. Verify
 
 Run `npx prettier --check .` and `npx eslint .` to confirm. Fix formatting issues with `npx prettier --write .`.
 

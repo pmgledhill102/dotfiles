@@ -167,7 +167,26 @@ jobs:
 
 If the project doesn't have `.node-version`, use a fixed `node-version: '22'` (or whatever the project uses). Don't duplicate if TypeScript lint jobs already exist. Look up latest action versions.
 
-### 7. Verify
+### 7. Dependabot ecosystem
+
+If the `npm` ecosystem is already configured in `.github/dependabot.yml` (e.g. from `/setup-node`), skip this step. Otherwise, read `.github/dependabot.yml` and add the `npm` ecosystem entry:
+
+```yaml
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "javascript"
+    open-pull-requests-limit: 5
+```
+
+### 8. Verify
 
 Run `npx tsc --noEmit`, `npx prettier --check .`, and `npx eslint .` to confirm. Fix any issues.
 
