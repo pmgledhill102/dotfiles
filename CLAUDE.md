@@ -51,3 +51,7 @@ The design separates concerns by context cost:
 - **CLAUDE.md** — lean universal policy, always loaded
 
 See `README.md` in this directory for the full implementation plan including enforcement layers and per-language tool matrices.
+
+### settings.json and settings.json.md
+
+`home/dot_claude/settings.json` contains Claude Code permission rules and hooks. Since JSON does not support comments, `home/dot_claude/settings.json.md` is the annotated companion with groupings and rationale. **These two files must stay in sync** — when adding, removing, or changing entries in one, update the other in the same commit.
