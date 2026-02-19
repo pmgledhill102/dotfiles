@@ -146,6 +146,87 @@ Claude Code edits files -> hooks auto-run -> Claude sees failures -> fixes them.
 }
 ```
 
+## MCP Servers
+
+[Model Context Protocol](https://modelcontextprotocol.io/) servers extend Claude Code with external data sources and tools. These are configured per-user via `claude mcp add` and stored in `~/.claude.json`.
+
+MCP servers are set up automatically by `run_onchange_setup-claude.sh` during `chezmoi apply`. Servers that require API keys read them from `~/.secrets` (see [Secrets Management](#secrets-management) below).
+
+### Configured Servers
+
+| Server | Transport | API Key Required | Purpose |
+| ------ | --------- | :-: | ------- |
+| **google-dev-knowledge** | HTTP | Yes | Google developer documentation (Android, Chrome, Cloud, Firebase, Flutter, etc.) via the [Google Developer Knowledge MCP](https://developerknowledge.googleapis.com/mcp) |
+
+### Graceful Degradation
+
+The setup script skips automatically when:
+
+- The `claude` CLI is not installed
+- A required API key is not present in `~/.secrets`
+
+This means `chezmoi apply` works on any machine — MCP servers are only configured where both the CLI and credentials are available.
+
+## Secrets Management
+
+Secrets (API keys, tokens) are stored in `~/.secrets` as shell-sourceable `KEY="value"` pairs. This file is **not committed to the repo** — it is either placed manually or managed via chezmoi age encryption.
+
+### Setting Up age Encryption
+
+age encryption lets `~/.secrets` travel with the repo (encrypted) so that `chezmoi apply` on a new machine provisions secrets automatically — provided the age private key is available.
+
+**1. Generate an age key pair (one-time):**
+
+```sh
+age-keygen -o ~/.config/chezmoi/key.txt
+```
+
+Note the public key (`age1...`) printed to stdout.
+
+**2. Add age config to `.chezmoi.toml`:**
+
+```toml
+[age]
+    identity = "~/.config/chezmoi/key.txt"
+    recipient = "age1your-public-key-here"
+```
+
+**3. Create `~/.secrets` with real values:**
+
+```sh
+# Get the API key from Terraform
+API_KEY=$(terraform -chdir=layers/3-projects/services output -raw developer_knowledge_api_key)
+
+cat > ~/.secrets << EOF
+# ~/.secrets — sourced by chezmoi run scripts
+GOOGLE_DEV_KNOWLEDGE_API_KEY="${API_KEY}"
+EOF
+```
+
+**4. Encrypt and add to chezmoi:**
+
+```sh
+chezmoi add --encrypt ~/.secrets
+```
+
+This creates an encrypted source file (replacing `dot_secrets.tmpl`). Commit it to the repo.
+
+**5. Update `.chezmoiignore`:**
+
+Change the unconditional `.secrets` ignore to be conditional so that machines with the age key receive the decrypted file:
+
+```text
+{{ if not (stat (joinPath .chezmoi.homeDir ".config/chezmoi/key.txt")) }}
+.secrets
+{{ end }}
+```
+
+**6. Provisioning a new machine:**
+
+Before running `chezmoi init --apply`, copy the age private key from Bitwarden (or another secure store) to `~/.config/chezmoi/key.txt`. chezmoi will then decrypt `~/.secrets` and the setup script will configure MCP servers automatically.
+
+On machines without the age key, `~/.secrets` is skipped and the setup script degrades gracefully.
+
 ## Customisation
 
 - **Project overrides**: Add `.claude/settings.json` in any repo to extend/override user-level hooks
