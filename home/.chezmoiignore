@@ -2,6 +2,7 @@
 
 # Documentation files — keep in repo, don't deploy to $HOME
 .claude/README.md
+.claude/settings.json.md
 
 # Only apply PowerShell scripts on Windows
 {{- if ne .chezmoi.os "windows" }}
@@ -24,6 +25,8 @@ run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
 Brewfile
 .tmux.conf
+run_onchange_setup-claude.sh
+setup-claude.sh
 {{- end }}
 
 # Only apply Windows files on Windows (ignore on Unix)
