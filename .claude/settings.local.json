@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx markdownlint-cli2:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(claude mcp list:*)"
+    ]
+  }
+}
