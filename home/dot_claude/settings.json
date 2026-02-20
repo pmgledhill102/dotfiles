@@ -204,6 +204,28 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE_PATH=$(jq -r '.tool_input.file_path // empty'); [[ \"$FILE_PATH\" == *.tf ]] && terraform fmt \"$FILE_PATH\" || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE_PATH=$(jq -r '.tool_input.file_path // empty'); [[ \"$FILE_PATH\" == *.tf ]] && DIR=$(dirname \"$FILE_PATH\") && [[ -d \"$DIR/.terraform\" ]] && cd \"$DIR\" && terraform validate || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "",

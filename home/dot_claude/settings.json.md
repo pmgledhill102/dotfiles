@@ -343,6 +343,15 @@ security scanners are safe.
 
 ## Hooks
 
+### PostToolUse (Write|Edit)
+
+1. **terraform fmt** — Auto-formats `.tf` files after every Write or Edit.
+   Parses the file path from hook stdin JSON via `jq`, skips non-`.tf` files.
+
+2. **terraform validate** — Validates the module directory after `.tf` file
+   changes. Only runs if `.terraform/` exists in the file's directory
+   (i.e., `terraform init` has been run). 30s timeout.
+
 ### PreCompact
 
 Runs `bd prime` before context compaction to preserve task state.
