@@ -21,3 +21,6 @@ Thumbs.db
 
 # Ignore temporary files
 temp/
+
+# Ignore downloaded binaries
+bin/
