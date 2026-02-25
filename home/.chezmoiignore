@@ -49,3 +49,9 @@ run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
 .config/ubuntu_pkglist
 {{- end }}
+
+# Skip GUI app configs on minimal/server machines
+{{- if eq .machine_type "minimal" }}
+.config/Code/
+.config/ghostty/
+{{- end }}

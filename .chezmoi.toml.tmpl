@@ -1,0 +1,170 @@
+{{- /* Machine type selection — presented once during chezmoi init */ -}}
+{{- $machineType := promptChoiceOnce . "machine_type" "Machine type (personal = full dev setup, work = essentials only, minimal = headless server)" (list "personal" "work" "minimal") -}}
+
+# chezmoi configuration file
+# Machine type: {{ $machineType }}
+
+[data]
+    name = "Paul Gledhill"
+    email = "github@pmgledhill.com"
+    machine_type = "{{ $machineType }}"
+
+    # Package management - organized by package manager
+    [data.packages]
+        # macOS - Homebrew packages
+        [data.packages.brew]
+{{- if eq $machineType "personal" }}
+            taps = [
+                "aws/tap",
+                "powershell/tap",
+            ]
+            formulas = [
+                "aws-sam-cli",
+                "awscli",
+                "azure-cli",
+                "bat",
+                "dotnet",
+                "fzf",
+                "git",
+                "git-delta",
+                "go-task",
+                "go",
+                "gradle",
+                "hugo",
+                "jenv",
+                "jq",
+                "lazygit",
+                "maven",
+                "nvm",
+                "openjdk",
+                "openssl",
+                "podman",
+                "powershell/tap/powershell",
+                "powershell",
+                "tmux",
+                "wget",
+            ]
+            casks = [
+                "discord",
+                "font-jetbrains-mono-nerd-font",
+                "ghostty",
+                "google-cloud-sdk",
+                "insomnia",
+                "rectangle",
+                "visual-studio-code",
+            ]
+{{- else if eq $machineType "work" }}
+            taps = []
+            formulas = [
+                "bat",
+                "dotnet",
+                "fzf",
+                "git",
+                "git-delta",
+                "go",
+                "jenv",
+                "jq",
+                "lazygit",
+                "nvm",
+                "openjdk",
+                "openssl",
+                "tmux",
+                "wget",
+            ]
+            casks = [
+                "font-jetbrains-mono-nerd-font",
+                "ghostty",
+            ]
+{{- else }}
+            taps = []
+            formulas = [
+                "bat",
+                "fzf",
+                "git",
+                "git-delta",
+                "jq",
+                "lazygit",
+                "tmux",
+                "wget",
+            ]
+            casks = []
+{{- end }}
+
+        # Ubuntu - apt packages
+        [data.packages.apt]
+{{- if eq $machineType "personal" }}
+            packages = [
+                "bat",
+                "curl",
+                "fzf",
+                "git-delta",
+                "jq",
+                "tmux",
+                "unzip",
+                "wget",
+                "zip",
+                "zsh",
+            ]
+{{- else if eq $machineType "work" }}
+            packages = [
+                "bat",
+                "curl",
+                "fzf",
+                "git-delta",
+                "jq",
+                "tmux",
+                "unzip",
+                "wget",
+                "zsh",
+            ]
+{{- else }}
+            packages = [
+                "bat",
+                "curl",
+                "fzf",
+                "git-delta",
+                "jq",
+                "tmux",
+                "wget",
+                "zsh",
+            ]
+{{- end }}
+
+        # Windows - winget packages
+        [data.packages.winget]
+{{- if eq $machineType "personal" }}
+            packages = [
+                "dandavison.delta",
+                "DEVCOM.JetBrainsMonoNerdFont",
+                "FiloSottile.age",
+                "Git.Git",
+                "JesseDuffield.lazygit",
+                "Microsoft.PowerShell",
+                "Microsoft.VisualStudioCode",
+                "Microsoft.WindowsTerminal",
+                "Starship.Starship",
+                "twpayne.chezmoi",
+            ]
+{{- else if eq $machineType "work" }}
+            packages = [
+                "dandavison.delta",
+                "DEVCOM.JetBrainsMonoNerdFont",
+                "FiloSottile.age",
+                "Git.Git",
+                "JesseDuffield.lazygit",
+                "Microsoft.PowerShell",
+                "Microsoft.WindowsTerminal",
+                "Starship.Starship",
+                "twpayne.chezmoi",
+            ]
+{{- else }}
+            packages = [
+                "dandavison.delta",
+                "FiloSottile.age",
+                "Git.Git",
+                "JesseDuffield.lazygit",
+                "Microsoft.PowerShell",
+                "Starship.Starship",
+                "twpayne.chezmoi",
+            ]
+{{- end }}
