@@ -25,6 +25,39 @@ This migration guide covers:
 **Migration Time Estimate:** 1-2 hours  
 **Skill Level:** Intermediate shell/Git knowledge helpful
 
+## Machine Type Selection
+
+Starting with this version, `chezmoi init` presents a menu to choose a
+machine type (`personal`, `work`, or `minimal`). The choice is persisted in
+`~/.config/chezmoi/chezmoi.toml` and controls which packages are installed:
+
+| Type | Brew formulas | Brew casks | Config files |
+| ---- | ------------- | ---------- | ------------ |
+| `personal` | Full set (cloud CLIs, build tools, runtimes) | All GUI apps | All |
+| `work` | Core CLI + key runtimes | Font + Ghostty only | All |
+| `minimal` | Core CLI only | None | All except GUI app configs |
+
+### Existing users
+
+On the next `chezmoi init` you will be prompted to select a machine type.
+To keep current behaviour without being prompted, pre-set the value:
+
+```bash
+# Add to ~/.config/chezmoi/chezmoi.toml under [data]
+machine_type = "personal"
+```
+
+Or run:
+
+```bash
+printf '\n    machine_type = "personal"\n' >> ~/.config/chezmoi/chezmoi.toml
+```
+
+### Changing machine type later
+
+Edit `~/.config/chezmoi/chezmoi.toml`, change the `machine_type` value, then
+run `chezmoi apply`.
+
 ## Before You Begin
 
 ### Backup Everything
