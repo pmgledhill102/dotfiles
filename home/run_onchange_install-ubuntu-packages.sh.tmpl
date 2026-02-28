@@ -1,4 +1,5 @@
 #!/bin/sh
+# chezmoi:template:left-delimiter="# {{" right-delimiter="}}"
 
 # This script runs whenever the ubuntu_pkglist changes (run_onchange)
 # It installs packages from the list on Linux systems
@@ -35,6 +36,33 @@ case "$(uname -s)" in
     sudo install lazygit -D -t /usr/local/bin/
     rm lazygit.tar.gz lazygit
     echo "lazygit installed successfully"
+
+# {{ if ne .machine_type "minimal" }}
+    # Install PowerShell from Microsoft repository
+    echo "Installing/Updating PowerShell..."
+    if ! command -v pwsh >/dev/null 2>&1; then
+      sudo apt-get install -y wget apt-transport-https software-properties-common
+      # shellcheck disable=SC1091
+      . /etc/os-release
+      wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb"
+      sudo dpkg -i packages-microsoft-prod.deb
+      rm packages-microsoft-prod.deb
+      sudo apt-get update
+      sudo apt-get install -y powershell
+      echo "PowerShell installed successfully"
+    else
+      echo "PowerShell already installed, skipping"
+    fi
+# {{ end }}
+
+    # Install uv (Python package manager)
+    echo "Installing/Updating uv..."
+    if ! command -v uv >/dev/null 2>&1; then
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      echo "uv installed successfully"
+    else
+      echo "uv already installed, skipping"
+    fi
 
     echo "Package installation complete"
     ;;
