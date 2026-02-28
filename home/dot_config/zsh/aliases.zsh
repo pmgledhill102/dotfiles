@@ -21,3 +21,13 @@ dotstatus() {
   echo "Pending changes:"
   chezmoi status || echo "  (none)"
 }
+
+# --- CLI tool defaults ---
+
+# bat: use as default pager and cat replacement
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat --paging=never'
+  export BAT_THEME="Dracula"
+  export PAGER="bat"
+  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+fi
