@@ -10,6 +10,8 @@ run_once_install-packages-windows.ps1
 install-packages-windows.ps1
 run_once_setup-windows-environment.ps1
 setup-windows-environment.ps1
+run_once_install-vscode-extensions.ps1
+install-vscode-extensions.ps1
 AppData/
 {{- end }}
 
@@ -23,6 +25,10 @@ run_onchange_install-brewfile.sh
 install-brewfile.sh
 run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
+run_once_configure-wsl.sh
+configure-wsl.sh
+run_once_install-vscode-extensions.sh
+install-vscode-extensions.sh
 Brewfile
 .tmux.conf
 run_onchange_setup-claude.sh
@@ -49,6 +55,8 @@ Brewfile
 {{- if ne .chezmoi.os "linux" }}
 run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
+run_once_configure-wsl.sh
+configure-wsl.sh
 .config/ubuntu_pkglist
 {{- end }}
 
@@ -56,4 +64,9 @@ install-ubuntu-packages.sh
 {{- if eq .machine_type "minimal" }}
 .config/Code/
 .config/ghostty/
+.config/vscode-extensions
+run_once_install-vscode-extensions.sh
+install-vscode-extensions.sh
+run_once_install-vscode-extensions.ps1
+install-vscode-extensions.ps1
 {{- end }}

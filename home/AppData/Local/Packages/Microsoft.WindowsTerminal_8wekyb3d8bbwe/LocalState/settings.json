@@ -47,7 +47,7 @@
                 "name": "PowerShell",
                 "source": "Windows.Terminal.PowershellCore",
                 "icon": "ms-appx:///ProfileIcons/pwsh.png",
-                "startingDirectory": "%USERPROFILE%",
+                "startingDirectory": "%USERPROFILE%\\dev",
                 "commandline": "pwsh.exe -NoLogo"
             },
             {

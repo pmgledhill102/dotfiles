@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# Configure WSL settings — only runs inside WSL
+# Sets appendWindowsPath=false to keep Windows directories out of Linux PATH
+# Enables systemd for modern service management
+
+set -e
+
+# Detect WSL
+if [ ! -f /proc/version ] || ! grep -qi 'microsoft\|wsl' /proc/version 2>/dev/null; then
+  echo "Not WSL — skipping wsl.conf configuration"
+  exit 0
+fi
+
+echo "WSL detected — configuring /etc/wsl.conf..."
+
+sudo tee /etc/wsl.conf > /dev/null << 'CONF'
+[interop]
+appendWindowsPath = false
+
+[boot]
+systemd = true
+CONF
+
+echo "wsl.conf configured. Restart WSL for changes to take effect:"
+echo "  wsl --shutdown"

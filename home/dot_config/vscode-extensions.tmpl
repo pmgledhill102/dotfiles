@@ -1,0 +1,10 @@
+# Generated from .chezmoi.toml.tmpl configuration
+# To add/remove extensions, edit .chezmoi.toml.tmpl under [data.vscode]
+{{- range .vscode.extensions_core }}
+{{ . }}
+{{- end }}
+{{- if eq .machine_type "personal" }}
+{{- range .vscode.extensions_personal }}
+{{ . }}
+{{- end }}
+{{- end }}

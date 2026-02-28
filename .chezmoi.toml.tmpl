@@ -42,6 +42,7 @@
                 "powershell/tap/powershell",
                 "powershell",
                 "tmux",
+                "uv",
                 "wget",
             ]
             casks = [
@@ -70,6 +71,7 @@
                 "openjdk",
                 "openssl",
                 "tmux",
+                "uv",
                 "wget",
             ]
             casks = [
@@ -87,6 +89,7 @@
                 "jq",
                 "lazygit",
                 "tmux",
+                "uv",
                 "wget",
             ]
             casks = []
@@ -136,6 +139,7 @@
         [data.packages.winget]
 {{- if eq $machineType "personal" }}
             packages = [
+                "astral-sh.uv",
                 "dandavison.delta",
                 "DEVCOM.JetBrainsMonoNerdFont",
                 "FiloSottile.age",
@@ -149,6 +153,7 @@
             ]
 {{- else if eq $machineType "work" }}
             packages = [
+                "astral-sh.uv",
                 "dandavison.delta",
                 "DEVCOM.JetBrainsMonoNerdFont",
                 "FiloSottile.age",
@@ -161,6 +166,7 @@
             ]
 {{- else }}
             packages = [
+                "astral-sh.uv",
                 "dandavison.delta",
                 "FiloSottile.age",
                 "Git.Git",
@@ -170,3 +176,30 @@
                 "twpayne.chezmoi",
             ]
 {{- end }}
+
+    # VS Code extensions - organized by scope
+    [data.vscode]
+        # Core extensions — installed on work and personal machines
+        extensions_core = [
+            "DavidAnson.vscode-markdownlint",
+            "GitHub.vscode-pull-request-github",
+            "hediet.vscode-drawio",
+            "ms-vscode-remote.remote-ssh",
+            "ms-vscode-remote.remote-wsl",
+            "ms-vscode.PowerShell",
+            "redhat.vscode-xml",
+            "redhat.vscode-yaml",
+            "streetsidesoftware.code-spell-checker",
+            "timonwong.shellcheck",
+        ]
+        # Personal-only extensions — language-specific tooling
+        extensions_personal = [
+            "dbaeumer.vscode-eslint",
+            "esbenp.prettier-vscode",
+            "golang.Go",
+            "ms-dotnettools.csharp",
+            "ms-python.python",
+            "ms-toolsai.jupyter",
+            "rust-lang.rust-analyzer",
+            "yzhang.markdown-all-in-one",
+        ]
