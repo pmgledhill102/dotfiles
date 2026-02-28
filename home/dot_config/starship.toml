@@ -1,5 +1,8 @@
 # Starship configuration
 
+# Raise command timeout from 500ms default to avoid Python/Go version check warnings
+command_timeout = 2000
+
 # Inserts a blank line between shell prompts
 add_newline = true
 
