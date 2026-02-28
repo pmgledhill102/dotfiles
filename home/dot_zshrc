@@ -18,7 +18,6 @@ export PATH="/opt/homebrew/bin:$PATH"
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 ZSH_THEME=""
-echo "$ZSH_THEME"
 
 # Starship prompt, only if the VSCODE_COPILOT_CHAT_TERMINAL is not set to 1
 if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then
@@ -78,7 +77,6 @@ plugins=(
   copypath
   copyfile
 )
-echo "plugins: ${plugins[*]}"
 
 # shellcheck source=/dev/null
 source "$ZSH/oh-my-zsh.sh"
@@ -90,15 +88,28 @@ source "$ZSH/oh-my-zsh.sh"
 # You may need to manually set your language environment
 # export LANG=en_US.UTF-8
 
-# Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='vim'
-# else
-#   export EDITOR='mvim'
-# fi
+# Preferred editor
+export EDITOR="code --wait"
 
-# Compilation flags
-# export ARCHFLAGS="-arch x86_64"
+# --- Tool integrations ---
+
+# fzf key bindings and fuzzy completion
+if command -v fzf >/dev/null 2>&1; then
+  eval "$(fzf --zsh)"
+fi
+
+# nvm (Node Version Manager)
+export NVM_DIR="$HOME/.nvm"
+# shellcheck disable=SC1091
+[ -s "$(brew --prefix nvm)/nvm.sh" ] && \. "$(brew --prefix nvm)/nvm.sh"
+# shellcheck disable=SC1091
+[ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && \. "$(brew --prefix nvm)/etc/bash_completion.d/nvm"
+
+# jenv (Java Environment Manager)
+if command -v jenv >/dev/null 2>&1; then
+  export PATH="$HOME/.jenv/bin:$PATH"
+  eval "$(jenv init -)"
+fi
 
 # Load custom aliases and functions
 # shellcheck source=/dev/null
