@@ -11,17 +11,21 @@ changing permission rules, update both files together.
 - `Bash(bd *)`
 - `Bash(beads *)`
 
-### Brew (read-only)
+### Brew (read-only + services)
 
 - `Bash(brew --prefix *)`
 - `Bash(brew info *)`
 - `Bash(brew list *)`
 - `Bash(brew search *)`
+- `Bash(brew services *)`
 
 ### Chezmoi
 
-- `Bash(chezmoi -h)`
-- `Bash(chezmoi --help)`
+- `Bash(chezmoi *)`
+
+### Dolt (database for beads)
+
+- `Bash(dolt *)`
 
 ### Docker
 
@@ -150,10 +154,12 @@ of commands. `gcloud storage` is restricted to `cat` and `ls` — no `cp`,
 - `Bash(gsutil ls *)`
 - `Bash(gsutil stat *)`
 
-### GitHub CLI (read-only, plus PR creation)
+### GitHub CLI
 
-Read/view operations and PR creation. Merging, closing PRs/issues
-and `gh api` (which can POST/DELETE) require prompting.
+Read/view operations, PR creation and merging, and CI re-runs.
+Closing PRs/issues and `gh api` (which can POST/DELETE) require prompting.
+Use project-level deny rules to block `gh pr merge` in repos where
+auto-merging is unwanted.
 
 - `Bash(gh issue list *)`
 - `Bash(gh issue view *)`
@@ -161,9 +167,11 @@ and `gh api` (which can POST/DELETE) require prompting.
 - `Bash(gh pr create *)`
 - `Bash(gh pr diff *)`
 - `Bash(gh pr list *)`
+- `Bash(gh pr merge *)`
 - `Bash(gh pr view *)`
 - `Bash(gh repo view *)`
 - `Bash(gh run list *)`
+- `Bash(gh run rerun *)`
 - `Bash(gh run view *)`
 - `Bash(gh run watch *)`
 - `Bash(gh workflow list *)`
@@ -171,18 +179,22 @@ and `gh api` (which can POST/DELETE) require prompting.
 
 ### Git
 
-Read-only and local-only operations. Remote operations (`push`, `rebase`,
-`reset`) require prompting.
+Standard git workflow operations. Destructive operations (`reset --hard`,
+`push --force`, `clean`) still require prompting.
 
 - `Bash(git add *)`
 - `Bash(git branch *)`
 - `Bash(git checkout *)`
+- `Bash(git cherry-pick *)`
 - `Bash(git commit *)`
 - `Bash(git diff *)`
 - `Bash(git fetch *)`
 - `Bash(git log *)`
 - `Bash(git ls-tree *)`
+- `Bash(git merge *)`
+- `Bash(git push *)`
 - `Bash(git remote *)`
+- `Bash(git rm *)`
 - `Bash(git show *)`
 - `Bash(git stash *)`
 - `Bash(git status *)`
@@ -328,17 +340,25 @@ security scanners are safe.
 - `Bash(semgrep *)`
 - `Bash(trivy *)`
 
+### Steampipe (read-only cloud queries)
+
+- `Bash(steampipe *)`
+
 ### Shell utilities (read-only)
 
 `curl` (can exfiltrate data), `chmod` (changes permissions), and `make`
 (executes arbitrary targets) require prompting.
 
+- `Bash(cp *)`
 - `Bash(echo *)`
 - `Bash(find *)`
 - `Bash(grep *)`
 - `Bash(jq *)`
 - `Bash(ls *)`
 - `Bash(lsof *)`
+- `Bash(mkdir *)`
+- `Bash(pgrep *)`
+- `Bash(wc *)`
 - `Bash(which *)`
 
 ## Hooks
