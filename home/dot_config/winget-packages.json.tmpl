@@ -4,10 +4,11 @@
   "Sources" : [
     {
       "Packages" : [
-{{- range $index, $package := .packages.winget.packages }}
+{{- $allPackages := concat .packages.winget.packages .packages.winget.packages_pinned }}
+{{- range $index, $package := $allPackages }}
         {
           "PackageIdentifier" : "{{ $package }}"
-        }{{ if ne $index (sub (len $.packages.winget.packages) 1) }},{{ end }}
+        }{{ if ne $index (sub (len $allPackages) 1) }},{{ end }}
 {{- end }}
       ],
       "SourceDetails" : {

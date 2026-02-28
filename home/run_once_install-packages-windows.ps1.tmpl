@@ -94,6 +94,31 @@ Write-Host "  Failed:  $failureCount" -ForegroundColor Red
 Write-Host "  Skipped: $skippedCount" -ForegroundColor Yellow
 
 Write-Host ""
+Write-Host "=================================="
+Write-Host "Pinning Packages (exclude from winget upgrade)"
+Write-Host "=================================="
+Write-Host ""
+
+# Pin packages that have built-in auto-updaters.
+# These conflict with winget upgrade, so we install them once and let
+# their own update mechanisms handle versioning.
+$pinnedPackages = @(
+{{- range .packages.winget.packages_pinned }}
+    "{{ . }}"
+{{- end }}
+)
+
+foreach ($package in $pinnedPackages) {
+    Write-Host "Pinning $package..." -ForegroundColor Cyan
+    winget pin add --id $package --exact --accept-source-agreements 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  Pinned successfully" -ForegroundColor Green
+    } else {
+        Write-Host "  Failed to pin (may already be pinned)" -ForegroundColor Yellow
+    }
+}
+
+Write-Host ""
 Write-Host "Refreshing environment PATH..."
 # Refresh PATH from registry to pick up newly installed tools
 # This is necessary because winget installs update the registry PATH,

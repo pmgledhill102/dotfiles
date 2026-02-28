@@ -139,18 +139,86 @@
         [data.packages.winget]
 {{- if eq $machineType "personal" }}
             packages = [
+                "7zip.7zip",
+                "9N2D0P16C80H",
+                "9NTV2DZ11KD9",
+                "9P6RC76MSMMJ",
+                "9P8DVF1XW02V",
+                "Adobe.Acrobat.Reader.64-bit",
+                "Amazon.AWSCLI",
+                "Amazon.SAM-CLI",
+                "AntibodySoftware.WizTree",
                 "astral-sh.uv",
+                "Audacity.Audacity",
+                "Azul.Zulu.21.JDK",
+                "Bitwarden.Bitwarden",
+                "CPUID.CPU-Z",
+                "CrystalDewWorld.CrystalDiskInfo",
+                "CrystalDewWorld.CrystalDiskMark",
                 "dandavison.delta",
                 "DEVCOM.JetBrainsMonoNerdFont",
+                "Discord.Discord",
+                "Docker.DockerDesktop",
                 "FiloSottile.age",
                 "Git.Git",
+                "GitHub.cli",
+                "GoLang.Go",
+                "Google.Chrome",
+                "Google.CloudSDK",
+                "HandBrake.HandBrake",
+                "Hashicorp.Packer",
+                "Hugo.Hugo.Extended",
+                "ImageMagick.ImageMagick",
                 "JesseDuffield.lazygit",
+                "koalaman.shellcheck",
+                "MartiCliment.UniGetUI",
+                "Microsoft.365",
+                "Microsoft.AzureCLI",
+                "Microsoft.AzureFunctionsCoreTools",
+                "Microsoft.Bicep",
+                "Microsoft.DotNet.SDK.9",
                 "Microsoft.PowerShell",
+                "Microsoft.PowerToys",
+                "Microsoft.VisualStudio.2022.BuildTools",
                 "Microsoft.VisualStudioCode",
                 "Microsoft.WindowsTerminal",
+                "MoonlightGameStreamingProject.Moonlight",
+                "Nvidia.GeForceExperience",
+                "OliverBetz.ExifTool",
+                "OO-Software.ShutUp10",
+                "OpenJS.NodeJS",
+                "OpenRGB.OpenRGB",
+                "OpenVPNTechnologies.OpenVPNConnect",
+                "PrivateInternetAccess.PrivateInternetAccess",
+                "Python.Python.3.14",
+                "REALiX.HWiNFO",
+                "RubyInstallerTeam.RubyWithDevKit.3.2",
+                "Rustlang.Rustup",
                 "Starship.Starship",
+                "TechPowerUp.GPU-Z",
                 "twpayne.chezmoi",
+                "VideoLAN.VLC",
             ]
+            # Packages installed but pinned (excluded from winget upgrade).
+            # These have built-in auto-updaters that conflict with winget.
+            packages_pinned = [
+                "ElectronicArts.EADesktop",
+                "EpicGames.EpicGamesLauncher",
+                "GOG.Galaxy",
+                "Ubisoft.Connect",
+                "Valve.Steam",
+            ]
+            # Windows Store app IDs:
+            #   9N2D0P16C80H = Affinity Designer 2
+            #   9NTV2DZ11KD9 = Affinity Publisher 2
+            #   9P6RC76MSMMJ = Amazon Prime Video
+            #   9P8DVF1XW02V = Affinity Photo 2
+            # Manual installs (winget unreliable for Store apps):
+            #   Microsoft.SysinternalsSuite (Store ID: 9p7knl5rwt25)
+            # Note: Microsoft.365 installs the full suite via winget.
+            #   Previously used Office Deployment Tool + office-config.xml
+            #   to exclude Groove and Teams. Winget doesn't support that
+            #   granularity — uninstall unwanted apps post-install if needed.
 {{- else if eq $machineType "work" }}
             packages = [
                 "astral-sh.uv",
@@ -164,6 +232,7 @@
                 "Starship.Starship",
                 "twpayne.chezmoi",
             ]
+            packages_pinned = []
 {{- else }}
             packages = [
                 "astral-sh.uv",
@@ -175,6 +244,7 @@
                 "Starship.Starship",
                 "twpayne.chezmoi",
             ]
+            packages_pinned = []
 {{- end }}
 
     # VS Code extensions - organized by scope
@@ -196,10 +266,17 @@
         extensions_personal = [
             "dbaeumer.vscode-eslint",
             "esbenp.prettier-vscode",
+            "fredwangwang.vscode-hcl-format",
             "golang.Go",
+            "jebbs.plantuml",
+            "mads-hartmann.bash-ide-vscode",
+            "ms-azuretools.vscode-containers",
+            "ms-dotnettools.csdevkit",
             "ms-dotnettools.csharp",
             "ms-python.python",
             "ms-toolsai.jupyter",
             "rust-lang.rust-analyzer",
+            "tomoki1207.pdf",
+            "vscjava.vscode-java-pack",
             "yzhang.markdown-all-in-one",
         ]
