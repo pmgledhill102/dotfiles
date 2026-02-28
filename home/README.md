@@ -189,12 +189,18 @@ chezmoi edit ~/.config/ubuntu_pkglist
 To update the dotfiles on an existing machine:
 
 ```bash
-# Pull latest changes
-cd ~/.local/share/chezmoi
-git pull
+# One-command update: pulls latest changes and applies them
+dotup
 
-# Apply updates
-chezmoi apply -v
+# Or equivalently:
+chezmoi update -v
+```
+
+To check the current state of your dotfiles:
+
+```bash
+# Shows machine type, source path, last applied time, and pending changes
+dotstatus
 ```
 
 ## Troubleshooting
