@@ -27,6 +27,8 @@ Brewfile
 .tmux.conf
 run_onchange_setup-claude.sh
 setup-claude.sh
+run_once_after_setup-secrets.sh
+setup-secrets.sh
 {{- end }}
 
 # Only apply Windows files on Windows (ignore on Unix)
