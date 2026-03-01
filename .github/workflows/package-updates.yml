@@ -165,10 +165,110 @@ jobs:
               });
             }
 
+  check-chezmoi:
+    name: Check Chezmoi Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest chezmoi version
+        id: chezmoi-check
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/twpayne/chezmoi/releases/latest | jq -r .tag_name)
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Latest chezmoi version: $LATEST"
+
+      - name: Create issue for chezmoi update
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        with:
+          script: |
+            const latestVersion = '${{ steps.chezmoi-check.outputs.latest }}';
+
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies,chezmoi'
+            });
+
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes('Chezmoi Update Available')
+            );
+
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Chezmoi Update Available: ${latestVersion}`,
+                body: `## Chezmoi Update Available\n\nLatest version: **${latestVersion}**\n\n[Release notes](https://github.com/twpayne/chezmoi/releases/${latestVersion})\n\n---\n*Automatically created by the Package Updates Check workflow.*`,
+                labels: ['dependencies', 'chezmoi', 'maintenance']
+              });
+            }
+
+  check-omz-plugins:
+    name: Check Oh My Zsh Plugin Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for plugin updates
+        id: omz-check
+        run: |
+          UPDATES=""
+
+          for PLUGIN in zsh-autosuggestions zsh-syntax-highlighting; do
+            REPO="zsh-users/$PLUGIN"
+            LATEST_SHA=$(curl -s "https://api.github.com/repos/$REPO/commits/master" | jq -r .sha)
+            SHORT_SHA="${LATEST_SHA:0:7}"
+            LATEST_DATE=$(curl -s "https://api.github.com/repos/$REPO/commits/master" | jq -r '.commit.committer.date[:10]')
+            LATEST_MSG=$(curl -s "https://api.github.com/repos/$REPO/commits/master" | jq -r '.commit.message' | head -1)
+            UPDATES="${UPDATES}- **${PLUGIN}**: [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${LATEST_SHA}) (${LATEST_DATE}) — ${LATEST_MSG}\n"
+          done
+
+          {
+            echo "PLUGIN_INFO<<EOF"
+            echo -e "$UPDATES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create issue for plugin updates
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        env:
+          PLUGIN_INFO: ${{ steps.omz-check.outputs.PLUGIN_INFO }}
+        with:
+          script: |
+            const pluginInfo = process.env.PLUGIN_INFO;
+
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies,oh-my-zsh'
+            });
+
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes('Oh My Zsh Plugin Updates')
+            );
+
+            if (existingIssue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## Updated Plugin Status\n\n${pluginInfo}\n\n---\n*Automatically updated by the Package Updates Check workflow.*`
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Oh My Zsh Plugin Updates Available',
+                body: `## Oh My Zsh Plugin Updates\n\nLatest upstream commits:\n\n${pluginInfo}\n\nTo update locally:\n\`\`\`bash\ncd ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions && git pull\ncd ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting && git pull\n\`\`\`\n\n---\n*Automatically created by the Package Updates Check workflow.*`,
+                labels: ['dependencies', 'oh-my-zsh', 'maintenance']
+              });
+            }
+
   summary:
     name: Update Check Summary
     runs-on: ubuntu-latest
-    needs: [check-homebrew, check-starship]
+    needs: [check-homebrew, check-starship, check-chezmoi, check-omz-plugins]
     if: always()
     steps:
       - name: Summary
@@ -179,6 +279,8 @@ jobs:
             echo "Checked for updates in:"
             echo "- Homebrew packages (macOS)"
             echo "- Starship prompt"
+            echo "- Chezmoi"
+            echo "- Oh My Zsh plugins"
             echo ""
             echo "If updates were found, issues have been created automatically."
           } >> "$GITHUB_STEP_SUMMARY"
