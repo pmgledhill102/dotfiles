@@ -25,7 +25,7 @@ Before making changes, ensure you have:
 │   └── ...
 ├── run_once_install-packages.sh.tmpl  # Package installation script
 ├── install.sh                    # Remote installation script
-├── specs/                        # Feature specifications and plans
+├── specs/REQUIREMENTS.md         # Consolidated requirements and key decisions
 ├── docs/                         # Additional documentation
 └── README.md                     # Main documentation
 ```
@@ -172,7 +172,7 @@ When adding a new tool to the dotfiles:
 2. **Add configuration**: Create the config file in the appropriate location
 3. **Document**: Update README.md with information about the tool
 4. **Test**: Verify installation on all platforms
-5. **Update specs**: Add to the relevant specification file
+5. **Update specs**: Update `specs/REQUIREMENTS.md` if requirements change
 
 Example for adding a new tool:
 
@@ -274,7 +274,7 @@ curl -sS https://starship.rs/install.sh | sh
 
 - Review the [README.md](README.md) for general information
 - Check [docs/](docs/) for detailed guides
-- Review [specs/](specs/) for feature specifications
+- Review [specs/REQUIREMENTS.md](specs/REQUIREMENTS.md) for project requirements
 - Open an issue for bugs or questions
 
 ## Philosophy
