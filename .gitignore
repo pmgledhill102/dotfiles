@@ -24,3 +24,7 @@ temp/
 
 # Ignore downloaded binaries
 bin/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
