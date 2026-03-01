@@ -23,7 +23,7 @@ Key paths relative to repo root:
 - `home/` — all managed dotfiles and scripts
 - `home/dot_claude/` — this directory, Claude Code config
 - `scripts/` — validation scripts for CI
-- `specs/` — feature specifications
+- `specs/REQUIREMENTS.md` — consolidated project requirements and key decisions
 - `docs/` — documentation (testing, maintenance, troubleshooting, migration)
 
 ## CI/CD and Linting
