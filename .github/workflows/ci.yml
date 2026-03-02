@@ -187,6 +187,15 @@ jobs:
         chmod +x scripts/validate-installation.sh
         ./scripts/validate-installation.sh
 
+    - name: Measure Zsh Startup Time (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        zsh -i -c exit  # warm run
+        ZSH_STARTUP=$( { time zsh -i -c exit; } 2>&1 )
+        echo "$ZSH_STARTUP"
+        REAL_TIME=$(echo "$ZSH_STARTUP" | grep '^real' | awk '{print $2}')
+        echo "ZSH_STARTUP_TIME=$REAL_TIME" > /tmp/zsh_startup.txt
+
     - name: Run Validation Script (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -341,6 +350,11 @@ jobs:
           echo "| **Tests Run** | $TOTAL_TESTS |"
           echo "| **Tests Passed** | $PASSED_TESTS |"
         } >> "$GITHUB_STEP_SUMMARY"
+
+        if [ -f /tmp/zsh_startup.txt ]; then
+            source /tmp/zsh_startup.txt
+        fi
+        echo "| **Zsh Startup** | ${ZSH_STARTUP_TIME:-N/A} |" >> "$GITHUB_STEP_SUMMARY"
 
         if [ "$OVERHEAD_DISPLAY" != "N/A" ]; then
             if [ "$OVERHEAD_KB" -ge 0 ]; then

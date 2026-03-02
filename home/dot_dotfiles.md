@@ -5,7 +5,7 @@ Repo: <https://github.com/pmgledhill102/dotfiles>
 ## Quick Commands
 
 ```bash
-dotup                 # Pull latest changes and apply
+dotup                 # Update dotfiles, brew, OMZ, plugins, and starship
 dotstatus             # Show machine type, source path, pending changes
 chezmoi diff          # Preview what would change
 chezmoi apply -v      # Apply changes

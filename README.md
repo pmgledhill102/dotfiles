@@ -72,7 +72,7 @@ chezmoi add ~/.foo    # Start managing a new file
 ### Updating
 
 ```bash
-dotup                 # Pull latest + apply (alias for chezmoi update -v)
+dotup                 # Update dotfiles, brew, OMZ, plugins, and starship
 dotstatus             # Show machine type, source path, pending changes
 ```
 
@@ -143,8 +143,6 @@ then install above.
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — development workflow and code style
 - [docs/TESTING.md](docs/TESTING.md) — CI pipeline and validation scripts
-- [docs/MAINTENANCE.md](docs/MAINTENANCE.md) — dependency updates and health checks
-- [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md) — age key backup and disaster recovery
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common issues and fixes
 
 ## License

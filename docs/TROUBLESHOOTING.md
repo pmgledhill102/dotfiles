@@ -776,8 +776,6 @@ chezmoi apply -v
 exec zsh
 ```
 
-See [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md) for detailed recovery procedures.
-
 ## Checklist for Troubleshooting
 
 When facing an issue, work through this checklist:

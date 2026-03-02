@@ -4,8 +4,37 @@
 
 # --- Dotfiles management ---
 
-# Update dotfiles from remote and apply
-alias dotup='chezmoi update -v'
+# Update dotfiles, packages, and plugins
+dotup() {
+  echo "==> Updating dotfiles..."
+  chezmoi update -v
+
+  if command -v brew >/dev/null 2>&1; then
+    echo "\n==> Updating Homebrew packages..."
+    brew update && brew upgrade
+  fi
+
+  if [ -d "$ZSH" ]; then
+    echo "\n==> Updating Oh My Zsh..."
+    omz update --unattended
+  fi
+
+  local plugin_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
+  for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+    if [ -d "$plugin_dir/$plugin/.git" ]; then
+      echo "\n==> Updating $plugin..."
+      git -C "$plugin_dir/$plugin" pull
+    fi
+  done
+
+  if [ "$(uname -s)" = "Linux" ] && ! command -v brew >/dev/null 2>&1 \
+     && command -v starship >/dev/null 2>&1; then
+    echo "\n==> Updating Starship..."
+    curl -sS https://starship.rs/install.sh | sh
+  fi
+
+  echo "\n==> All updates complete."
+}
 
 # Show dotfiles status: machine type, last applied, pending changes
 dotstatus() {
