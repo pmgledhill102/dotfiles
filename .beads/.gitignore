@@ -1,3 +1,6 @@
+# Backups (redundant with git history)
+backup/
+
 # Dolt database (managed by Dolt, not git)
 dolt/
 dolt-access.lock
