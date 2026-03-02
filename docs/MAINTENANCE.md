@@ -8,16 +8,9 @@ These run without intervention:
 | ---- | -------- | --------- |
 | Linting (ShellCheck, markdownlint, actionlint) | `ci.yml` | Every PR |
 | Cross-platform install smoke tests | `ci.yml` | Every PR |
-| Homebrew outdated check | `package-updates.yml` | Weekly (Mon 09:00 UTC) |
-| Starship version check | `package-updates.yml` | Weekly |
-| Chezmoi version check | `package-updates.yml` | Weekly |
-| Oh My Zsh plugin update check | `package-updates.yml` | Weekly |
 | Ghostty terminfo regeneration | `ghostty-terminfo.yml` | Weekly (Sun 00:00 UTC) |
 | GitHub Actions dependency PRs | Dependabot | Weekly |
 | Markdown lint | pre-commit hook | Every commit |
-
-When updates are detected, GitHub issues are created automatically. Review and
-act on them as they appear.
 
 ## Manual Tasks
 
