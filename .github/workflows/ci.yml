@@ -149,13 +149,10 @@ jobs:
         # We use --source . to use the checked-out repo
         # We assume no secrets are strictly blocking for this basic CI smoke test
 
-        # Pre-seed machine_type so promptChoiceOnce returns "personal" without
-        # prompting, then execute the config template to generate the full
-        # config with all package lists. chezmoi init --source skips template
-        # processing, so we generate the config manually.
+        # Pre-seed machine_type so promptChoiceOnce returns "personal"
+        # without prompting in non-interactive CI.
         mkdir -p "$HOME/.config/chezmoi"
         printf '[data]\n    machine_type = "personal"\n' > "$HOME/.config/chezmoi/chezmoi.toml"
-        chezmoi execute-template --init --source . < .chezmoi.toml.tmpl > "$HOME/.config/chezmoi/chezmoi.toml"
 
         echo "Starting Chezmoi Apply..."
         time chezmoi init --apply --source . --verbose
@@ -164,16 +161,13 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Pre-seed machine_type so promptChoiceOnce returns "personal" without
-        # prompting, then execute the config template to generate the full
-        # config with all package lists. chezmoi init --source skips template
-        # processing, so we generate the config manually.
+        # Pre-seed machine_type so promptChoiceOnce returns "personal"
+        # without prompting in non-interactive CI.
         New-Item -ItemType Directory -Path "$HOME\.config\chezmoi" -Force | Out-Null
         @"
         [data]
             machine_type = "personal"
         "@ | Out-File -FilePath "$HOME\.config\chezmoi\chezmoi.toml" -Encoding utf8
-        Get-Content .chezmoi.toml.tmpl -Raw | chezmoi execute-template --init --source . | Out-File -FilePath "$HOME\.config\chezmoi\chezmoi.toml" -Encoding utf8
 
         Write-Host "Starting Chezmoi Apply..."
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
