@@ -93,6 +93,7 @@ Write-Host "  Success: $successCount" -ForegroundColor Green
 Write-Host "  Failed:  $failureCount" -ForegroundColor Red
 Write-Host "  Skipped: $skippedCount" -ForegroundColor Yellow
 
+{{- if ne (env "CI") "true" }}
 Write-Host ""
 Write-Host "=================================="
 Write-Host "Pinning Packages (exclude from winget upgrade)"
@@ -117,6 +118,10 @@ foreach ($package in $pinnedPackages) {
         Write-Host "  Failed to pin (may already be pinned)" -ForegroundColor Yellow
     }
 }
+{{- else }}
+Write-Host ""
+Write-Host "CI detected — skipping pinned package installation and pinning"
+{{- end }}
 
 Write-Host ""
 Write-Host "Refreshing environment PATH..."
