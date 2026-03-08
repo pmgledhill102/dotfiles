@@ -9,6 +9,9 @@ spec, research, and plan documents (Oct 2025).
 - **Idempotent**: all install scripts safe to re-run without errors or duplicates
 - **Performance**: shell startup under 1 second on modern hardware (NFR-PERF-001)
 - **CI budget**: test matrix completes within 10 minutes per platform
+  - PRs: lint only (shellcheck, markdownlint, actionlint)
+  - Merge to main: full install test on all platforms
+  - Weekly schedule + manual dispatch: catch upstream breakage
 
 ## Principles
 
