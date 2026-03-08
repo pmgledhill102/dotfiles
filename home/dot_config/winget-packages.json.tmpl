@@ -4,7 +4,10 @@
   "Sources" : [
     {
       "Packages" : [
-{{- $allPackages := concat .packages.winget.packages .packages.winget.packages_pinned }}
+{{- $allPackages := .packages.winget.packages }}
+{{- if ne (env "CI") "true" }}
+{{- $allPackages = concat $allPackages .packages.winget.packages_pinned }}
+{{- end }}
 {{- range $index, $package := $allPackages }}
         {
           "PackageIdentifier" : "{{ $package }}"
