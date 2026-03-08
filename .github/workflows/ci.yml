@@ -149,16 +149,31 @@ jobs:
         # We use --source . to use the checked-out repo
         # We assume no secrets are strictly blocking for this basic CI smoke test
 
+        # Pre-seed machine_type for non-interactive CI.
+        # chezmoi's --promptChoice flag does NOT work with promptChoiceOnce,
+        # so we must write the config data directly.
+        mkdir -p "$HOME/.config/chezmoi"
+        printf '[data]\n    machine_type = "personal"\n' > "$HOME/.config/chezmoi/chezmoi.toml"
+
         echo "Starting Chezmoi Apply..."
-        time chezmoi init --apply --source . --verbose --promptChoice machine_type=personal
+        time chezmoi init --apply --source . --verbose
 
     - name: Initialize and Apply Dotfiles (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
+        # Pre-seed machine_type for non-interactive CI.
+        # chezmoi's --promptChoice flag does NOT work with promptChoiceOnce,
+        # so we must write the config data directly.
+        New-Item -ItemType Directory -Path "$HOME\.config\chezmoi" -Force | Out-Null
+        @"
+        [data]
+            machine_type = "personal"
+        "@ | Out-File -FilePath "$HOME\.config\chezmoi\chezmoi.toml" -Encoding utf8
+
         Write-Host "Starting Chezmoi Apply..."
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        chezmoi init --apply --source . --verbose --promptChoice machine_type=personal
+        chezmoi init --apply --source . --verbose
         $stopwatch.Stop()
         Write-Host "Installation took $($stopwatch.Elapsed.TotalSeconds) seconds"
 
