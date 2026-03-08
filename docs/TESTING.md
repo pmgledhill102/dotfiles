@@ -15,7 +15,9 @@ The dotfiles repository includes comprehensive automated testing to ensure relia
 
 ### GitHub Actions Workflow
 
-All changes are automatically tested via GitHub Actions. The workflow includes:
+CI is defined in `.github/workflows/ci.yml`. PRs run lint jobs only; full
+install tests run on push to main, weekly, and via manual dispatch. The
+workflow includes:
 
 1. **Linting and Static Analysis**
    - ShellCheck for shell scripts

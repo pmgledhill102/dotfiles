@@ -60,13 +60,11 @@ fix(install): correct Ubuntu package installation
 
 ## CI
 
-CI runs on every push/PR to `main` (`.github/workflows/ci.yml`):
+CI is defined in `.github/workflows/ci.yml`:
 
-- **ShellCheck** on `scripts/` and `home/`
-- **markdownlint-cli2** on all `*.md` files
-- **actionlint** on GitHub Actions workflows
-- **Test Install** matrix (Ubuntu, macOS, Windows): `chezmoi init --apply`
-  followed by validation scripts
+- **PRs**: lint only — ShellCheck, markdownlint-cli2, actionlint (~2 min)
+- **Push to main**: lint + full install test matrix (Ubuntu, macOS, Windows)
+- **Weekly / manual dispatch**: full install tests to catch upstream breakage
 
 Pre-commit hooks run markdownlint-cli2 locally.
 
