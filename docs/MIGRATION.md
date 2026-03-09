@@ -38,6 +38,7 @@ rm -f ~/.zprofile
 rm -f ~/.bash_profile
 rm -f ~/.bashrc
 rm -f ~/.hushlogin    # chezmoi will recreate this as a regular file
+rm -f ~/Brewfile.lock.json  # stow leftover; brew bundle regenerates it
 
 # Remove stow symlink directories
 rm -f ~/.config/bash    # symlink to ../.dotfiles/bash/.config/bash
@@ -145,7 +146,7 @@ Copy-paste for a single machine (macOS). Review before running:
 set -euo pipefail
 
 echo "=== Removing stow symlinks ==="
-rm -fv ~/.zprofile ~/.bash_profile ~/.bashrc ~/.hushlogin
+rm -fv ~/.zprofile ~/.bash_profile ~/.bashrc ~/.hushlogin ~/Brewfile.lock.json
 rm -fv ~/.config/bash ~/.config/iterm
 
 echo "=== Removing Oh My Posh ==="
