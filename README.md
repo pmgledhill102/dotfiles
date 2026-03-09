@@ -109,28 +109,11 @@ chezmoi apply
 
 Highly sensitive secrets (API keys, passwords) belong in Bitwarden, not here.
 
-## Migrating from Other Systems
+## Migrating from Old Setup (Stow)
 
-If you're switching from another dotfile manager:
-
-```bash
-# 1. Backup current dotfiles
-mkdir -p ~/dotfiles-backup && cp ~/.zshrc ~/.gitconfig ~/dotfiles-backup/
-
-# 2. Install this setup
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/install.sh)"
-
-# 3. Merge your customizations
-chezmoi edit ~/.zshrc   # paste your aliases, functions, etc.
-chezmoi apply -v
-```
-
-**From GNU Stow**: `stow -D */` to unlink, then install above.
-**From yadm**: `yadm list` to inventory, then install above and
-`chezmoi add` your custom files.
-**From git bare repo**: list tracked files with
-`git --git-dir=$HOME/.cfg/ --work-tree=$HOME ls-tree -r --name-only HEAD`,
-then install above.
+See [docs/MIGRATION.md](docs/MIGRATION.md) for the full cleanup guide
+covering stow symlink removal, Oh My Posh → Starship transition, and
+per-platform notes.
 
 ## Platform Support
 

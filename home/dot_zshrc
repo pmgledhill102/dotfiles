@@ -91,6 +91,13 @@ source "$ZSH/oh-my-zsh.sh"
 # Preferred editor
 export EDITOR="code --wait"
 
+# CLI editor (for git commit messages in terminal, etc.)
+export VISUAL="nano"
+
+# Telemetry opt-outs
+export HOMEBREW_NO_ANALYTICS=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+
 # --- Tool integrations ---
 
 # fzf key bindings and fuzzy completion
