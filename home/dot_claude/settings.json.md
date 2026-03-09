@@ -27,6 +27,10 @@ changing permission rules, update both files together.
 
 - `Bash(dolt *)`
 
+### draw.io (CLI export, read-only)
+
+- `Bash(/Applications/draw.io.app/Contents/MacOS/draw.io *)`
+
 ### Docker
 
 - `Bash(hadolint *)`
@@ -40,6 +44,7 @@ changing permission rules, update both files together.
 - `Bash(docker ps *)`
 - `Bash(docker rm *)`
 - `Bash(docker run *)`
+- `Bash(docker push *)`
 - `Bash(docker stop *)`
 
 ### GCloud (read-only operations only)
@@ -358,6 +363,7 @@ security scanners are safe.
 - `Bash(lsof *)`
 - `Bash(mkdir *)`
 - `Bash(pgrep *)`
+- `Bash(sed *)`
 - `Bash(wc *)`
 - `Bash(which *)`
 
