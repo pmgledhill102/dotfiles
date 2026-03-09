@@ -1,0 +1,18 @@
+# Nano configuration
+
+# Use smooth scrolling
+set smooth
+
+# Show line numbers
+set linenumbers
+
+# Enable mouse support
+set mouse
+
+# Use spaces instead of tabs
+set tabsize 4
+set tabstospaces
+
+# Syntax highlighting from scopatz/nanorc (cloned to ~/.nano)
+# Falls back to nano's built-in definitions if ~/.nano doesn't exist
+include "~/.nano/*.nanorc"

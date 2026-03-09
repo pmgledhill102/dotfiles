@@ -27,6 +27,11 @@ dotup() {
     fi
   done
 
+  if [ -d "$HOME/.nano/.git" ]; then
+    echo "\n==> Updating nano syntax highlighting..."
+    git -C "$HOME/.nano" pull
+  fi
+
   if [ "$(uname -s)" = "Linux" ] && ! command -v brew >/dev/null 2>&1 \
      && command -v starship >/dev/null 2>&1; then
     echo "\n==> Updating Starship..."

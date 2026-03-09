@@ -67,6 +67,15 @@ case "$(uname -s)" in
       echo "zsh-syntax-highlighting already installed, skipping..."
     fi
     
+    # Install nano syntax highlighting (scopatz/nanorc)
+    echo "Installing nano syntax highlighting..."
+    if [ ! -d "$HOME/.nano/.git" ]; then
+      rm -rf "$HOME/.nano"
+      git clone https://github.com/scopatz/nanorc.git "$HOME/.nano"
+    else
+      echo "nano syntax highlighting already installed, skipping..."
+    fi
+
     # Install Ghostty terminfo for SSH compatibility
     # This allows remote servers to recognize the 'xterm-ghostty' terminal type
     echo "Installing Ghostty terminfo..."
@@ -132,6 +141,15 @@ case "$(uname -s)" in
       echo "zsh-syntax-highlighting already installed, skipping..."
     fi
     
+    # Install nano syntax highlighting (scopatz/nanorc)
+    echo "Installing nano syntax highlighting..."
+    if [ ! -d "$HOME/.nano/.git" ]; then
+      rm -rf "$HOME/.nano"
+      git clone https://github.com/scopatz/nanorc.git "$HOME/.nano"
+    else
+      echo "nano syntax highlighting already installed, skipping..."
+    fi
+
     # Install Ghostty terminfo for SSH compatibility
     # This allows remote servers to recognize the 'xterm-ghostty' terminal type
     echo "Installing Ghostty terminfo..."
