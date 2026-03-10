@@ -73,9 +73,11 @@ plugins=(
   zsh-syntax-highlighting
   colored-man-pages
   command-not-found
+  extract
   history
   copypath
   copyfile
+  z
 )
 
 # shellcheck source=/dev/null
