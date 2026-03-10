@@ -16,7 +16,7 @@ dotup() {
 
   if [ -d "$ZSH" ]; then
     echo "\n==> Updating Oh My Zsh..."
-    omz update --unattended
+    "$ZSH/tools/upgrade.sh"
   fi
 
   local plugin_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
