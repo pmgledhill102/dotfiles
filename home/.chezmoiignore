@@ -8,6 +8,10 @@
 .claude/README.md
 .claude/settings.json.md
 
+# macOS defaults — disabled until reviewed and tested
+run_once_macos_defaults.sh
+macos_defaults.sh
+
 # Only apply PowerShell scripts on Windows
 {{- if ne .chezmoi.os "windows" }}
 run_once_install-packages-windows.ps1
