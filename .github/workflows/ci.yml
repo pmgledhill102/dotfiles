@@ -63,19 +63,35 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
 
-    - name: Update base system packages (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        echo "Updating base system to exclude package updates from overhead calculation..."
-        sudo apt-get update
-        sudo apt-get upgrade -y
+    # --- Strip pre-installed tools to simulate a fresh machine ---
+    # actions/checkout needs git, so stripping happens AFTER checkout.
+    # chezmoi init --source . uses the local checkout (no git clone needed).
 
-    - name: Update base system packages (macOS)
+    - name: Strip pre-installed tools (macOS)
       if: runner.os == 'macOS'
       run: |
-        echo "Updating Homebrew to exclude package updates from overhead calculation..."
-        brew update
-        brew upgrade
+        echo "Uninstalling Homebrew to test bootstrap from scratch..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)" -- --force
+        sudo rm -rf /opt/homebrew /usr/local/Homebrew /usr/local/Cellar /usr/local/Caskroom
+        hash -r
+        if command -v brew >/dev/null 2>&1; then
+          echo "Error: Homebrew still found after uninstall"
+          exit 1
+        fi
+        echo "Homebrew removed successfully."
+        # Xcode CLT is kept — removing it adds ~5 min of download time.
+        # install.sh handles CLT installation on truly fresh Macs.
+
+    - name: Strip pre-installed tools (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        echo "Removing packages that install scripts should install..."
+        sudo apt-get remove -y git zsh || true
+        sudo apt-get autoremove -y
+        echo "Pre-installed tools stripped."
+
+    # Windows: no stripping needed. winget install handles already-installed
+    # packages gracefully, and --source . bypasses the git-for-clone issue.
 
     - name: Check disk space before installation (Unix)
       if: runner.os != 'Windows'
@@ -112,35 +128,20 @@ jobs:
         $initialUsed | Out-File "$env:TEMP\initial_disk_used.txt"
         Write-Host "Initial disk usage (home volume): $([math]::Round($initialUsed / 1KB, 2)) KB"
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        # Note: apt-get update already run in "Update base system packages (Ubuntu)" step
-        sudo apt-get install -y zsh
+    # --- Install chezmoi (the only pre-req for --source . apply) ---
 
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      # Homebrew is pre-installed on macOS runners
+    - name: Install chezmoi (Unix)
+      if: runner.os != 'Windows'
       run: |
-        # Note: brew update already run in "Update base system packages (macOS)" step
-        # Install chezmoi if not present
-        if ! command -v chezmoi >/dev/null 2>&1; then
-          brew install chezmoi
-        fi
-
-    - name: Install chezmoi (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+        # Use the official installer — same method as install.sh for real bootstraps
+        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
     - name: Install chezmoi (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Install chezmoi via winget
         winget install --id twpayne.chezmoi --accept-source-agreements --accept-package-agreements
-        
-        # Add WinGet links directory to PATH for subsequent steps
         $wingetPath = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
         Write-Host "Adding $wingetPath to PATH"
         echo "$wingetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

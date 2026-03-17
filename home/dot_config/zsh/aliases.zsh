@@ -65,3 +65,10 @@ if command -v bat >/dev/null 2>&1; then
   export PAGER="bat"
   export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 fi
+
+# --- Podman (Docker drop-in replacement) ---
+
+if command -v podman >/dev/null 2>&1 && ! command -v docker >/dev/null 2>&1; then
+  alias docker='podman'
+  alias docker-compose='podman compose'
+fi
