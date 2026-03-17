@@ -50,7 +50,7 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 | **Common** | — | — | — | gitleaks | — | github-actions |
 | **Markdown** | prettier | markdownlint-cli2 | — | — | — | — |
 | **Shell** | shfmt | shellcheck | — | — | — | — |
-| **Docker** | — | hadolint | — | trivy | — | docker |
+| **Containers** | — | hadolint | — | trivy | — | docker |
 | **Terraform** | terraform fmt | tflint, terraform validate | — | tfsec, checkov | — | terraform |
 | **Go** | gofmt / goimports | golangci-lint | — | — | govulncheck | gomod |
 | **Python** | ruff | ruff | mypy / pyright | bandit | — | pip |

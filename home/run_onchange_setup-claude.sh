@@ -27,14 +27,19 @@ else
     echo "  Skipped google-dev-knowledge (no API key in ~/.secrets)"
 fi
 
-# Terraform — provider docs, module search (requires Docker)
-if command -v docker >/dev/null 2>&1; then
+# Terraform — provider docs, module search (requires Podman or Docker)
+if command -v podman >/dev/null 2>&1; then
+    claude mcp add --transport stdio --scope user \
+        terraform -- \
+        podman run -i --rm hashicorp/terraform-mcp-server
+    echo "  Added terraform (via podman)"
+elif command -v docker >/dev/null 2>&1; then
     claude mcp add --transport stdio --scope user \
         terraform -- \
         docker run -i --rm hashicorp/terraform-mcp-server
-    echo "  Added terraform"
+    echo "  Added terraform (via docker)"
 else
-    echo "  Skipped terraform (Docker not installed)"
+    echo "  Skipped terraform (no container runtime installed)"
 fi
 
 echo "Claude Code MCP setup complete."

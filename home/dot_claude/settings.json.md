@@ -31,21 +31,22 @@ changing permission rules, update both files together.
 
 - `Bash(/Applications/draw.io.app/Contents/MacOS/draw.io *)`
 
-### Docker
+### Containers (Podman)
 
 - `Bash(hadolint *)`
-- `Bash(docker build *)`
-- `Bash(docker compose *)`
-- `Bash(docker container prune *)`
-- `Bash(docker info *)`
-- `Bash(docker inspect *)`
-- `Bash(docker logs *)`
-- `Bash(docker network prune *)`
-- `Bash(docker ps *)`
-- `Bash(docker rm *)`
-- `Bash(docker run *)`
-- `Bash(docker push *)`
-- `Bash(docker stop *)`
+- `Bash(podman build *)`
+- `Bash(podman compose *)`
+- `Bash(podman container prune *)`
+- `Bash(podman info *)`
+- `Bash(podman inspect *)`
+- `Bash(podman logs *)`
+- `Bash(podman machine *)`
+- `Bash(podman network prune *)`
+- `Bash(podman ps *)`
+- `Bash(podman rm *)`
+- `Bash(podman run *)`
+- `Bash(podman push *)`
+- `Bash(podman stop *)`
 
 ### GCloud (read-only operations only)
 
