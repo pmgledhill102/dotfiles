@@ -20,7 +20,7 @@ case "$(uname -s)" in
     # removed snapd, using generic install
     # ncurses-term provides terminal definitions for modern terminals like Ghostty
     # ncurses-bin provides 'tic' command needed to compile terminfo
-    sudo apt-get install -y zsh age ncurses-term ncurses-bin
+    sudo apt-get install -y git zsh age ncurses-term ncurses-bin
 
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
@@ -104,6 +104,13 @@ case "$(uname -s)" in
     if ! command -v brew >/dev/null 2>&1; then
       echo "Installing Homebrew..."
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      # Add Homebrew to PATH for the remainder of this script
+      # (Apple Silicon installs to /opt/homebrew, Intel to /usr/local)
+      if [ -f /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      elif [ -f /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+      fi
     fi
     echo "Installing packages with Homebrew..."
     # Add packages here
