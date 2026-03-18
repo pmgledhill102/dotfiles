@@ -8,10 +8,18 @@ set -e
 case "$(uname -s)" in
   Darwin*)
     echo "macOS detected - running brew bundle..."
-    
+
+    # Homebrew may not be in PATH yet if install-packages.sh just installed it
+    # (chezmoi runs each script in a separate shell). Resolve from known paths.
     if ! command -v brew >/dev/null 2>&1; then
-      echo "Error: Homebrew is not installed. Please run the main install script first."
-      exit 1
+      if [ -f /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      elif [ -f /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+      else
+        echo "Error: Homebrew is not installed. Please run the main install script first."
+        exit 1
+      fi
     fi
     
     # Use the Brewfile from the home directory (after chezmoi applies it)
