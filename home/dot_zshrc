@@ -19,12 +19,6 @@ export PATH="/opt/homebrew/bin:$PATH"
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 ZSH_THEME=""
 
-# Starship prompt, only if the VSCODE_COPILOT_CHAT_TERMINAL is not set to 1
-if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then
-  export STARSHIP_CONFIG="$HOME/.config/starship.toml"
-  eval "$(starship init zsh)"
-fi
-
 # Set to this to use case-sensitive completion
 # CASE_SENSITIVE="true"
 
@@ -127,5 +121,23 @@ fi
 # shellcheck source=/dev/null
 [ -f "$HOME/.config/zsh/aliases.zsh" ] && source "$HOME/.config/zsh/aliases.zsh"
 
-# # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-# [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+# Starship prompt (init after OMZ source to preserve transient prompt hooks)
+if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then
+  export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+  eval "$(starship init zsh)"
+
+  # Transient prompt: collapse previous prompts to just the character symbol.
+  # See docs/TRANSIENT-PROMPT.md for details.
+  __starship_full_prompt=$PROMPT
+  __starship_full_rprompt=$RPROMPT
+
+  __starship_transient_accept_line() {
+    PROMPT='$(starship module character)'
+    RPROMPT=''
+    zle reset-prompt
+    PROMPT=$__starship_full_prompt
+    RPROMPT=$__starship_full_rprompt
+    zle .accept-line
+  }
+  zle -N accept-line __starship_transient_accept_line
+fi
