@@ -32,6 +32,7 @@ _warn() {
 
 run_precommit() {
     _stage="$1"
+    shift
     has_precommit || return 0
     if ! command_available pre-commit; then
         _warn "pre-commit config found but 'pre-commit' is not installed"
@@ -48,5 +49,5 @@ run_beads() {
         _warn "beads config found but 'bd' is not installed"
         return 0
     fi
-    bd hook "$_hook" "$@"
+    bd hooks run "$_hook" "$@"
 }

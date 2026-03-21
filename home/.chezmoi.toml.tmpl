@@ -16,13 +16,14 @@
 {{- if eq $machineType "personal" }}
             taps = [
                 "aws/tap",
-                "powershell/tap",
             ]
             formulas = [
                 "aws-sam-cli",
                 "awscli",
                 "azure-cli",
                 "bat",
+                "beads",
+                "bitwarden-cli",
                 "dolt",
                 "dotnet",
                 "fd",
@@ -46,7 +47,6 @@
                 "pandoc",
                 "podman",
                 "poppler",
-                "powershell/tap/powershell",
                 "powershell",
                 "pre-commit",
                 "ripgrep",
@@ -60,14 +60,14 @@
             ]
             casks = [
                 "bitwarden",
-                "bitwarden-cli",
                 "bruno",
                 "claude",
+                "claude-code",
                 "discord",
                 "font-jetbrains-mono-nerd-font",
                 "ghostty",
                 "google-chrome",
-                "google-cloud-sdk",
+                "gcloud-cli",
                 "insomnia",
                 "logi-options+",
                 "rectangle",
