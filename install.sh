@@ -51,6 +51,13 @@ case "$(uname -s)" in
       fi
     fi
     echo "Homebrew: OK"
+
+    # Install Rosetta 2 on Apple Silicon (required by many Intel-based apps)
+    if [ "$(uname -m)" = "arm64" ] && ! /usr/bin/pgrep -q oahd; then
+      echo "Installing Rosetta 2..."
+      softwareupdate --install-rosetta --agree-to-license
+    fi
+    echo "Rosetta 2: OK"
     ;;
 
   Linux*)
