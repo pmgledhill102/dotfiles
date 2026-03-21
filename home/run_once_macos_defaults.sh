@@ -67,12 +67,18 @@ case "$(uname -s)" in
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
     defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 
+    # Dock: set icon size and magnification
+    defaults write com.apple.dock tilesize -int 43
+    defaults write com.apple.dock magnification -bool true
+    defaults write com.apple.dock largesize -int 72
+
     # Enable full keyboard access for all controls (e.g. enable Tab in modal dialogs)
     defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
     
     # Restart affected applications
     echo "Restarting Finder to apply changes..."
     killall Finder || true
+    killall Dock || true
     
     echo "macOS defaults applied successfully!"
     echo "Note: Some changes may require a logout/restart to take full effect."
