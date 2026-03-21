@@ -346,6 +346,14 @@ security scanners are safe.
 - `Bash(semgrep *)`
 - `Bash(trivy *)`
 
+### PDF processing
+
+- `Bash(ocrmypdf *)`
+- `Bash(pandoc *)`
+- `Bash(pdfinfo *)`
+- `Bash(pdftotext *)`
+- `Bash(weasyprint *)`
+
 ### Steampipe (read-only cloud queries)
 
 - `Bash(steampipe *)`
