@@ -1,3 +1,5 @@
 # Ghostty terminal configuration
 # Docs: https://ghostty.org/docs/config
 # Defaults: ghostty +show-config --default --docs
+
+working-directory = ~/dev
