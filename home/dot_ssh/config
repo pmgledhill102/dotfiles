@@ -1,0 +1,6 @@
+Host *.servers.pmgledhill.com
+    User ubuntu
+    IdentityAgent ~/.bitwarden-ssh-agent.sock
+    CheckHostIP no
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
