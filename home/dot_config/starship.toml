@@ -73,6 +73,9 @@ success_symbol = "[󰄾](bold green)"
 error_symbol = "[󰄾](bold red)"
 vicmd_symbol = "[❮](bold green)"
 
+[transient_prompt]
+format = "[󰄾](bold green) "
+
 [nodejs]
 format = "[ $version](fg:#6CA35E) "
 detect_files = ["package.json", ".node-version"]
