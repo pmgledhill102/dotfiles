@@ -34,9 +34,10 @@ it — on the current line.
 
 ## How It Works
 
-Starship declares a `[transient_prompt]` config section, but as of v1.24.2
-its `starship init zsh` does not wire up the ZLE hooks needed to activate it.
-A custom ZLE (Zsh Line Editor) widget in `.zshrc` bridges the gap.
+Starship does not support transient prompts for zsh — its `starship init zsh`
+does not wire up the ZLE hooks needed, and the `[transient_prompt]` config key
+is not recognised for zsh (it produces a warning). A custom ZLE (Zsh Line
+Editor) widget in `.zshrc` implements transient prompts entirely in shell code.
 
 ### The mechanism
 
@@ -79,8 +80,7 @@ Step by step:
 Using `starship module character` renders the character symbol with its full
 style (bold green on success, bold red on error). This keeps the collapsed
 prompt visually consistent with the `[character]` section in
-`starship.toml`, and means the transient prompt matches the
-`[transient_prompt]` format defined there.
+`starship.toml`.
 
 ### Ordering matters
 
@@ -104,17 +104,18 @@ manages its own prompt rendering.
 
 ### `starship.toml`
 
-The `[transient_prompt]` and `[character]` sections define the appearance:
+The `[character]` section defines the prompt symbol used by both the full
+prompt and the transient prompt (via `starship module character`):
 
 ```toml
 [character]
 success_symbol = "[󰄾](bold green)"
 error_symbol = "[󰄾](bold red)"
 vicmd_symbol = "[❮](bold green)"
-
-[transient_prompt]
-format = "[󰄾](bold green) "
 ```
+
+No `[transient_prompt]` section is needed — Starship does not use it for zsh,
+and including it produces a warning.
 
 ### `.zshrc`
 
@@ -122,6 +123,5 @@ The ZLE override described above must be present after `starship init zsh`.
 
 ## Future
 
-If a future Starship release wires up `[transient_prompt]` natively in its
-`starship init zsh` output, the custom ZLE code can be removed — the
-`[transient_prompt]` config in `starship.toml` is already in place.
+If a future Starship release adds native transient prompt support for zsh,
+the custom ZLE code can be removed.
