@@ -1,8 +1,5 @@
 # Nano configuration
 
-# Use smooth scrolling
-set smooth
-
 # Show line numbers
 set linenumbers
 
