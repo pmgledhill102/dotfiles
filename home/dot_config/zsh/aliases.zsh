@@ -4,15 +4,10 @@
 
 # --- Dotfiles management ---
 
-# Update dotfiles, packages, and plugins
+# Update dotfiles and plugins (does not install/upgrade packages)
 dotup() {
   echo "==> Updating dotfiles..."
   chezmoi update -v
-
-  if command -v brew >/dev/null 2>&1; then
-    echo "\n==> Updating Homebrew packages..."
-    brew update && brew upgrade
-  fi
 
   if [ -d "$ZSH" ]; then
     echo "\n==> Updating Oh My Zsh..."
@@ -54,6 +49,30 @@ dotstatus() {
   echo ""
   echo "Pending changes:"
   chezmoi status || echo "  (none)"
+}
+
+# Install and upgrade Homebrew packages from Brewfile
+dotbrew() {
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "Error: Homebrew is not installed."
+    return 1
+  fi
+
+  echo "==> Updating Homebrew..."
+  brew update
+
+  local brewfile="$HOME/Brewfile"
+  if [ -f "$brewfile" ]; then
+    echo "\n==> Installing packages from Brewfile..."
+    brew bundle install --file "$brewfile"
+  else
+    echo "Warning: Brewfile not found at $brewfile"
+  fi
+
+  echo "\n==> Upgrading installed packages..."
+  brew upgrade
+
+  echo "\n==> Homebrew packages up to date."
 }
 
 # --- CLI tool defaults ---
