@@ -10,9 +10,9 @@
 
 ## Commit & PR Style
 
-- Use `git commit -m $'Title\n\nBody\n\nCo-Authored-By: ...'` with `\n` for linebreaks
-- Use `gh pr create --title "..." --body $'## Summary\n\n- ...'` with `\n` for linebreaks
-- Do NOT use heredocs (`cat <<'EOF'`) in bash commands — they create multi-line bash that doesn't match permission rules like `Bash(git commit *)` and `Bash(gh pr create *)`, causing unnecessary permission prompts
+- Use multiple `-m` flags for multi-paragraph commit messages: `git commit -m "Title" -m "Body" -m "Co-Authored-By: ..."`
+- Use plain double-quoted strings for PR creation: `gh pr create --title "Title" --body "## Summary ..."`
+- Do NOT use heredocs (`cat <<'EOF'`) or ANSI-C quoting (`$'...\n...'`) in bash commands — heredocs create multi-line bash that doesn't match permission rules, and ANSI-C quoting gets flagged for hiding characters
 
 ## Process Guidelines
 
