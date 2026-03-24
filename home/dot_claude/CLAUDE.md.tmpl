@@ -8,10 +8,11 @@
 - Don't merge your own PRs - let them be reviewed by someone else
 - Before pushing follow-up commits to a PR branch, always check the PR is still open (`gh pr view <number> --json state`). The user often reviews and merges PRs via the GitHub UI while work continues — if already merged, create a new branch and PR instead
 
-## Commit Style
+## Commit & PR Style
 
-- Use `git commit -m "Title\n\nBody\n\nCo-Authored-By: ..."` with `\n` for linebreaks
-- Do NOT use heredocs (`cat <<'EOF'`) in commit commands — they create multi-line bash that doesn't match the `Bash(git commit *)` permission rule, causing unnecessary permission prompts
+- Use `git commit -m $'Title\n\nBody\n\nCo-Authored-By: ...'` with `\n` for linebreaks
+- Use `gh pr create --title "..." --body $'## Summary\n\n- ...'` with `\n` for linebreaks
+- Do NOT use heredocs (`cat <<'EOF'`) in bash commands — they create multi-line bash that doesn't match permission rules like `Bash(git commit *)` and `Bash(gh pr create *)`, causing unnecessary permission prompts
 
 ## Process Guidelines
 
