@@ -50,7 +50,7 @@ Append these repos to the existing `.pre-commit-config.yaml`:
       - id: terraform_fmt
       - id: terraform_validate
       - id: terraform_tflint
-      - id: terraform_tfsec
+      - id: terraform_trivy
       - id: terraform_checkov
 ```
 
@@ -93,7 +93,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/tfsec-action@v1.0.3
+      - uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          scan-type: config
+          scan-ref: .
       - uses: bridgecrewio/checkov-action@v12
         with:
           directory: .
