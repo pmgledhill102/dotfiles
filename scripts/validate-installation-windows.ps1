@@ -178,7 +178,9 @@ foreach ($tool in $tools) {
 $optionalTools = @(
     "delta",
     "lazygit",
-    "code"
+    "code",
+    "rustup",
+    "cargo"
 )
 
 Write-Host ""

@@ -67,6 +67,18 @@ case "$(uname -s)" in
       echo "zsh-syntax-highlighting already installed, skipping..."
     fi
     
+{{- if ne .machine_type "minimal" }}
+    # Install Rust toolchain via rustup
+    if ! command -v rustup >/dev/null 2>&1; then
+      echo "Installing Rust toolchain via rustup..."
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      # Source cargo env for the remainder of this script
+      . "$HOME/.cargo/env"
+    else
+      echo "Rustup already installed, skipping..."
+    fi
+{{- end }}
+
     # Install nano syntax highlighting (scopatz/nanorc)
     echo "Installing nano syntax highlighting..."
     if [ ! -d "$HOME/.nano/.git" ]; then
@@ -143,6 +155,18 @@ case "$(uname -s)" in
       echo "zsh-syntax-highlighting already installed, skipping..."
     fi
     
+{{- if ne .machine_type "minimal" }}
+    # Install Rust toolchain via rustup
+    if ! command -v rustup >/dev/null 2>&1; then
+      echo "Installing Rust toolchain via rustup..."
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      # Source cargo env for the remainder of this script
+      . "$HOME/.cargo/env"
+    else
+      echo "Rustup already installed, skipping..."
+    fi
+{{- end }}
+
     # Install nano syntax highlighting (scopatz/nanorc)
     echo "Installing nano syntax highlighting..."
     if [ ! -d "$HOME/.nano/.git" ]; then

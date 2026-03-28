@@ -202,6 +202,16 @@ else
     ((FAILED_TESTS++))
 fi
 
+if command -v rustup >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} rustup is installed"
+    ((PASSED_TESTS++))
+    validate_test "Cargo is installed" "command -v cargo"
+    validate_test "Rust stable toolchain is installed" "rustup toolchain list | grep -q stable"
+else
+    echo -e "${RED}✗${NC} rustup is installed"
+    ((FAILED_TESTS++))
+fi
+
 if [[ "$(uname -s)" == "Darwin" ]]; then
    # Ghostty is only installed on macOS/Windows in this setup
    if command -v ghostty >/dev/null 2>&1; then
