@@ -7,7 +7,7 @@ command_timeout = 2000
 add_newline = true
 
 # Set the format of the prompt
-format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby\
+format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$rust\
 $line_break$character"""
 
 # Right Prompt Configuration
@@ -90,6 +90,9 @@ pyenv_version_name = true
 
 [ruby]
 format = "[ $version](fg:#AE1401) "
+
+[rust]
+format = "[ $version](fg:#CE412B) "
 
 #[aws]
 #symbol = ""

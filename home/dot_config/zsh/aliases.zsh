@@ -33,6 +33,11 @@ dotup() {
     curl -sS https://starship.rs/install.sh | sh
   fi
 
+  if command -v rustup >/dev/null 2>&1; then
+    echo "\n==> Updating Rust toolchain..."
+    rustup update
+  fi
+
   echo "\n==> All updates complete."
 }
 

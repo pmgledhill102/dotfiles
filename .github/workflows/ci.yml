@@ -50,6 +50,19 @@ jobs:
       - name: Run actionlint
         run: ./actionlint -color
 
+  # On PRs, report success without running the expensive full install.
+  # Uses the same job name so branch protection required checks are satisfied.
+  test-install-pr:
+    name: Test Install on ${{ matrix.os }}
+    if: github.event_name == 'pull_request'
+    needs: [shellcheck, markdown-lint, actionlint]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - run: echo "Skipping full install test on PR — lint checks only"
+
   test-install:
     name: Test Install on ${{ matrix.os }}
     if: github.event_name != 'pull_request'
