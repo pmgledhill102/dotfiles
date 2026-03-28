@@ -30,7 +30,7 @@ dotup() {
   if [ "$(uname -s)" = "Linux" ] && ! command -v brew >/dev/null 2>&1 \
      && command -v starship >/dev/null 2>&1; then
     echo "\n==> Updating Starship..."
-    curl -sS https://starship.rs/install.sh | sh
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
   fi
 
   if command -v rustup >/dev/null 2>&1; then
