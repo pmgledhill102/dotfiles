@@ -52,7 +52,6 @@ jobs:
 
   test-install:
     name: Test Install on ${{ matrix.os }}
-    if: github.event_name != 'pull_request'
     needs: [shellcheck, markdown-lint, actionlint]
     runs-on: ${{ matrix.os }}
     strategy:
