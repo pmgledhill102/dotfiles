@@ -89,7 +89,7 @@ format = "[ $version](fg:#FFDE57) "
 pyenv_version_name = true
 
 [ruby]
-format = "[ $version](fg:#AE1401) "
+format = "[ $version](fg:#AE1401) "
 
 [rust]
 format = "[ $version](fg:#CE412B) "
