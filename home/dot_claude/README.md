@@ -79,6 +79,7 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
 ├── settings.json              # Universal hooks (runs on every repo)
 ├── CLAUDE.md                  # Universal policy (loaded on every repo)
 └── commands/
+    ├── setup-repo.md          # GitHub repo settings + branch protection
     ├── setup-common.md        # Shared tooling (pre-commit, gitleaks)
     ├── setup-shell.md
     ├── setup-markdown.md
@@ -108,8 +109,9 @@ Each `/setup-*` command contains:
 **New project setup:**
 
 ```text
-/setup-common
-/setup-python
+/setup-repo       # GitHub repo settings + branch protection (run first)
+/setup-common     # Local tooling foundation (depends on branch protection for auto-merge)
+/setup-python     # Language-specific tooling
 ```
 
 **Day-to-day coding:**
