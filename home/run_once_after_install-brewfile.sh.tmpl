@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Install Homebrew packages from Brewfile on first run
+# Subsequent updates are handled manually via 'dotbrew'
+
+set -e
+
+case "$(uname -s)" in
+  Darwin*)
+    # Ensure Homebrew is in PATH
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+
+    BREWFILE="$HOME/Brewfile"
+    if [ -f "$BREWFILE" ]; then
+      echo "Installing Homebrew packages from Brewfile..."
+      brew bundle install --file "$BREWFILE" --no-lock
+    else
+      echo "Warning: Brewfile not found at $BREWFILE, skipping brew bundle"
+    fi
+    ;;
+  *)
+    echo "Not macOS — skipping Brewfile install"
+    ;;
+esac
