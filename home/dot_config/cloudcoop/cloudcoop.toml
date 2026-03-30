@@ -1,0 +1,17 @@
+[cloud.gcp]
+zone = "europe-north2-a"
+
+[ssh]
+port = 2022
+
+[vm]
+spot = true
+network = "sandbox-vpc"
+subnet = "sandbox-vpc-europe-north2"
+max_uptime_minutes = 480
+
+[agents]
+default_command = "claude"
+
+[provisioning]
+dotfiles_url = "https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/install.sh"

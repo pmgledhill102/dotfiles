@@ -74,6 +74,9 @@ case "$(uname -s)" in
 
     # Enable full keyboard access for all controls (e.g. enable Tab in modal dialogs)
     defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
+
+    # Enable Spotlight clipboard history (Results from Clipboard)
+    defaults write com.apple.Spotlight PasteboardHistoryEnabled -bool true
     
     # Restart affected applications
     echo "Restarting Finder to apply changes..."

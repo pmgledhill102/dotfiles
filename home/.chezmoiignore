@@ -25,7 +25,7 @@ run_once_install-packages.sh
 install-packages.sh
 run_once_macos_defaults.sh
 macos_defaults.sh
-run_onchange_install-brewfile.sh
+run_once_after_install-brewfile.sh
 install-brewfile.sh
 run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
@@ -51,7 +51,7 @@ setup-secrets.sh
 {{- if ne .chezmoi.os "darwin" }}
 run_once_macos_defaults.sh
 macos_defaults.sh
-run_onchange_install-brewfile.sh
+run_once_after_install-brewfile.sh
 install-brewfile.sh
 Brewfile
 {{- end }}
@@ -62,6 +62,11 @@ install-ubuntu-packages.sh
 run_once_configure-wsl.sh
 configure-wsl.sh
 .config/ubuntu_pkglist
+{{- end }}
+
+# Only deploy cloudcoop config on personal machines
+{{- if ne $machineType "personal" }}
+.config/cloudcoop/
 {{- end }}
 
 # Skip GUI app configs on minimal/server machines
