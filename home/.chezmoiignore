@@ -64,6 +64,11 @@ configure-wsl.sh
 .config/ubuntu_pkglist
 {{- end }}
 
+# Only deploy cloudcoop config on personal machines
+{{- if ne $machineType "personal" }}
+.config/cloudcoop/
+{{- end }}
+
 # Skip GUI app configs on minimal/server machines
 {{- if eq $machineType "minimal" }}
 .config/Code/
