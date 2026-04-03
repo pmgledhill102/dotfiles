@@ -50,21 +50,22 @@ Append a new entry to `~/.claude/retros.md` using this format:
 **Duration**: <approximate, based on conversation length>
 **Beads closed**: <list of bead IDs closed, or "none">
 
-### What went well
-- <bullet points>
+### Continue
+- <things that worked well and should be kept — validated patterns, effective tools, approaches worth repeating>
 
-### What didn't go well
-- <bullet points>
-
-### Recommendations
-- `[PENDING]` <actionable recommendation with specific details>
+### Start
+- `[PENDING]` <new things to adopt — permissions to add, tools to install, MCP servers to configure, workflow changes>
 - `[PENDING]` <another recommendation>
+
+### Stop
+- <anti-patterns observed, approaches that wasted time, mistakes to avoid repeating>
 ```
 
 ## Guidelines
 
 - Be specific and actionable — not "improve error handling" but "add `google_project_service` explicit depends_on to prevent 403 race conditions"
 - Include exact tool patterns for permission recommendations, e.g., `Bash(chezmoi apply)`
+- Only **Start** items get `[PENDING]` tags — these are the actionable changes. **Continue** captures what's working. **Stop** captures what to avoid. Neither need status tracking.
 - For missing tools, include **both** the immediate install command (e.g., `brew install foo`, `gcloud components install alpha`) **and** the dotfiles change needed to provision it everywhere (e.g., "add `foo` to `home/Brewfile`", "add `gcloud components install alpha` to the chezmoi setup script"). Recommend the user install the tool now and update dotfiles in the same session.
 - For MCP recommendations, explain the **specific friction being solved** (e.g., "spent 5 approval prompts on read-only `gh api` calls that could be auto-approved via a GitHub MCP server"). Include the MCP server name/repo if known, and note whether it should be added to project-level or user-level `settings.json`.
 - Keep each entry concise — aim for 15-30 lines maximum
