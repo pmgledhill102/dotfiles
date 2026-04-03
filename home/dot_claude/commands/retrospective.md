@@ -17,6 +17,15 @@ Review the full conversation history and evaluate each of these dimensions. Skip
 - **Approach pivots**: Where did the initial approach fail and require a different strategy? What was learned?
 - **Prompt clarity**: Were instructions clear enough, or did ambiguity cause wasted work?
 - **Tool gaps**: Were there tasks that no available tool handled well?
+- **Missing tools**: Were any CLI tools, SDK components, or binaries expected but not installed or not at the required version? For each:
+  - What was attempted and what error or fallback occurred?
+  - Is the tool installable via Homebrew, apt, pip, npm, or a component manager (e.g., `gcloud components install alpha`)?
+  - Should the tool be added to the dotfiles repo (e.g., Brewfile, chezmoi scripts) so it's provisioned across all workstations?
+- **MCP opportunities**: Were CLI tools used via Bash where an MCP server could provide safer, more granular access? Look for:
+  - **Approval friction from dual-use CLIs**: Commands that were used read-only (e.g., `gh api` to query releases, `gcloud` to list resources) but couldn't be auto-approved because the same command can also perform destructive actions. An MCP server with scoped, read-only tools would eliminate this friction.
+  - **Repeated Bash commands for API queries**: Chains of `gh`, `gcloud`, `aws`, `kubectl`, or similar CLI calls that could be replaced by a dedicated MCP server offering structured, auto-approvable tools.
+  - **Already-connected MCP servers that went unused**: Check if configured MCP servers had tools that could have replaced Bash commands used in this session.
+  - For each opportunity, name the specific MCP server (if one exists) or note that one should be found/built.
 - **Memory updates**: Were learnings captured in auto-memory files, or were they missed?
 - **Beads hygiene**: Were issues created before work started? Were they closed properly?
 
@@ -56,6 +65,8 @@ Append a new entry to `~/.claude/retros.md` using this format:
 
 - Be specific and actionable — not "improve error handling" but "add `google_project_service` explicit depends_on to prevent 403 race conditions"
 - Include exact tool patterns for permission recommendations, e.g., `Bash(chezmoi apply)`
+- For missing tools, include **both** the immediate install command (e.g., `brew install foo`, `gcloud components install alpha`) **and** the dotfiles change needed to provision it everywhere (e.g., "add `foo` to `home/Brewfile`", "add `gcloud components install alpha` to the chezmoi setup script"). Recommend the user install the tool now and update dotfiles in the same session.
+- For MCP recommendations, explain the **specific friction being solved** (e.g., "spent 5 approval prompts on read-only `gh api` calls that could be auto-approved via a GitHub MCP server"). Include the MCP server name/repo if known, and note whether it should be added to project-level or user-level `settings.json`.
 - Keep each entry concise — aim for 15-30 lines maximum
 - If the session was uneventful with no notable friction, say so briefly and skip the detailed sections
 - Reference specific errors, file paths, and bead IDs where relevant
