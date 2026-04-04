@@ -113,49 +113,8 @@ dotclaude() {
     fi
   fi
 
-  # --- Google Calendar MCP ---
-  if echo "$configured" | grep -q "google-calendar"; then
-    echo "\n==> Google Calendar MCP: already configured — skipping"
-  else
-    printf "\nConfigure Google Calendar MCP server? (y/n) "
-    read -r answer
-    if [ "$answer" = "y" ]; then
-      local gc_key
-      gc_key="$(_dotclaude_bw_get "claude-mcp-google-calendar-api-key")"
-      if [ -z "$gc_key" ]; then
-        echo "Warning: could not retrieve API key — skipping Google Calendar MCP"
-      else
-        claude mcp add --transport http --scope user google-calendar \
-          --header "Authorization: Bearer $gc_key" \
-          "https://mcp.google.com/calendar"
-        echo "==> Google Calendar MCP server configured."
-      fi
-    else
-      echo "Skipping Google Calendar MCP."
-    fi
-  fi
-
-  # --- Gmail MCP ---
-  if echo "$configured" | grep -q "gmail"; then
-    echo "\n==> Gmail MCP: already configured — skipping"
-  else
-    printf "\nConfigure Gmail MCP server? (y/n) "
-    read -r answer
-    if [ "$answer" = "y" ]; then
-      local gmail_key
-      gmail_key="$(_dotclaude_bw_get "claude-mcp-gmail-api-key")"
-      if [ -z "$gmail_key" ]; then
-        echo "Warning: could not retrieve API key — skipping Gmail MCP"
-      else
-        claude mcp add --transport http --scope user gmail \
-          --header "Authorization: Bearer $gmail_key" \
-          "https://mcp.google.com/gmail"
-        echo "==> Gmail MCP server configured."
-      fi
-    else
-      echo "Skipping Gmail MCP."
-    fi
-  fi
+  # Note: Google Calendar and Gmail MCP are first-party Claude.ai
+  # integrations managed via Claude's own OAuth — not configured here.
 
   # --- Google Developer Knowledge API ---
   if echo "$configured" | grep -q "google-developer-knowledge"; then
