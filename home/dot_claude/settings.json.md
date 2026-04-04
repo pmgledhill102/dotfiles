@@ -79,7 +79,9 @@ of commands. `gcloud storage` is restricted to `cat` and `ls` — no `cp`,
 - `Bash(gcloud compute firewall-rules describe *)`
 - `Bash(gcloud compute firewall-rules list *)`
 - `Bash(gcloud compute instances describe *)`
+- `Bash(gcloud compute instances get-serial-port-output *)`
 - `Bash(gcloud compute instances list *)`
+- `Bash(gcloud compute instances reset *)`
 - `Bash(gcloud compute networks describe *)`
 - `Bash(gcloud compute networks list *)`
 
@@ -162,10 +164,10 @@ of commands. `gcloud storage` is restricted to `cat` and `ls` — no `cp`,
 
 ### GitHub CLI
 
-Read/view operations, PR creation and merging, and CI re-runs.
-Closing PRs/issues and `gh api` (which can POST/DELETE) require prompting.
-Use project-level deny rules to block `gh pr merge` in repos where
-auto-merging is unwanted.
+Read/view operations, PR creation, and CI re-runs. PR merging is handled
+manually (see Never Allow). Closing PRs/issues and `gh api` (which can
+POST/DELETE) require prompting. These entries will be retired once the
+GitHub MCP server is validated — see GitHub MCP section below.
 
 - `Bash(gh issue list *)`
 - `Bash(gh issue view *)`
@@ -173,7 +175,6 @@ auto-merging is unwanted.
 - `Bash(gh pr create *)`
 - `Bash(gh pr diff *)`
 - `Bash(gh pr list *)`
-- `Bash(gh pr merge *)`
 - `Bash(gh pr view *)`
 - `Bash(gh repo view *)`
 - `Bash(gh run list *)`
@@ -198,6 +199,7 @@ Standard git workflow operations. Destructive operations (`reset --hard`,
 - `Bash(git log *)`
 - `Bash(git ls-tree *)`
 - `Bash(git merge *)`
+- `Bash(git pull *)`
 - `Bash(git push *)`
 - `Bash(git remote *)`
 - `Bash(git rm *)`
@@ -210,12 +212,14 @@ Standard git workflow operations. Destructive operations (`reset --hard`,
 ### Go (build, test, and lint only)
 
 `go run`, `go get`, and `go install` require prompting as they execute
-or download code.
+or download code. Bare `go mod tidy` (no args) needs its own entry since
+`go mod tidy *` only matches when arguments follow.
 
 - `Bash(go build *)`
 - `Bash(go doc *)`
 - `Bash(go env *)`
 - `Bash(go fmt *)`
+- `Bash(go mod tidy)`
 - `Bash(go mod tidy *)`
 - `Bash(go test *)`
 - `Bash(go version *)`
@@ -358,10 +362,28 @@ security scanners are safe.
 
 - `Bash(steampipe *)`
 
+### Hugo (static site generator)
+
+- `Bash(hugo *)`
+
+### macOS utilities (read-only)
+
+- `Bash(defaults find *)`
+- `Bash(defaults read *)`
+- `Bash(sips *)`
+
+### Make (specific safe targets only)
+
+Catch-all `make *` is not allowed — it executes arbitrary targets.
+Only known-safe build/lint goals are permitted.
+
+- `Bash(make build)`
+- `Bash(make lint)`
+
 ### Shell utilities (read-only)
 
-`curl` (can exfiltrate data), `chmod` (changes permissions), and `make`
-(executes arbitrary targets) require prompting.
+`curl` (can exfiltrate data) and `chmod` (changes permissions) require
+prompting.
 
 - `Bash(cp *)`
 - `Bash(echo *)`
@@ -375,6 +397,78 @@ security scanners are safe.
 - `Bash(sed *)`
 - `Bash(wc *)`
 - `Bash(which *)`
+
+### GitHub MCP server
+
+The GitHub MCP server (`github/github-mcp-server`) provides structured
+API access without shell escaping issues. Configured per-machine via
+`claude mcp add` (stored in `~/.claude.json`, not in dotfiles). The
+permissions below control which MCP tools are auto-approved.
+
+**Read tools** (all auto-approved):
+
+- `mcp__github__get_commit`
+- `mcp__github__get_file_contents`
+- `mcp__github__get_latest_release`
+- `mcp__github__get_me`
+- `mcp__github__get_release_by_tag`
+- `mcp__github__get_tag`
+- `mcp__github__get_team_members`
+- `mcp__github__get_teams`
+- `mcp__github__issue_read`
+- `mcp__github__list_branches`
+- `mcp__github__list_commits`
+- `mcp__github__list_issues`
+- `mcp__github__list_pull_requests`
+- `mcp__github__list_releases`
+- `mcp__github__list_tags`
+- `mcp__github__pull_request_read`
+- `mcp__github__search_code`
+- `mcp__github__search_issues`
+- `mcp__github__search_pull_requests`
+- `mcp__github__search_repositories`
+- `mcp__github__search_users`
+
+**Write tools** (selectively auto-approved):
+
+- `mcp__github__add_comment_to_pending_review`
+- `mcp__github__add_issue_comment`
+- `mcp__github__add_reply_to_pull_request_comment`
+- `mcp__github__create_branch`
+- `mcp__github__create_or_update_file`
+- `mcp__github__create_pull_request`
+- `mcp__github__issue_write`
+- `mcp__github__push_files`
+- `mcp__github__sub_issue_write`
+- `mcp__github__update_pull_request`
+- `mcp__github__update_pull_request_branch`
+
+**Write tools left to prompt** (not in allowedTools):
+`create_repository`, `delete_file`, `fork_repository`,
+`merge_pull_request` (see Never Allow), `pull_request_review_write`.
+
+### Read permissions (config files)
+
+Auto-approve reading config files accessed during every `/retrospective`
+run. Write/Edit access remains gated.
+
+- `Read(~/.claude/retros.md)`
+- `Read(~/.claude/settings.json)`
+
+## Never allow
+
+These tools have been explicitly reviewed and rejected for auto-approval.
+Do not add them in future retrospectives — the decision is final unless
+the user revisits it.
+
+| Pattern | Reason |
+| ------- | ------ |
+| `Bash(python3 *)` / `Bash(python *)` | Arbitrary code execution — too broad |
+| `Bash(curl *)` / `Bash(curl -s *)` | Can exfiltrate data to arbitrary endpoints |
+| `Bash(gcloud storage cp *)` | Write operation — uploads to GCS |
+| `Bash(gcloud monitoring *)` / `Bash(gcloud beta monitoring *)` / `Bash(gcloud alpha monitoring *)` | Can modify alerts and dashboards, not read-only |
+| `Bash(gh repo create *)` | Creates repositories — infrequent, should always prompt |
+| `Bash(gh pr merge *)` / `mcp__github__merge_pull_request` | PRs should be merged manually, never by Claude Code |
 
 ## Hooks
 
