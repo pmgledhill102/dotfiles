@@ -27,7 +27,7 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 
 echo "Installing cship from pinned commit ${CSHIP_COMMIT}..."
-cargo install --git https://github.com/stephenleo/cship --rev "$CSHIP_COMMIT" cship
+cargo install --force --git https://github.com/stephenleo/cship --rev "$CSHIP_COMMIT" cship
 
 echo "cship installed successfully"
 cship explain 2>/dev/null || true
