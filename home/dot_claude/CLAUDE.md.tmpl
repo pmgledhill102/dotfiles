@@ -19,3 +19,10 @@
 - **3 strikes rule**: After 3 failed attempts debugging the same issue, stop and question the entire approach before trying again
 - **Check release notes before upgrading CLI tools**: Run `gh release view --repo <owner>/<repo>` or check the changelog before upgrading. Breaking changes (e.g., dropped backends, renamed flags) waste significant time when discovered mid-migration
 - **Test chezmoi template changes locally before pushing**: Use `HOME=/tmp/test chezmoi init --source <path> --dry-run` to verify behaviour in a clean environment before relying on CI
+- **Lint before pushing**: Always run the relevant linter/test suite locally before `git push`. Only push if everything passes — avoids CI round-trips
+- **Single-concern PRs**: Each PR should contain a single logical change. If multiple tasks are completed in a session, create separate PRs for each rather than bundling unrelated changes
+
+## Shell Scripts
+
+- **Target POSIX sh or ensure macOS/zsh compatibility**: Avoid bash-only builtins (`mapfile`, `readarray`, `declare -A`). Be aware that `$(( expr ))` returns exit code 1 when result is 0 (breaks `set -e`), and empty arrays behave differently in zsh with `set -u`
+- **Verify CLI flags before using them**: Run `<tool> --help` or `<tool> help <subcommand>` locally before committing — avoids round-trips from non-existent flags (e.g., `brew bundle --no-lock`)

@@ -472,6 +472,13 @@ the user revisits it.
 
 ## Hooks
 
+### PreToolUse (Bash)
+
+1. **Pre-push lint gate** — Intercepts `git push` commands and runs
+   `pre-commit run --all-files` if a `.pre-commit-config.yaml` exists in
+   the repo. Blocks the push if linting fails. 120s timeout. Repos without
+   pre-commit config are unaffected.
+
 ### PostToolUse (Write|Edit)
 
 1. **terraform fmt** — Auto-formats `.tf` files after every Write or Edit.
