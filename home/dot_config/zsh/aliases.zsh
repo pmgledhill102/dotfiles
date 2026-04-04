@@ -7,7 +7,7 @@
 # Update dotfiles and plugins (does not install/upgrade packages)
 dotup() {
   echo "==> Updating dotfiles..."
-  chezmoi update -v
+  PAGER=cat chezmoi update -v
 
   if [ -d "$ZSH" ]; then
     echo "\n==> Updating Oh My Zsh..."
