@@ -97,14 +97,16 @@ dotclaude() {
   local configured
   configured="$(claude mcp list 2>/dev/null)"
 
-  # --- GitHub MCP (PAT via gh auth) ---
+  # --- GitHub MCP (local binary + token from gh auth) ---
   if echo "$configured" | grep -q "github"; then
     echo "\n==> GitHub MCP: already configured — skipping"
   else
     printf "\nConfigure GitHub MCP server? (y/n) "
     read -r answer
     if [ "$answer" = "y" ]; then
-      if ! command -v gh >/dev/null 2>&1; then
+      if ! command -v github-mcp-server >/dev/null 2>&1; then
+        echo "Warning: github-mcp-server not found — run 'dotbrew' first"
+      elif ! command -v gh >/dev/null 2>&1; then
         echo "Warning: gh CLI not found — skipping GitHub MCP"
       else
         local gh_token
@@ -112,9 +114,9 @@ dotclaude() {
         if [ -z "$gh_token" ]; then
           echo "Warning: gh auth token not available — run 'gh auth login' first"
         else
-          echo "==> Adding GitHub MCP server (using gh auth token)..."
+          echo "==> Adding GitHub MCP server (local binary + gh auth token)..."
           claude mcp add-json github \
-            "{\"type\":\"http\",\"url\":\"https://api.githubcopilot.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $gh_token\"}}" \
+            "{\"type\":\"stdio\",\"command\":\"github-mcp-server\",\"args\":[\"stdio\"],\"env\":{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"$gh_token\"}}" \
             -s user
           echo "==> GitHub MCP server configured."
         fi
