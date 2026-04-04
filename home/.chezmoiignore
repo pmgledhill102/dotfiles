@@ -54,6 +54,8 @@ macos_defaults.sh
 run_once_after_install-brewfile.sh
 install-brewfile.sh
 Brewfile
+run_onchange_after_install-cship.sh
+install-cship.sh
 {{- end }}
 
 {{- if ne .chezmoi.os "linux" }}
@@ -65,8 +67,11 @@ configure-wsl.sh
 {{- end }}
 
 # Only deploy cloudcoop config on personal machines
+# cship install script is macOS personal only
 {{- if ne $machineType "personal" }}
 .config/cloudcoop/
+run_onchange_after_install-cship.sh
+install-cship.sh
 {{- end }}
 
 # Skip GUI app configs on minimal/server machines

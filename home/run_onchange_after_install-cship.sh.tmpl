@@ -1,0 +1,37 @@
+{{- if and (eq .chezmoi.os "darwin") (eq .machine_type "personal") -}}
+#!/bin/sh
+# Install cship — Claude Code statusline renderer
+# https://github.com/stephenleo/cship
+#
+# Pinned to audited commit (v1.4.1). Change the hash below to upgrade;
+# run_onchange_ will re-run automatically on content change.
+#
+# Security audit: 2026-04-04, commit 1e5940e2a051288107f729ca43f912c8db41bae1
+# - No unsafe in application code
+# - Single network call to api.anthropic.com (disabled via config)
+# - No shell evaluation, no telemetry
+# - Subprocess calls only to starship and OS credential tools
+
+set -e
+
+CSHIP_COMMIT="1e5940e2a051288107f729ca43f912c8db41bae1"
+
+# Ensure cargo is available
+if ! command -v cargo >/dev/null 2>&1; then
+  if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+  else
+    echo "cship: cargo not found, skipping install"
+    exit 0
+  fi
+fi
+
+echo "Installing cship from pinned commit ${CSHIP_COMMIT}..."
+cargo install --git https://github.com/stephenleo/cship --rev "$CSHIP_COMMIT" cship
+
+echo "cship installed successfully"
+cship explain 2>/dev/null || true
+{{- else -}}
+#!/bin/sh
+# cship install — skipped (macOS personal only)
+{{- end }}
