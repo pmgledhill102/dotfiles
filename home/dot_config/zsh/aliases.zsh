@@ -80,6 +80,113 @@ dotbrew() {
   echo "\n==> Homebrew packages up to date."
 }
 
+# Configure Claude Code MCP servers (interactive, personal machines only)
+dotclaude() {
+  if ! command -v claude >/dev/null 2>&1; then
+    echo "Error: Claude Code CLI is not installed."
+    return 1
+  fi
+
+  if [ ! -t 0 ]; then
+    echo "Error: dotclaude requires an interactive shell."
+    return 1
+  fi
+
+  echo "==> Claude Code MCP server setup"
+
+  local configured
+  configured="$(claude mcp list 2>/dev/null)"
+
+  # --- GitHub MCP (OAuth) ---
+  if echo "$configured" | grep -q "github"; then
+    echo "\n==> GitHub MCP: already configured — skipping"
+  else
+    printf "\nConfigure GitHub MCP server? (y/n) "
+    read -r answer
+    if [ "$answer" = "y" ]; then
+      echo "==> Adding GitHub MCP server (OAuth — browser will open)..."
+      claude mcp add --transport http --scope user github \
+        "https://api.githubcopilot.com/mcp/"
+      echo "==> GitHub MCP server configured."
+    else
+      echo "Skipping GitHub MCP."
+    fi
+  fi
+
+  # --- Google Calendar MCP ---
+  if echo "$configured" | grep -q "google-calendar"; then
+    echo "\n==> Google Calendar MCP: already configured — skipping"
+  else
+    printf "\nConfigure Google Calendar MCP server? (y/n) "
+    read -r answer
+    if [ "$answer" = "y" ]; then
+      local gc_key
+      gc_key="$(_dotclaude_bw_get "claude-mcp-google-calendar-api-key")"
+      if [ -z "$gc_key" ]; then
+        echo "Warning: could not retrieve API key — skipping Google Calendar MCP"
+      else
+        claude mcp add --transport http --scope user google-calendar \
+          --header "Authorization: Bearer $gc_key" \
+          "https://mcp.google.com/calendar"
+        echo "==> Google Calendar MCP server configured."
+      fi
+    else
+      echo "Skipping Google Calendar MCP."
+    fi
+  fi
+
+  # --- Gmail MCP ---
+  if echo "$configured" | grep -q "gmail"; then
+    echo "\n==> Gmail MCP: already configured — skipping"
+  else
+    printf "\nConfigure Gmail MCP server? (y/n) "
+    read -r answer
+    if [ "$answer" = "y" ]; then
+      local gmail_key
+      gmail_key="$(_dotclaude_bw_get "claude-mcp-gmail-api-key")"
+      if [ -z "$gmail_key" ]; then
+        echo "Warning: could not retrieve API key — skipping Gmail MCP"
+      else
+        claude mcp add --transport http --scope user gmail \
+          --header "Authorization: Bearer $gmail_key" \
+          "https://mcp.google.com/gmail"
+        echo "==> Gmail MCP server configured."
+      fi
+    else
+      echo "Skipping Gmail MCP."
+    fi
+  fi
+
+  echo "\n==> MCP server setup complete."
+  echo "Run 'claude mcp list' to verify."
+}
+
+# Helper: retrieve a secret from Bitwarden (unlocks once per dotclaude run)
+_dotclaude_bw_get() {
+  local item_name="$1"
+
+  if ! command -v bw >/dev/null 2>&1; then
+    echo ""
+    echo "Error: Bitwarden CLI not found — install with 'brew install bitwarden-cli'" >&2
+    return 1
+  fi
+
+  # Login if needed
+  if ! bw login --check >/dev/null 2>&1; then
+    echo "Logging in to Bitwarden..." >&2
+    bw login >&2
+  fi
+
+  # Unlock once per session (reuse BW_SESSION if already set)
+  if [ -z "${BW_SESSION:-}" ]; then
+    echo "Unlocking Bitwarden vault..." >&2
+    BW_SESSION=$(bw unlock --raw)
+    export BW_SESSION
+  fi
+
+  bw get notes "$item_name" --session "$BW_SESSION" 2>/dev/null
+}
+
 # --- CLI tool defaults ---
 
 # bat: use as default pager and cat replacement
