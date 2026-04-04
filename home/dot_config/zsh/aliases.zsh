@@ -157,6 +157,27 @@ dotclaude() {
     fi
   fi
 
+  # --- Google Developer Knowledge API ---
+  if echo "$configured" | grep -q "google-developer-knowledge"; then
+    echo "\n==> Google Developer Knowledge MCP: already configured — skipping"
+  else
+    printf "\nConfigure Google Developer Knowledge MCP server? (y/n) "
+    read -r answer
+    if [ "$answer" = "y" ]; then
+      local dk_key
+      dk_key="$(_dotclaude_bw_get "claude-mcp-google-developer-knowledge-api-key")"
+      if [ -z "$dk_key" ]; then
+        echo "Warning: could not retrieve API key — skipping Google Developer Knowledge MCP"
+      else
+        claude mcp add --transport http --scope user google-developer-knowledge \
+          "https://developerknowledge.googleapis.com/mcp?key=$dk_key"
+        echo "==> Google Developer Knowledge MCP server configured."
+      fi
+    else
+      echo "Skipping Google Developer Knowledge MCP."
+    fi
+  fi
+
   echo "\n==> MCP server setup complete."
   echo "Run 'claude mcp list' to verify."
 }
