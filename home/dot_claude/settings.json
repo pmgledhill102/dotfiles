@@ -302,5 +302,9 @@
       }
     ]
   },
-  "effortLevel": "high"
+  "effortLevel": "high",
+  "statusLine": {
+    "type": "command",
+    "command": "cship"
+  }
 }

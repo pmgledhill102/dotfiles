@@ -488,3 +488,24 @@ Runs `bd prime` before context compaction to preserve task state.
 ### SessionStart
 
 Runs `bd prime` at session start to load task context.
+
+## StatusLine
+
+Custom status line rendered by [cship](https://github.com/stephenleo/cship)
+(v1.4.1, pinned to commit `1e5940e`). Claude Code pipes session JSON to
+cship's stdin on every render cycle; cship outputs styled ANSI text for
+the TUI status bar.
+
+Config lives at `~/.config/cship.toml`. Usage limits module is disabled
+(credential access not needed — `/usage` and the built-in 90% warning
+are sufficient).
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "cship"
+}
+```
+
+On machines without `cship` installed, Claude Code silently falls back
+to the default status line.
