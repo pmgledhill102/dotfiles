@@ -38,6 +38,9 @@ dotup() {
     rustup update
   fi
 
+  echo "\n==> Reloading shell functions..."
+  source "$HOME/.config/zsh/aliases.zsh"
+
   echo "\n==> All updates complete."
 }
 
