@@ -97,17 +97,30 @@ dotclaude() {
   local configured
   configured="$(claude mcp list 2>/dev/null)"
 
-  # --- GitHub MCP (OAuth) ---
+  # --- GitHub MCP (local binary + token from gh auth) ---
   if echo "$configured" | grep -q "github"; then
     echo "\n==> GitHub MCP: already configured — skipping"
   else
     printf "\nConfigure GitHub MCP server? (y/n) "
     read -r answer
     if [ "$answer" = "y" ]; then
-      echo "==> Adding GitHub MCP server (OAuth — browser will open)..."
-      claude mcp add --transport http --scope user github \
-        "https://api.githubcopilot.com/mcp/"
-      echo "==> GitHub MCP server configured."
+      if ! command -v github-mcp-server >/dev/null 2>&1; then
+        echo "Warning: github-mcp-server not found — run 'dotbrew' first"
+      elif ! command -v gh >/dev/null 2>&1; then
+        echo "Warning: gh CLI not found — skipping GitHub MCP"
+      else
+        local gh_token
+        gh_token="$(gh auth token 2>/dev/null)"
+        if [ -z "$gh_token" ]; then
+          echo "Warning: gh auth token not available — run 'gh auth login' first"
+        else
+          echo "==> Adding GitHub MCP server (local binary + gh auth token)..."
+          claude mcp add-json github \
+            "{\"type\":\"stdio\",\"command\":\"github-mcp-server\",\"args\":[\"stdio\"],\"env\":{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"$gh_token\"}}" \
+            -s user
+          echo "==> GitHub MCP server configured."
+        fi
+      fi
     else
       echo "Skipping GitHub MCP."
     fi
@@ -128,8 +141,9 @@ dotclaude() {
       if [ -z "$dk_key" ]; then
         echo "Warning: could not retrieve API key — skipping Google Developer Knowledge MCP"
       else
-        claude mcp add --transport http --scope user google-developer-knowledge \
-          "https://developerknowledge.googleapis.com/mcp?key=$dk_key"
+        claude mcp add-json google-developer-knowledge \
+          "{\"type\":\"http\",\"url\":\"https://developerknowledge.googleapis.com/mcp\",\"headers\":{\"X-Goog-Api-Key\":\"$dk_key\"}}" \
+          -s user
         echo "==> Google Developer Knowledge MCP server configured."
       fi
     else
