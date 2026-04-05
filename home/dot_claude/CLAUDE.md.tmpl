@@ -25,6 +25,7 @@
 - **Check release notes before upgrading CLI tools**: Use `mcp__github__get_latest_release` / `mcp__github__list_releases` or check the changelog before upgrading. Breaking changes (e.g., dropped backends, renamed flags) waste significant time when discovered mid-migration
 - **Test chezmoi template changes locally before pushing**: Use `HOME=/tmp/test chezmoi init --source <path> --dry-run` to verify behaviour in a clean environment before relying on CI
 - **Lint before pushing**: Always run the relevant linter/test suite locally before `git push`. Only push if everything passes — avoids CI round-trips
+- **Use native binaries over package runners**: When a linter/formatter is installed on PATH (`which <tool>`), invoke it directly (e.g. `markdownlint-cli2 "path"`) rather than wrapping it in `npx`/`pipx`/`uvx`. Wrappers introduce version drift from what CI and pre-commit use, are slower, and may trigger permission prompts
 - **Single-concern PRs**: Each PR should contain a single logical change. If multiple tasks are completed in a session, create separate PRs for each rather than bundling unrelated changes
 
 ## Shell Scripts
