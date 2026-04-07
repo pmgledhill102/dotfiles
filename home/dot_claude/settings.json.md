@@ -447,6 +447,11 @@ permissions below control which MCP tools are auto-approved.
 `create_repository`, `delete_file`, `fork_repository`,
 `merge_pull_request` (see Never Allow), `pull_request_review_write`.
 
+### Google Developer Knowledge MCP server (read-only)
+
+- `mcp__google-developer-knowledge__get_documents`
+- `mcp__google-developer-knowledge__search_documents`
+
 ### Read permissions (config files)
 
 Auto-approve reading config files accessed during every `/retrospective`
