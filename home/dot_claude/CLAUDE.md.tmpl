@@ -13,6 +13,7 @@
 - Watch the CI checks and ensure they pass
 - Don't merge your own PRs - let them be reviewed by someone else
 - Before pushing follow-up commits to a PR branch, always check the PR is still open via `mcp__github__pull_request_read` (method: "get"). The user often reviews and merges PRs via the GitHub UI while work continues — if already merged, create a new branch and PR instead
+- When multiple related changes span different concerns, ask the user whether to use one branch or separate branches before committing
 
 ## Commit & PR Style
 
@@ -27,6 +28,8 @@
 - **Lint before pushing**: Always run the relevant linter/test suite locally before `git push`. Only push if everything passes — avoids CI round-trips
 - **Use native binaries over package runners**: When a linter/formatter is installed on PATH (`which <tool>`), invoke it directly (e.g. `markdownlint-cli2 "path"`) rather than wrapping it in `npx`/`pipx`/`uvx`. Wrappers introduce version drift from what CI and pre-commit use, are slower, and may trigger permission prompts
 - **Single-concern PRs**: Each PR should contain a single logical change. If multiple tasks are completed in a session, create separate PRs for each rather than bundling unrelated changes
+- **Batch reads before edits**: When modifying multiple files, read all target files first, then make all edits — avoids "file not read yet" errors on parallel Edit calls
+- **Always create a beads issue**: Even for quick single-file fixes, run `bd create` before starting work — maintains the audit trail and keeps the habit consistent
 
 ## Shell Scripts
 

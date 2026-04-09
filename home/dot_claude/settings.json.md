@@ -76,14 +76,27 @@ of commands. `gcloud storage` is restricted to `cat` and `ls` — no `cp`,
 
 #### Compute
 
+- `Bash(gcloud compute backend-services describe *)`
+- `Bash(gcloud compute backend-services list *)`
 - `Bash(gcloud compute firewall-rules describe *)`
 - `Bash(gcloud compute firewall-rules list *)`
+- `Bash(gcloud compute forwarding-rules describe *)`
+- `Bash(gcloud compute forwarding-rules list *)`
 - `Bash(gcloud compute instances describe *)`
 - `Bash(gcloud compute instances get-serial-port-output *)`
 - `Bash(gcloud compute instances list *)`
 - `Bash(gcloud compute instances reset *)`
+- `Bash(gcloud compute network-endpoint-groups describe *)`
+- `Bash(gcloud compute network-endpoint-groups list *)`
 - `Bash(gcloud compute networks describe *)`
 - `Bash(gcloud compute networks list *)`
+- `Bash(gcloud compute networks subnets describe *)`
+- `Bash(gcloud compute networks subnets list *)`
+- `Bash(gcloud compute shared-vpc *)`
+- `Bash(gcloud compute target-http-proxies describe *)`
+- `Bash(gcloud compute target-http-proxies list *)`
+- `Bash(gcloud compute url-maps describe *)`
+- `Bash(gcloud compute url-maps list *)`
 
 #### Containers (GKE)
 
