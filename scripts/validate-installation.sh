@@ -74,8 +74,14 @@ validate_test_pkg() {
 
 echo "Validating shell configuration..."
 echo "-----------------------------------"
-# Check using getent/dscl if possible, fallback to ENV check but warn it might be stale
-if command -v getent >/dev/null 2>&1; then
+# Check using getent/dscl if possible, fallback to ENV check but warn it might be stale.
+# In fast CI mode, the install script that installs zsh and runs chsh is skipped,
+# so the login shell is still the runner default (bash) — skip the test rather
+# than hard-fail.
+if [ "$FAST_MODE" = "1" ]; then
+    echo -e "${YELLOW}⊘${NC} Zsh is the configured shell (skipped — DOTFILES_SKIP_INSTALL)"
+    ((SKIPPED_TESTS++))
+elif command -v getent >/dev/null 2>&1; then
     USER_SHELL=$(getent passwd "$USER" | cut -d: -f7)
     echo "Detected shell via getent: $USER_SHELL"
     validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
