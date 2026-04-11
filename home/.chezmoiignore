@@ -27,6 +27,8 @@ run_once_macos_defaults.sh
 macos_defaults.sh
 run_once_after_install-brewfile.sh
 install-brewfile.sh
+run_once_remove-claude-code-cask.sh
+remove-claude-code-cask.sh
 run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
 run_once_configure-wsl.sh
@@ -53,6 +55,8 @@ run_once_macos_defaults.sh
 macos_defaults.sh
 run_once_after_install-brewfile.sh
 install-brewfile.sh
+run_once_remove-claude-code-cask.sh
+remove-claude-code-cask.sh
 Brewfile
 run_onchange_after_install-cship.sh
 install-cship.sh
