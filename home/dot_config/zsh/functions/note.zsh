@@ -4,33 +4,84 @@
 #
 # Notes are appended to ~/notes/<project>.md, where <project> is the git repo
 # basename when inside a repo, or the current directory basename otherwise.
-# Files are append-only via this command — use 'note -e' to edit in $EDITOR.
-#
-# Usage:
-#   note "popd/pushd to navigate to/from a folder"   # append a note
-#   note                                              # print current project's notes
-#   note -e                                           # edit current project's notes in $EDITOR
-#   n "..."                                           # short alias for note
-#   notes                                             # list all note files
-#   notes grep "pushd"                                # search across all notes
+# Files are append-only via this command — use 'note -e' / 'note --edit' to
+# edit in $EDITOR.
+
+# Shared help text, printed by both 'note -h' and 'notes -h'.
+_note_help() {
+  cat <<'EOF'
+note  — append, print, or edit project-scoped notes
+notes — list or search across all note files
+
+USAGE
+  note [text...]                 Append a note to the current project's file
+  note                           Print the current project's notes
+  note -e, --edit                Edit the current project's notes in $EDITOR
+  note -h, --help, -?            Show this help
+  note -- text...                Append text that starts with a dash
+
+  notes                          List all note files
+  notes ls                       Same as 'notes'
+  notes grep <pattern>           Search across all notes (case-insensitive)
+  notes <pattern>                Shorthand for 'notes grep <pattern>'
+  notes -h, --help, -?           Show this help
+
+STORAGE
+  Notes are stored at ~/notes/<project>.md where <project> is the git repo
+  basename (falls back to the cwd basename outside a repo, or '_root' at /).
+  Files are Markdown, timestamped per bullet, append-only via this command.
+  Use 'note -e' to edit or delete entries in $EDITOR.
+
+ALIASES
+  n <text>                       Short alias for 'note'
+EOF
+}
 
 note() {
-  local dir root name file
+  local dir root name file edit_mode=0
   dir="$HOME/notes"
+
+  # Option parsing: standard GNU-style with -h/--help, -e/--edit, and '--'
+  # end-of-options separator so notes can start with a dash.
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -h|--help|-\?)
+        _note_help
+        return 0
+        ;;
+      -e|--edit)
+        edit_mode=1
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -*)
+        echo "note: unknown option: $1" >&2
+        echo "Try 'note --help' for usage." >&2
+        return 1
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
   root="$(git rev-parse --show-toplevel 2>/dev/null)" || root="$PWD"
   name="${root##*/}"
   [ -z "$name" ] && name="_root"
   file="$dir/${name}.md"
 
   # Edit mode: open current project's notes in $EDITOR
-  if [ "$1" = "-e" ]; then
+  if [ "$edit_mode" -eq 1 ]; then
     mkdir -p "$dir"
     [ ! -f "$file" ] && printf '# %s\n\n' "$name" > "$file"
     ${EDITOR:-vi} "$file"
     return
   fi
 
-  # No args: print the current project's notes
+  # No remaining args: print the current project's notes
   if [ $# -eq 0 ]; then
     if [ -f "$file" ]; then
       cat "$file"
@@ -51,10 +102,33 @@ alias n='note'
 
 # List or search across all note files
 notes() {
-  local dir="$HOME/notes"
+  local dir
+  dir="$HOME/notes"
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -h|--help|-\?)
+        _note_help
+        return 0
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -*)
+        echo "notes: unknown option: $1" >&2
+        echo "Try 'notes --help' for usage." >&2
+        return 1
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
   if [ ! -d "$dir" ]; then
-    echo "No notes directory yet at ${dir}"
-    return
+    echo "notes: no notes directory yet at ${dir}" >&2
+    return 1
   fi
 
   case "${1:-list}" in
@@ -64,7 +138,8 @@ notes() {
     grep|g|search)
       shift
       if [ $# -eq 0 ]; then
-        echo "Usage: notes grep <pattern>"
+        echo "notes: grep requires a pattern" >&2
+        echo "Usage: notes grep <pattern>" >&2
         return 1
       fi
       grep -rni --color=auto -- "$*" "$dir"
