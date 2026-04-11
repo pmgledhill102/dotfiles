@@ -126,9 +126,17 @@ if command -v jenv >/dev/null 2>&1; then
   eval "$(jenv init -)"
 fi
 
-# Load custom aliases and functions
+# Load custom aliases
 # shellcheck source=/dev/null
 [ -f "$HOME/.config/zsh/aliases.zsh" ] && source "$HOME/.config/zsh/aliases.zsh"
+
+# Load custom shell functions (one file per command, see ~/.config/zsh/functions/)
+if [ -d "$HOME/.config/zsh/functions" ]; then
+  for f in "$HOME/.config/zsh/functions"/*.zsh; do
+    # shellcheck source=/dev/null
+    [ -f "$f" ] && source "$f"
+  done
+fi
 
 # Starship prompt (init after OMZ source to preserve transient prompt hooks)
 if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then

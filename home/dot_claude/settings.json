@@ -22,6 +22,7 @@
       "Bash(cargo test *)",
       "Bash(checkov *)",
       "Bash(chezmoi *)",
+      "Bash(command -v *)",
       "Bash(composer list *)",
       "Bash(composer show *)",
       "Bash(composer validate *)",
