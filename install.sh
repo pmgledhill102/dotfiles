@@ -92,3 +92,16 @@ echo "Running chezmoi installation from branch: $BRANCH_NAME"
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" init --apply --branch "$BRANCH_NAME" https://github.com/pmgledhill102/dotfiles.git
 
 echo "Installation complete!"
+
+# Print summary of installed custom shell functions, if any were deployed.
+# Sources them in a clean zsh subshell (install.sh is POSIX sh) and invokes
+# 'dotfuncs' to produce the list. Fail-safe — never blocks install.
+if command -v zsh >/dev/null 2>&1 && [ -d "$HOME/.config/zsh/functions" ]; then
+  echo ""
+  zsh -c '
+    for f in "$HOME/.config/zsh/functions"/*.zsh; do
+      [ -f "$f" ] && source "$f"
+    done
+    command -v dotfuncs >/dev/null 2>&1 && dotfuncs
+  ' 2>/dev/null || true
+fi
