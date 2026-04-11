@@ -396,8 +396,12 @@ Only known-safe build/lint goals are permitted.
 ### Shell utilities (read-only)
 
 `curl` (can exfiltrate data) and `chmod` (changes permissions) require
-prompting.
+prompting. `command -v` and `which` are both allowed — they are POSIX
+equivalents for tool-availability checks, and compound commands like
+`command -v X && X --version` need the leading `command -v` matched
+separately.
 
+- `Bash(command -v *)`
 - `Bash(cp *)`
 - `Bash(echo *)`
 - `Bash(find *)`
