@@ -46,4 +46,8 @@ dotup() {
   fi
 
   echo "\n==> All updates complete."
+
+  # Remind the user what custom commands are available post-update.
+  echo
+  dotfuncs
 }
