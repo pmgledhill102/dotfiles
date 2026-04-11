@@ -33,13 +33,22 @@ Write-Host ""
 
 $script:FailedTests = 0
 $script:PassedTests = 0
+$script:SkippedTests = 0
+
+# Fast CI mode: when set, package-dependent checks are skipped rather than
+# hard-failing. File-existence and registry checks still run.
+$FastMode = ($env:DOTFILES_SKIP_INSTALL -eq "1")
+if ($FastMode) {
+    Write-Host "Fast CI mode (DOTFILES_SKIP_INSTALL=1) - package-dependent checks will be skipped" -ForegroundColor Yellow
+    Write-Host ""
+}
 
 function Test-Validation {
     param(
         [string]$Description,
         [scriptblock]$TestCommand
     )
-    
+
     try {
         $result = & $TestCommand
         if ($result -or $LASTEXITCODE -eq 0) {
@@ -59,6 +68,23 @@ function Test-Validation {
         $script:FailedTests++
         return $false
     }
+}
+
+# Wrapper for package-dependent checks. In fast CI mode
+# (DOTFILES_SKIP_INSTALL=1) this logs a skip and returns without running the
+# test. Otherwise identical to Test-Validation.
+function Test-Validation-Pkg {
+    param(
+        [string]$Description,
+        [scriptblock]$TestCommand
+    )
+
+    if ($FastMode) {
+        Write-Host "[SKIP] $Description (skipped - DOTFILES_SKIP_INSTALL)" -ForegroundColor Yellow
+        $script:SkippedTests++
+        return $true
+    }
+    Test-Validation -Description $Description -TestCommand $TestCommand
 }
 
 # Validate PowerShell Configuration
@@ -84,7 +110,7 @@ Write-Host ""
 Write-Host "Validating Starship prompt..."
 Write-Host "-----------------------------------"
 
-Test-Validation "Starship is in PATH" {
+Test-Validation-Pkg "Starship is in PATH" {
     Get-Command starship -ErrorAction SilentlyContinue
 }
 
@@ -92,7 +118,7 @@ Test-Validation "Starship config exists" {
     Test-Path "$HOME\.config\starship.toml"
 }
 
-Test-Validation "Starship version can be queried" {
+Test-Validation-Pkg "Starship version can be queried" {
     starship --version | Out-Null
     $LASTEXITCODE -eq 0
 }
@@ -130,13 +156,16 @@ Test-Validation "Starship config has character customization" {
 }
 
 # Test prompt rendering
-if (Get-Command starship -ErrorAction SilentlyContinue) {
+if ($FastMode) {
+    Write-Host "[SKIP] Prompt renders in current directory (skipped - DOTFILES_SKIP_INSTALL)" -ForegroundColor Yellow
+    $script:SkippedTests++
+} elseif (Get-Command starship -ErrorAction SilentlyContinue) {
     Test-Validation "Prompt renders in current directory" {
         $prompt = starship prompt --terminal-width=80 -ErrorAction SilentlyContinue 2>&1
         -not [string]::IsNullOrWhiteSpace($prompt)
     }
 } else {
-    Write-Host "⚠ Prompt rendering test skipped (starship not in PATH)" -ForegroundColor Yellow
+    Write-Host "[WARN] Prompt rendering test skipped (starship not in PATH)" -ForegroundColor Yellow
 }
 
 # Validate Windows Terminal Configuration
@@ -169,9 +198,8 @@ $tools = @(
 )
 
 foreach ($tool in $tools) {
-    Test-Validation "$tool is installed" {
-        Get-Command $tool -ErrorAction SilentlyContinue
-    }
+    $toolName = $tool
+    Test-Validation-Pkg "$toolName is installed" ([scriptblock]::Create("Get-Command $toolName -ErrorAction SilentlyContinue"))
 }
 
 # Validate optional power user tools
@@ -187,12 +215,17 @@ Write-Host ""
 Write-Host "Validating optional tools..."
 Write-Host "-----------------------------------"
 
-foreach ($tool in $optionalTools) {
-    if (Get-Command $tool -ErrorAction SilentlyContinue) {
-        Write-Host "[PASS] $tool is installed" -ForegroundColor Green
-        $script:PassedTests++
-    } else {
-        Write-Host "[WARN] $tool is not installed (optional)" -ForegroundColor Yellow
+if ($FastMode) {
+    Write-Host "[SKIP] delta / lazygit / code / rustup / cargo optional tool checks (skipped - DOTFILES_SKIP_INSTALL)" -ForegroundColor Yellow
+    $script:SkippedTests += 5
+} else {
+    foreach ($tool in $optionalTools) {
+        if (Get-Command $tool -ErrorAction SilentlyContinue) {
+            Write-Host "[PASS] $tool is installed" -ForegroundColor Green
+            $script:PassedTests++
+        } else {
+            Write-Host "[WARN] $tool is not installed (optional)" -ForegroundColor Yellow
+        }
     }
 }
 
@@ -209,7 +242,10 @@ Test-Validation "Global gitignore exists" {
     Test-Path "$HOME\.gitignore_global"
 }
 
-if (Get-Command delta -ErrorAction SilentlyContinue) {
+if ($FastMode) {
+    Write-Host "[SKIP] Git is configured to use delta (skipped - DOTFILES_SKIP_INSTALL)" -ForegroundColor Yellow
+    $script:SkippedTests++
+} elseif (Get-Command delta -ErrorAction SilentlyContinue) {
     Test-Validation "Git is configured to use delta" {
         $pager = git config --get core.pager
         $pager -match "delta"
@@ -240,11 +276,11 @@ Write-Host ""
 Write-Host "Validating age encryption..."
 Write-Host "-----------------------------------"
 
-Test-Validation "Age is in PATH" {
+Test-Validation-Pkg "Age is in PATH" {
     Get-Command age -ErrorAction SilentlyContinue
 }
 
-Test-Validation "Age-keygen is in PATH" {
+Test-Validation-Pkg "Age-keygen is in PATH" {
     Get-Command age-keygen -ErrorAction SilentlyContinue
 }
 
@@ -296,7 +332,7 @@ Write-Host ""
 Write-Host "Validating fonts..."
 Write-Host "-----------------------------------"
 
-Test-Validation "JetBrains Mono Nerd Font is installed" {
+Test-Validation-Pkg "JetBrains Mono Nerd Font is installed" {
     # Check if font is installed in Windows
     $fontPath1 = "$env:WINDIR\Fonts\JetBrainsMonoNerdFont-Regular.ttf"
     $fontPath2 = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont-Regular.ttf"
@@ -309,10 +345,13 @@ Write-Host "=================================="
 Write-Host "Validation Summary"
 Write-Host "=================================="
 Write-Host "Passed: $script:PassedTests" -ForegroundColor Green
+if ($script:SkippedTests -gt 0) {
+    Write-Host "Skipped: $script:SkippedTests (DOTFILES_SKIP_INSTALL fast CI mode)" -ForegroundColor Yellow
+}
 Write-Host "Failed: $script:FailedTests" -ForegroundColor Red
 Write-Host ""
 
-$totalTests = $script:PassedTests + $script:FailedTests
+$totalTests = $script:PassedTests + $script:FailedTests + $script:SkippedTests
 $percentPassed = if ($totalTests -gt 0) { [math]::Round(($script:PassedTests / $totalTests) * 100, 2) } else { 0 }
 Write-Host "Success Rate: $percentPassed%" -ForegroundColor $(if ($percentPassed -ge 80) { "Green" } elseif ($percentPassed -ge 50) { "Yellow" } else { "Red" })
 Write-Host ""
@@ -322,6 +361,7 @@ $countsFile = "$env:TEMP\validation_counts.txt"
 @"
 PASSED_TESTS=$($script:PassedTests)
 FAILED_TESTS=$($script:FailedTests)
+SKIPPED_TESTS=$($script:SkippedTests)
 TOTAL_TESTS=$totalTests
 "@ | Out-File -FilePath $countsFile -Encoding utf8
 Write-Verbose "Test counts written to $countsFile"

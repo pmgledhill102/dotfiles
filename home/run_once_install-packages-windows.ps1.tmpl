@@ -54,6 +54,10 @@ $successCount = 0
 $failureCount = 0
 $skippedCount = 0
 
+{{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+Write-Host "DOTFILES_SKIP_INSTALL=1 — skipping winget install loop (fast CI mode)"
+Write-Host "Registry tweaks and verification below will still run."
+{{- else }}
 foreach ($package in $packages) {
     Write-Host "Installing $package..." -ForegroundColor Cyan
 
@@ -86,6 +90,7 @@ foreach ($package in $packages) {
         $failureCount++
     }
 }
+{{- end }}
 
 Write-Host ""
 Write-Host "Installation Summary:" -ForegroundColor Cyan

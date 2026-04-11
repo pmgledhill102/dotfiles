@@ -6,6 +6,11 @@
 
 set -e
 
+# {{ if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping apt package install (fast CI mode)"
+exit 0
+# {{ end }}
+
 case "$(uname -s)" in
   Linux*)
     echo "Linux detected - installing packages from ubuntu_pkglist..."

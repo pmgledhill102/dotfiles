@@ -25,17 +25,26 @@ NC='\033[0m' # No Color
 FAILED_TESTS=0
 PASSED_TESTS=0
 WARNED_TESTS=0
+SKIPPED_TESTS=0
+
+# Fast CI mode: when set, package-dependent checks are skipped rather than
+# hard-failing. File-existence checks (chezmoi-deployed configs) still run.
+FAST_MODE="${DOTFILES_SKIP_INSTALL:-0}"
+if [ "$FAST_MODE" = "1" ]; then
+    echo -e "${YELLOW}Fast CI mode (DOTFILES_SKIP_INSTALL=1) — package-dependent checks will be skipped${NC}"
+    echo ""
+fi
 
 validate_test() {
     local description=$1
     local test_command=$2
     local output
-    
+
     # Run the test command and capture both stdout and stderr
     # We use eval to execute the command string properly
     output=$(eval "$test_command" 2>&1)
     local exit_code=$?
-    
+
     if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}✓${NC} $description"
         ((PASSED_TESTS++))
@@ -51,10 +60,28 @@ validate_test() {
     fi
 }
 
+# Wrapper for package-dependent checks. In fast CI mode (DOTFILES_SKIP_INSTALL=1)
+# this logs a skip and returns 0 without running the test. Otherwise identical
+# to validate_test.
+validate_test_pkg() {
+    if [ "$FAST_MODE" = "1" ]; then
+        echo -e "${YELLOW}⊘${NC} $1 (skipped — DOTFILES_SKIP_INSTALL)"
+        ((SKIPPED_TESTS++))
+        return 0
+    fi
+    validate_test "$@"
+}
+
 echo "Validating shell configuration..."
 echo "-----------------------------------"
-# Check using getent/dscl if possible, fallback to ENV check but warn it might be stale
-if command -v getent >/dev/null 2>&1; then
+# Check using getent/dscl if possible, fallback to ENV check but warn it might be stale.
+# In fast CI mode, the install script that installs zsh and runs chsh is skipped,
+# so the login shell is still the runner default (bash) — skip the test rather
+# than hard-fail.
+if [ "$FAST_MODE" = "1" ]; then
+    echo -e "${YELLOW}⊘${NC} Zsh is the configured shell (skipped — DOTFILES_SKIP_INSTALL)"
+    ((SKIPPED_TESTS++))
+elif command -v getent >/dev/null 2>&1; then
     USER_SHELL=$(getent passwd "$USER" | cut -d: -f7)
     echo "Detected shell via getent: $USER_SHELL"
     validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
@@ -66,7 +93,7 @@ else
     validate_test "Zsh is the default shell (\$SHELL)" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ] || [ \"\$SHELL\" = \"$(command -v zsh)\" ] || [ \"\$SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"\$SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
 fi
 
-validate_test "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ] || [ -d \"\$HOME/.oh-my-zsh\" ]"
+validate_test_pkg "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ] || [ -d \"\$HOME/.oh-my-zsh\" ]"
 # Note: $ZSH env var is loaded effectively when .zshrc is sourced. 
 # validation script runs in bash, so $ZSH won't be set from the current shell environment
 # unless we source .zshrc (which we can't easily do from bash).
@@ -75,16 +102,16 @@ validate_test "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ] || [ -d \"\$HOME/.oh-my-zs
 echo ""
 echo "Validating Starship prompt..."
 echo "-----------------------------------"
-validate_test "Starship is in PATH" "command -v starship"
+validate_test_pkg "Starship is in PATH" "command -v starship"
 validate_test "Starship config exists" "[ -f \"\$HOME/.config/starship.toml\" ]"
-validate_test "Starship version can be queried" "starship --version"
+validate_test_pkg "Starship version can be queried" "starship --version"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
     # Check for the macOS symbol () which is specific to our custom config
-    validate_test "Starship prompt uses custom config" "starship prompt | grep -q ''"
+    validate_test_pkg "Starship prompt uses custom config" "starship prompt | grep -q ''"
 elif [[ "$(uname -s)" == "Linux" ]]; then
     # Check for Ubuntu () or generic Linux () symbol
-    validate_test "Starship prompt uses custom config" "starship prompt | grep -q -E '|'"
+    validate_test_pkg "Starship prompt uses custom config" "starship prompt | grep -q -E '|'"
 fi
 
 # Verify Starship is actually loaded in the Zsh prompt
@@ -98,7 +125,7 @@ elif [[ "$(uname -s)" == "Linux" ]]; then
     script -q -c "env VSCODE_COPILOT_CHAT_TERMINAL='' zsh -ic 'echo \"PROMPT=\$PROMPT\"'" "$PROMPT_CHECK_FILE" >/dev/null 2>&1
 fi
 
-validate_test "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
+validate_test_pkg "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
 rm -f "$PROMPT_CHECK_FILE"
 
 # Additional prompt functionality tests (T024)
@@ -117,12 +144,12 @@ mkdir -p "$PROMPT_TEST_DIR"
 cd "$PROMPT_TEST_DIR" || exit 1
 
 # Test basic directory prompt
-validate_test "Prompt renders in non-git directory" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
+validate_test_pkg "Prompt renders in non-git directory" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
 
 # Test git directory prompt
 if command -v git >/dev/null 2>&1; then
     git init >/dev/null 2>&1
-    validate_test "Prompt renders in git repository" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
+    validate_test_pkg "Prompt renders in git repository" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
 fi
 
 cd - >/dev/null 2>&1 || exit 1
@@ -134,7 +161,7 @@ echo "-----------------------------------"
 # Check if xterm-ghostty terminfo is available (important for SSH from Ghostty)
 # We test this even if NOT currently running in Ghostty, as it's a system requirement 
 # for seamless SSH access into this machine.
-validate_test "xterm-ghostty terminfo is installed" "infocmp xterm-ghostty >/dev/null 2>&1"
+validate_test_pkg "xterm-ghostty terminfo is installed" "infocmp xterm-ghostty >/dev/null 2>&1"
 
 if command -v pwsh >/dev/null 2>&1; then
     echo ""
@@ -155,9 +182,9 @@ if command -v pwsh >/dev/null 2>&1; then
     fi
     
     if [[ "$(uname -s)" == "Darwin" ]]; then
-         validate_test "PowerShell prompt renders Starship symbol" "grep -q '' \"$PWSH_CHECK_FILE\""
+         validate_test_pkg "PowerShell prompt renders Starship symbol" "grep -q '' \"$PWSH_CHECK_FILE\""
     elif [[ "$(uname -s)" == "Linux" ]]; then
-         validate_test "PowerShell prompt renders Starship symbol" "grep -q -E '|' \"$PWSH_CHECK_FILE\""
+         validate_test_pkg "PowerShell prompt renders Starship symbol" "grep -q -E '|' \"$PWSH_CHECK_FILE\""
     fi
     rm -f "$PWSH_CHECK_FILE"
 fi
@@ -167,69 +194,76 @@ fi
 echo ""
 echo "Validating tools..."
 echo "-----------------------------------"
-validate_test "Git is installed" "command -v git"
-validate_test "Age is installed" "command -v age"
+validate_test_pkg "Git is installed" "command -v git"
+validate_test_pkg "Age is installed" "command -v age"
 
 # Phase 9 tools
 validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
 validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
 validate_test "Tmux config exists" "[ -f \"\$HOME/.tmux.conf\" ]"
 
-# Check for tools that should be installed via Brewfile or apt packages
-if command -v delta >/dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC} git-delta is installed"
-    ((PASSED_TESTS++))
-    validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+# Check for tools that should be installed via Brewfile or apt packages.
+# In fast CI mode (DOTFILES_SKIP_INSTALL=1), these binary presence checks
+# are skipped — the packages haven't been installed.
+if [ "$FAST_MODE" = "1" ]; then
+    echo -e "${YELLOW}⊘${NC} git-delta / lazygit / tmux / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
+    SKIPPED_TESTS=$((SKIPPED_TESTS + 5))
 else
-    echo -e "${RED}✗${NC} git-delta is installed"
-    ((FAILED_TESTS++))
-fi
-
-if command -v lazygit >/dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC} lazygit is installed"
-    ((PASSED_TESTS++))
-    validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
-else
-    echo -e "${RED}✗${NC} lazygit is installed"
-    ((FAILED_TESTS++))
-fi
-
-if command -v tmux >/dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC} tmux is installed"
-    ((PASSED_TESTS++))
-else
-    echo -e "${RED}✗${NC} tmux is installed"
-    ((FAILED_TESTS++))
-fi
-
-if command -v rustup >/dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC} rustup is installed"
-    ((PASSED_TESTS++))
-    validate_test "Cargo is installed" "command -v cargo"
-    validate_test "Rust stable toolchain is installed" "rustup toolchain list | grep -q stable"
-else
-    echo -e "${RED}✗${NC} rustup is installed"
-    ((FAILED_TESTS++))
-fi
-
-if [[ "$(uname -s)" == "Darwin" ]]; then
-   # Ghostty is only installed on macOS/Windows in this setup
-   if command -v ghostty >/dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC} Ghostty is installed"
+    if command -v delta >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} git-delta is installed"
         ((PASSED_TESTS++))
-   else
-        # Ghostty might be a cask or app, command -v might not find it if not in path
-        # But for this test, let's assume valid if strictly found or if strictly required.
-        # Given it is installed via brew, it might be available.
-        # However, checking for the app bundle might be safer if command missing.
-        if [ -d "/Applications/Ghostty.app" ] || [ -d "$HOME/Applications/Ghostty.app" ]; then
-             echo -e "${GREEN}✓${NC} Ghostty.app found"
-             ((PASSED_TESTS++))
-        else
-             echo -e "${RED}✗${NC} Ghostty is installed"
-             ((FAILED_TESTS++))
-        fi
-   fi
+        validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+    else
+        echo -e "${RED}✗${NC} git-delta is installed"
+        ((FAILED_TESTS++))
+    fi
+
+    if command -v lazygit >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} lazygit is installed"
+        ((PASSED_TESTS++))
+        validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
+    else
+        echo -e "${RED}✗${NC} lazygit is installed"
+        ((FAILED_TESTS++))
+    fi
+
+    if command -v tmux >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} tmux is installed"
+        ((PASSED_TESTS++))
+    else
+        echo -e "${RED}✗${NC} tmux is installed"
+        ((FAILED_TESTS++))
+    fi
+
+    if command -v rustup >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} rustup is installed"
+        ((PASSED_TESTS++))
+        validate_test "Cargo is installed" "command -v cargo"
+        validate_test "Rust stable toolchain is installed" "rustup toolchain list | grep -q stable"
+    else
+        echo -e "${RED}✗${NC} rustup is installed"
+        ((FAILED_TESTS++))
+    fi
+
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+       # Ghostty is only installed on macOS/Windows in this setup
+       if command -v ghostty >/dev/null 2>&1; then
+            echo -e "${GREEN}✓${NC} Ghostty is installed"
+            ((PASSED_TESTS++))
+       else
+            # Ghostty might be a cask or app, command -v might not find it if not in path
+            # But for this test, let's assume valid if strictly found or if strictly required.
+            # Given it is installed via brew, it might be available.
+            # However, checking for the app bundle might be safer if command missing.
+            if [ -d "/Applications/Ghostty.app" ] || [ -d "$HOME/Applications/Ghostty.app" ]; then
+                 echo -e "${GREEN}✓${NC} Ghostty.app found"
+                 ((PASSED_TESTS++))
+            else
+                 echo -e "${RED}✗${NC} Ghostty is installed"
+                 ((FAILED_TESTS++))
+            fi
+       fi
+    fi
 fi
 
 echo ""
@@ -237,8 +271,8 @@ echo "Validating Zsh plugins..."
 echo "-----------------------------------"
 # Check custom plugins
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-validate_test "zsh-autosuggestions installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-autosuggestions\" ]"
-validate_test "zsh-syntax-highlighting installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-syntax-highlighting\" ]"
+validate_test_pkg "zsh-autosuggestions installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-autosuggestions\" ]"
+validate_test_pkg "zsh-syntax-highlighting installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-syntax-highlighting\" ]"
 
 echo ""
 echo "Validating chezmoi..."
@@ -250,22 +284,25 @@ validate_test "Chezmoi can list managed files" "chezmoi managed"
 echo ""
 echo "Validating age encryption..."
 echo "-----------------------------------"
-validate_test "Age is in PATH" "command -v age"
-validate_test "Age keygen is in PATH" "command -v age-keygen"
+validate_test_pkg "Age is in PATH" "command -v age"
+validate_test_pkg "Age keygen is in PATH" "command -v age-keygen"
 
 # macOS-specific validations
 if [[ "$(uname -s)" == "Darwin" ]]; then
     echo ""
     echo "Validating macOS-specific tools..."
     echo "-----------------------------------"
-    validate_test "Homebrew is in PATH" "command -v brew"
-    validate_test "Ghostty is installed" "[ -d \"/Applications/Ghostty.app\" ] || command -v ghostty"
+    validate_test_pkg "Homebrew is in PATH" "command -v brew"
+    validate_test_pkg "Ghostty is installed" "[ -d \"/Applications/Ghostty.app\" ] || command -v ghostty"
     validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
-    
+
     # Check for Nerd Font installation (macOS only via Brewfile)
     # Font cask installs are flaky on GitHub Actions runners (headless, no GUI),
-    # so downgrade to a warning in CI to avoid blocking the entire pipeline.
-    if fc-list | grep -qi "JetBrainsMono Nerd"; then
+    # and packages aren't installed at all in fast CI mode — skip in both cases.
+    if [ "$FAST_MODE" = "1" ]; then
+        echo -e "${YELLOW}⊘${NC} JetBrains Mono Nerd Font (skipped — DOTFILES_SKIP_INSTALL)"
+        ((SKIPPED_TESTS++))
+    elif fc-list | grep -qi "JetBrainsMono Nerd"; then
         echo -e "${GREEN}✓${NC} JetBrains Mono Nerd Font is installed"
         ((PASSED_TESTS++))
     elif [ "${CI:-}" = "true" ]; then
@@ -298,6 +335,9 @@ echo "================================"
 echo "Validation Summary"
 echo "================================"
 echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
+if [ "$SKIPPED_TESTS" -gt 0 ]; then
+    echo -e "${YELLOW}Skipped: $SKIPPED_TESTS${NC} (DOTFILES_SKIP_INSTALL fast CI mode)"
+fi
 if [ "$WARNED_TESTS" -gt 0 ]; then
     echo -e "${YELLOW}Warned: $WARNED_TESTS${NC}"
 fi
@@ -305,11 +345,14 @@ echo -e "${RED}Failed: $FAILED_TESTS${NC}"
 echo ""
 
 # Save counts for CI summary if running in CI environment
-echo "PASSED_TESTS=$PASSED_TESTS" > /tmp/validation_counts.txt
-echo "FAILED_TESTS=$FAILED_TESTS" >> /tmp/validation_counts.txt
-echo "WARNED_TESTS=$WARNED_TESTS" >> /tmp/validation_counts.txt
-TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS + WARNED_TESTS))
-echo "TOTAL_TESTS=$TOTAL_TESTS" >> /tmp/validation_counts.txt
+TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS + WARNED_TESTS + SKIPPED_TESTS))
+{
+    echo "PASSED_TESTS=$PASSED_TESTS"
+    echo "FAILED_TESTS=$FAILED_TESTS"
+    echo "WARNED_TESTS=$WARNED_TESTS"
+    echo "SKIPPED_TESTS=$SKIPPED_TESTS"
+    echo "TOTAL_TESTS=$TOTAL_TESTS"
+} > /tmp/validation_counts.txt
 
 if [ $FAILED_TESTS -eq 0 ]; then
     echo -e "${GREEN}All validations passed! Your dotfiles are properly installed.${NC}"
