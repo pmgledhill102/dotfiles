@@ -50,18 +50,80 @@ jobs:
       - name: Run actionlint
         run: ./actionlint -color
 
-  # On PRs, report success without running the expensive full install.
-  # Uses the same job name so branch protection required checks are satisfied.
+  # Fast PR variant: runs chezmoi init --apply but skips the expensive package
+  # installs (brew / winget / apt) via the DOTFILES_SKIP_INSTALL=1 env var that
+  # template-gated scripts honour. Catches shebang/exec issues, template bugs,
+  # and chezmoiignore misconfigurations pre-merge. Target: ~3-5 min per OS vs
+  # ~22 min for the full test-install job which still runs on push-to-main.
+  # Uses the same matrix check name as the full job so branch protection rules
+  # are satisfied by either variant.
   test-install-pr:
     name: Test Install on ${{ matrix.os }}
     if: github.event_name == 'pull_request'
     needs: [shellcheck, markdown-lint, actionlint]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      DOTFILES_SKIP_INSTALL: '1'
+
     steps:
-      - run: echo "Skipping full install test on PR — lint checks only"
+    - name: Checkout repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+
+    - name: Install chezmoi (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Install chezmoi (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        winget install --id twpayne.chezmoi --accept-source-agreements --accept-package-agreements
+        $wingetPath = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+        Write-Host "Adding $wingetPath to PATH"
+        echo "$wingetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Initialize and Apply Dotfiles (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        # Pre-seed machine_type for non-interactive CI.
+        mkdir -p "$HOME/.config/chezmoi"
+        printf '[data]\n    machine_type = "personal"\n' > "$HOME/.config/chezmoi/chezmoi.toml"
+
+        echo "Starting Chezmoi Apply (fast CI mode — DOTFILES_SKIP_INSTALL=1)..."
+        time chezmoi init --apply --source . --verbose
+
+    - name: Initialize and Apply Dotfiles (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Path "$HOME\.config\chezmoi" -Force | Out-Null
+        @"
+        [data]
+            machine_type = "personal"
+        "@ | Out-File -FilePath "$HOME\.config\chezmoi\chezmoi.toml" -Encoding utf8
+
+        Write-Host "Starting Chezmoi Apply (fast CI mode - DOTFILES_SKIP_INSTALL=1)..."
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        chezmoi init --apply --source . --verbose
+        $stopwatch.Stop()
+        Write-Host "Installation took $($stopwatch.Elapsed.TotalSeconds) seconds"
+
+    - name: Run Validation Script (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        chmod +x scripts/validate-installation.sh
+        ./scripts/validate-installation.sh
+
+    - name: Run Validation Script (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        & scripts/validate-installation-windows.ps1
 
   test-install:
     name: Test Install on ${{ matrix.os }}

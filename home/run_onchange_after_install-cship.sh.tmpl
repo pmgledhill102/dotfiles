@@ -14,6 +14,11 @@
 
 set -e
 
+{{ if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping cship install (fast CI mode)"
+exit 0
+{{ end }}
+
 CSHIP_COMMIT="1e5940e2a051288107f729ca43f912c8db41bae1"
 
 # Ensure cargo is available

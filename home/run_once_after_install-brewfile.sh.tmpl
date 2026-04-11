@@ -5,6 +5,11 @@
 
 set -e
 
+{{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping brew bundle install (fast CI mode)"
+exit 0
+{{- end }}
+
 case "$(uname -s)" in
   Darwin*)
     # Ensure Homebrew is in PATH
