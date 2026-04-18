@@ -40,3 +40,10 @@
 # - linear.api-key
 # - github.org
 # - github.repo
+
+sync.remote: "git+ssh://git@github.com/pmgledhill102/dotfiles.git"
+
+# Don't auto-stage .beads/issues.jsonl on every commit. Source of truth is
+# Dolt + the refs/dolt/data ref on origin; the JSONL is gitignored. See
+# .gitignore and the /bd-modernize skill.
+export.git-add: false
