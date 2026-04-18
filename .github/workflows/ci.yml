@@ -265,6 +265,12 @@ jobs:
     - name: Measure Zsh Startup Time (Unix)
       if: runner.os != 'Windows'
       run: |
+        # ubuntu-latest ships /usr/share/zsh as world-writable (drwxrwxrwx+),
+        # which makes oh-my-zsh's compinit refuse to load completions and exit 1.
+        # Tighten perms before measuring. See beads dotfiles-oz3.
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          sudo chmod -R go-w /usr/share/zsh
+        fi
         zsh -i -c exit  # warm run
         ZSH_STARTUP=$( { time zsh -i -c exit; } 2>&1 )
         echo "$ZSH_STARTUP"
