@@ -34,3 +34,7 @@ bin/
 
 # Beads / Dolt files (added by bd init)
 .beads-credential-key
+
+# Beads exports — source of truth is Dolt + refs/dolt/data on origin.
+# The JSONL stays fresh on disk for IDE visibility but never enters commits.
+.beads/issues.jsonl
