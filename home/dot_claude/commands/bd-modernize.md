@@ -13,20 +13,38 @@ Use this command when:
 - Reverting a project from server mode back to embedded (this command pulls toward the default; the paired `/bd-enable-server-mode` is the only thing that pushes away from it)
 - Periodically verifying alignment
 
-## Pre-flight checks (do these first; stop if any fail)
+## Operational notes (read first)
 
-1. Run `bd version` and confirm it's ≥ 1.0. If not, tell the user to upgrade `bd` first (e.g. `brew upgrade beads` on macOS) and stop.
-2. Read `.beads/metadata.json` and `.beads/config.yaml`. Capture the current state across the three target axes:
-   - **Local mode**: `metadata.json` field `dolt_mode` (`"server"` or `"embedded"`).
-   - **Sync remote**: `bd dolt remote list` — does a `git+...` or `https://github.com/...` remote exist for this repo?
-   - **JSONL tracked**: `git ls-files --error-unmatch .beads/issues.jsonl` — currently in git?
-3. Determine which transitions are needed (Step A, B, C below). If all three are already at target, skip to Step G (verify and report).
-4. Check `git status`. If there are unrelated uncommitted changes, ask the user whether to proceed (the modernisation creates one commit) before continuing.
-5. Identify the project's GitHub origin URL: `git remote get-url origin`. If not GitHub (`github.com` host), the Dolt git-remote step won't work — surface this and ask whether to skip Step B or stop entirely.
-6. Identify the issue prefix (only needed if Step A runs):
-   - Preferred: parse the first line of `.beads/issues.jsonl` (the `id` field is `<prefix>-<hash>` — strip the last `-` segment).
-   - Fallback: use the basename of the project directory (this matches `bd init`'s default).
-7. If `dolt_mode=server`, identify whether a `dolt sql-server` is currently running for this project: read `.beads/dolt-server.pid` if present.
+- **Run all commands in the foreground.** Do NOT background `bd init` or `bd dolt push`. Both complete in <1 minute when the procedure is followed; backgrounding them turns failures into polling rounds and adds 10+ minutes of overhead. The deadlock and hook-fire failure modes are visible immediately in foreground output.
+- **Bash sessions in agent execution are ephemeral.** Each tool call is a new shell. Don't stash state in `$VAR` and rely on it surviving — chain commands with `&&` in one call, or hardcode the value.
+- **Expect the procedure to take 3-5 minutes total** on a typical small repo (most of which is `bd init`'s import + the initial `bd dolt push`).
+
+## Pre-flight checks
+
+Run all checks as a single shell block so the full state is captured in one output:
+
+```sh
+echo "===bd version==="; bd version
+echo "===metadata.json==="; cat .beads/metadata.json 2>&1
+echo "===dolt remote list==="; bd dolt remote list 2>&1
+echo "===JSONL tracked?==="; git ls-files --error-unmatch .beads/issues.jsonl 2>&1; echo "exit=$?"
+echo "===git status==="; git status --porcelain
+echo "===origin url==="; git remote get-url origin
+echo "===running dolt server pid==="; [ -f .beads/dolt-server.pid ] && cat .beads/dolt-server.pid || echo "(none)"
+echo "===init.templatedir==="; td=$(git config --get init.templatedir); echo "templatedir=$td"; [ -n "$td" ] && ls "${td/#~/$HOME}/hooks/" 2>/dev/null | head -5
+```
+
+Interpret the results:
+
+- **`bd version` < 1.0**: stop, tell the user to upgrade (e.g. `brew upgrade beads`).
+- **`origin url` not on `github.com`**: Step B's git-remote feature won't work. Surface this; offer to skip B or stop.
+- **`init.templatedir` has hook files**: this means `bd dolt push` will fire those hooks inside Dolt's internal git context and fail. Step B's procedure handles this by removing the cache hooks before push — note it'll need to run.
+- **`metadata.json.dolt_mode = "server"`**: Step A will run.
+- **`bd dolt remote list` shows no `git+` or `https://github.com/...` remote matching origin**: Step B will run.
+- **JSONL tracked check returns exit 0**: Step C will run.
+- **All three at target**: skip Steps A/B/C; jump to Step G.
+- **Unrelated uncommitted changes in `git status`**: ask the user before proceeding.
+- **Issue prefix** (only needed if Step A runs): `head -1 .beads/issues.jsonl | jq -r .id | sed 's/-[^-]*$//'`. Fallback: `basename "$PWD"`.
 
 Brief the user in one or two sentences on which steps will run before any destructive action.
 
@@ -39,20 +57,14 @@ Skip this entire section if pre-flight detected `dolt_mode: "embedded"` already.
 #### A.1 Preserve the issues JSONL
 
 ```sh
-# If the working-tree copy is missing but it's tracked at HEAD, restore it
 if [ ! -f .beads/issues.jsonl ] && git ls-files --error-unmatch .beads/issues.jsonl >/dev/null 2>&1; then
   git restore .beads/issues.jsonl
 fi
 wc -l .beads/issues.jsonl
+cp .beads/issues.jsonl "/tmp/beads-issues-backup-$(basename "$PWD")-$(date +%s).jsonl"
 ```
 
-If `.beads/issues.jsonl` is genuinely missing (not just deleted from working tree), STOP and ask the user where the source-of-truth issue data lives — without it the migration will silently produce an empty database.
-
-Make a timestamped backup outside the repo:
-
-```sh
-cp .beads/issues.jsonl /tmp/beads-issues-backup-$(basename "$PWD")-$(date +%s).jsonl
-```
+If `.beads/issues.jsonl` is genuinely missing (not just deleted from working tree), STOP — without it the migration will silently produce an empty database.
 
 #### A.2 Stop the running Dolt server
 
@@ -65,9 +77,11 @@ if [ -f .beads/dolt-server.pid ]; then
 fi
 ```
 
-Only kill the PID recorded in this project's `.beads/dolt-server.pid` — never kill arbitrary `dolt sql-server` processes; other projects on the same machine may also be using server mode.
+Only kill the PID recorded in `.beads/dolt-server.pid` — never kill arbitrary `dolt sql-server` processes.
 
 #### A.3 Wipe server-mode artifacts and runtime state
+
+Remove everything bd or Dolt manages — `bd init` regenerates whatever it needs:
 
 ```sh
 rm -rf .beads/dolt \
@@ -80,32 +94,23 @@ rm -rf .beads/dolt \
        .beads/dolt-server.activity \
        .beads/interactions.jsonl \
        .beads/.local_version \
-       .beads/metadata.json
+       .beads/metadata.json \
+       .beads/hooks
 ```
 
-Keep `.beads/.gitignore`, `.beads/config.yaml`, `.beads/README.md`, `.beads/issues.jsonl`.
+Keep only `.beads/.gitignore`, `.beads/config.yaml`, `.beads/README.md`, `.beads/issues.jsonl`. The `.beads/hooks/` directory is wiped because `bd init` rewrites every hook with the current bd version's templates — preserving the old ones is pointless.
 
-#### A.4 Disable git hooks (CRITICAL — required to avoid deadlock during `bd init`)
+#### A.4 Re-init with embedded mode and import the JSONL
 
-`bd` 1.0.x in embedded mode deadlocks when `bd` triggers its own internal `git commit` (e.g. `bd init`'s post-init commit, `bd dolt remote remove`'s config commit). The fired pre-commit hook calls `bd export`, which cannot acquire the embedded-DB lock that the parent `bd` is still holding. Point `core.hooksPath` at an empty directory for the duration of the migration.
+`bd` 1.0.x in embedded mode has a known deadlock: `bd init`'s post-init `git commit` fires the pre-commit hook, which calls `bd export`, which blocks on the embedded-DB lock that the parent `bd init` is still holding. The hooks shell scripts wrap their `bd hooks run` calls in `timeout "$BEADS_HOOK_TIMEOUT" ...` (default 300s) — set the env var low so the hook resolves quickly instead of hanging for 5 minutes.
 
 ```sh
-SAVED_HOOKS_PATH=$(git config --get core.hooksPath || true)
-mkdir -p /tmp/empty-hooks-no-bd
-git config core.hooksPath /tmp/empty-hooks-no-bd
+BEADS_HOOK_TIMEOUT=2 bd init --from-jsonl -p <prefix> --non-interactive --role=maintainer
 ```
 
-Remember `$SAVED_HOOKS_PATH` (may be empty) so step A.7 can restore it.
+Run synchronously (foreground). Expected: completes in 30-60s for small projects. The post-init commit hook will fire, time out after 2s with a message like `beads: hook 'pre-commit' timed out after 2s — continuing without beads`, and bd init will succeed cleanly.
 
-#### A.5 Re-init with embedded mode and import the JSONL
-
-Use the prefix from pre-flight step 6. Embedded is the default — do NOT pass `--server`.
-
-```sh
-bd init --from-jsonl -p <prefix> --non-interactive --role=maintainer
-```
-
-Run this in the foreground. It typically completes in under 30s for small projects but can take longer if the JSONL is large. If it appears to hang past ~3 minutes, check `ps -ef | grep -E "bd init|bd export|git commit"` — a stuck `bd export` child indicates hooks fired despite the override and you need to kill the chain (`kill -9`) and investigate.
+If `timeout` is not on `PATH` (older macOS without `brew install coreutils`), the hook scripts fall back to running without timeout and the deadlock will reappear. In that case, in another terminal: `pkill -9 -f "bd export"` to break the chain — `bd init` has already imported the data so the killed sub-commit is harmless.
 
 Verify the import:
 
@@ -113,36 +118,15 @@ Verify the import:
 bd stats   # Total Issues should match wc -l of the JSONL
 ```
 
-If the count mismatches, STOP and surface the discrepancy — do not proceed.
+If the count mismatches, STOP and surface the discrepancy.
 
-#### A.6 Remove auto-detected stale Dolt remote (only if it's the wrong shape)
-
-`bd init` auto-detects the project's `git remote origin` and registers a Dolt remote, typically `git+ssh://git@github.com/<user>/<repo>.git`. If that's already the right form for the GitHub git-ref backend, leave it — Step B will accept it as-is.
-
-If it's something else (a stale `dolthub://...`, a broken URL, etc.):
-
-```sh
-bd dolt remote list
-bd dolt remote remove origin   # only if existing remote is wrong
-```
-
-Hooks are still disabled so this won't deadlock.
-
-#### A.7 Restore hooks
-
-```sh
-if [ -n "$SAVED_HOOKS_PATH" ]; then
-  git config core.hooksPath "$SAVED_HOOKS_PATH"
-else
-  git config core.hooksPath "$PWD/.beads/hooks"
-fi
-```
+`bd init` auto-detects the project's `git remote origin` and registers it as a Dolt remote in the `git+ssh://git@github.com/<user>/<repo>.git` form — exactly what Step B needs. No remote cleanup required.
 
 ### Step B: Configure the Dolt git remote — only if not already set up
 
-Skip if `bd dolt remote list` already shows a remote whose URL matches the project's GitHub origin (in any of the accepted forms: `https://github.com/...`, `git+https://...`, `git+ssh://git@github.com:...`).
+Skip if `bd dolt remote list` already shows a remote whose URL matches the project's GitHub origin (any of: `https://github.com/...`, `git+https://...`, `git+ssh://git@github.com:...`). After Step A, the remote is usually already there.
 
-Compute the canonical HTTPS URL from `git remote get-url origin` and add it via `bd` (not raw `dolt`) so the URL is persisted to `.beads/config.yaml` as `sync.remote` for fresh-clone bootstrap:
+If absent, add it via `bd` (not raw `dolt`) so the URL persists to `.beads/config.yaml` as `sync.remote` for fresh-clone bootstrap:
 
 ```sh
 GH_URL=$(git remote get-url origin | sed -e 's|^git@github.com:|https://github.com/|')
@@ -151,27 +135,31 @@ case "$GH_URL" in
   *) GH_URL="${GH_URL}.git" ;;
 esac
 bd dolt remote add origin "$GH_URL"
-```
-
-Confirm the remote was registered:
-
-```sh
 bd dolt remote list
 ```
 
-Seed `refs/dolt/data` on the remote with the current Dolt content:
+#### B.1 Remove templatedir-installed hooks from Dolt's internal cache (CRITICAL)
+
+If `init.templatedir` is set with hooks installed (pre-flight detects this), the templated hooks were copied into Dolt's internal git-remote-cache when `bd init` created it. Those hooks fire pre-commit framework on every `bd dolt push` and fail with `fatal: this operation must be run in a work tree` (Dolt's internal git context has no work tree).
+
+Permanently delete these cache hooks — they serve no purpose in Dolt's internal git context:
+
+```sh
+rm -rf .beads/embeddeddolt/*/.dolt/git-remote-cache/*/repo.git/hooks/
+```
+
+This is a destructive but safe operation: Dolt regenerates the cache hooks dir if it ever needs it (it doesn't), and removing them stops every future `bd dolt push` from failing too.
+
+#### B.2 Seed the remote and verify
 
 ```sh
 bd dolt push
-```
-
-Verify the ref exists on GitHub:
-
-```sh
 git ls-remote origin refs/dolt/data
 ```
 
-A non-empty result confirms the remote is live. If the push fails with a credential prompt error, this is the known Dolt v1.81.10 bug — switch the remote URL to `git+ssh://git@github.com:<user>/<repo>.git` form (uses ssh-agent, no STDIN credential needed) and re-push:
+A non-empty `git ls-remote` result confirms the remote is live.
+
+If the push fails with a credential prompt error, this is the known Dolt v1.81.10 bug — switch to `git+ssh://git@github.com:<user>/<repo>.git` form (uses ssh-agent, no STDIN credential):
 
 ```sh
 bd dolt remote remove origin
@@ -183,21 +171,22 @@ bd dolt push
 
 Skip if `git ls-files --error-unmatch .beads/issues.jsonl` returns non-zero (already untracked).
 
-#### C.1 Disable auto-staging
+#### C.1 Disable auto-staging in `.beads/config.yaml`
 
-Update `.beads/config.yaml` to set `export.git-add: false`. Leave `export.auto: true` (default) so the file stays fresh on disk for IDE visibility — it just never enters commits. If the keys aren't already present, append:
+Append (or set) `export.git-add: false`. Leave `export.auto: true` (the default) so the file stays fresh on disk for IDE visibility — it just never gets staged.
 
 ```yaml
-export:
-  git-add: false
+export.git-add: false
 ```
 
-#### C.2 Add to project-level `.gitignore`
+(beads' `config.yaml` accepts the dotted-key form.)
 
-Append `.beads/issues.jsonl` to the **project root** `.gitignore` (not `.beads/.gitignore`, which is owned by `bd init` and may be regenerated). Group it under a `# Beads` section if one doesn't already exist:
+#### C.2 Add to project `.gitignore`
+
+Append to the **project root** `.gitignore` (not `.beads/.gitignore`, which `bd init` may regenerate):
 
 ```gitignore
-# Beads exports (source of truth is Dolt; refs/dolt/data on origin is the sync channel)
+# Beads exports — source of truth is Dolt + refs/dolt/data on origin.
 .beads/issues.jsonl
 ```
 
@@ -207,70 +196,90 @@ Append `.beads/issues.jsonl` to the **project root** `.gitignore` (not `.beads/.
 git rm --cached .beads/issues.jsonl
 ```
 
-The on-disk copy stays — `git rm --cached` only removes it from git's index.
+The on-disk copy stays.
 
-### Step D: Review and tidy `bd init`'s `CLAUDE.md` / `AGENTS.md` additions — only if Step A ran
+### Step D: Strip `bd init`'s `CLAUDE.md` / `AGENTS.md` blocks — only if Step A ran
 
-`bd init` wraps its additions in `<!-- BEGIN BEADS INTEGRATION ... -->` / `<!-- END BEADS INTEGRATION -->` markers. The block contains a "Beads Issue Tracker" quick reference and a "Session Completion" section that mandates `git push` and `bd dolt push`.
+Always remove the BEADS INTEGRATION block from both files. The bd init template is verbose, prescriptive (mandates `git pull --rebase && bd dolt push && git push` which doesn't fit PR-based workflows), and almost always duplicates hand-tuned guidance the project already has. Keeping it requires per-repo curation; removing it is one Edit per file and the project's existing content stays authoritative.
 
-Inspect both files. **Remove the BEADS INTEGRATION block** if any of these apply:
+For each of `AGENTS.md` and `CLAUDE.md`, use the `Edit` tool to delete the entire `<!-- BEGIN BEADS INTEGRATION ... -->` through `<!-- END BEADS INTEGRATION -->` block (inclusive), plus the leading blank line.
 
-- The project already has an equivalent beads section (especially in `AGENTS.md` — bd init's block usually duplicates what's there).
-- The "Session Completion" guidance contradicts the project's actual workflow — common cases:
-  - Ephemeral branches with no upstream (the SessionStart hook will say so)
-  - The project doesn't use a `git push` workflow
-
-Use the `Edit` tool to delete from the `<!-- BEGIN BEADS INTEGRATION` line through the `<!-- END BEADS INTEGRATION -->` line inclusive, plus the leading blank line. If the block is genuinely useful for this project (e.g. brand-new repo with no agent guidance), keep it.
+If after removal the file ends up with no agent guidance at all (rare — usually only on brand-new repos with empty AGENTS.md), use the existing block content as a starting point for hand-tuned guidance, but still strip the auto-generated markers so future `bd init` runs don't double-add.
 
 ### Step E: Stage and commit
 
-Stage only what was actually changed. Typical set:
+`bd init` (Step A) leaves a set of files staged from its incomplete post-init commit (which we let time out). Stage anything else needed and commit:
 
 ```sh
 git add .beads/.gitignore .beads/config.yaml .beads/metadata.json \
         .beads/hooks/ .gitignore \
         .claude/settings.json AGENTS.md CLAUDE.md 2>/dev/null
-# If Step C ran, the staged set will include the deletion of .beads/issues.jsonl
-git status   # confirm what's staged; should NOT include .beads/issues.jsonl as a modification
-git commit -m "chore: modernise beads — embedded Dolt, git remote, JSONL gitignored" \
-           -m "<one-paragraph summary of which steps actually ran>"
+git status   # confirm: .beads/issues.jsonl shows as DELETED if Step C ran, NOT modified
+git commit -m "chore: modernise beads — embedded Dolt, refs/dolt/data remote, JSONL gitignored" \
+           -m "<one-paragraph summary of which steps actually ran and any decisions>"
 ```
 
-If the project's `pre-commit` framework is installed and auto-fixes files (typically trailing newlines on `.beads/config.yaml`, `.beads/metadata.json`, `.claude/settings.json`), the first commit will fail. Re-`git add` the modified files and commit again. External `git commit` from a shell does NOT deadlock — only `bd`-initiated internal commits do.
+Notes on the staged files:
+
+- **`.claude/settings.json`** is new from `bd init` — keep it. It wires `bd prime` into SessionStart and PreCompact hooks; useful for any agent on the repo.
+- **`.beads/issues.jsonl`** should appear as `deleted` (from Step C.3's `git rm --cached`), not modified. If it shows modified, the auto-staging didn't get disabled — re-check `.beads/config.yaml` has `export.git-add: false`.
+
+If a `pre-commit` framework hook auto-fixes files (typically trailing newlines), the first commit will fail. Re-`git add` the modified files and commit again. External `git commit` from a shell does NOT deadlock — only `bd`-initiated internal commits do.
 
 ### Step F: Push
 
-This command does not push the resulting commit — push (or open a PR) per the project's own workflow conventions. If Step B ran, `bd dolt push` was already done as part of seeding `refs/dolt/data`.
+This skill does not push the resulting commit — push (or open a PR) per the project's own workflow conventions. If Step B ran, `bd dolt push` was already done as part of seeding `refs/dolt/data`.
 
 ### Step G: Verify the final state
 
 ```sh
-bd stats                                                   # issue counts intact
-bd dolt remote list                                        # exactly one remote, the GitHub git+(https|ssh) form
-git ls-remote origin refs/dolt/data                        # remote ref exists
-ls .beads/                                                 # no dolt-server.*, no .local_version
-git ls-files .beads/                                       # issues.jsonl NOT listed (tracked); README/config/metadata/hooks ARE listed
-ps -ef | grep "dolt sql-server" | grep -v grep || true     # no server for THIS project
-git log --oneline -3
+echo "===bd stats==="; bd stats | head -8
+echo "===remote list==="; bd dolt remote list
+echo "===refs/dolt/data on origin==="; git ls-remote origin refs/dolt/data
+echo "===tracked .beads files==="; git ls-files .beads/
+echo "===running dolt server==="; ps -ef | grep "dolt sql-server" | grep -v grep || echo "(none)"
+echo "===log==="; git log --oneline -3
 ```
 
-Report a brief summary to the user: which transitions actually ran, issue count preserved, any decisions made (URL form chosen for the remote? CLAUDE.md/AGENTS.md blocks removed?).
+Expected:
+
+- `bd stats` total matches the pre-modernisation count
+- `bd dolt remote list` shows exactly one remote, the GitHub git+(https|ssh) form
+- `git ls-remote origin refs/dolt/data` returns a non-empty hash
+- `git ls-files .beads/` shows `.gitignore`, `README.md`, `config.yaml`, `metadata.json`, `hooks/*` — but NOT `issues.jsonl`
+- No `dolt sql-server` process for this project
+
+#### G.1 (Optional) Fresh-clone bootstrap verification
+
+The whole point of `refs/dolt/data` is bootstrap-on-fresh-clone. Validate it works end-to-end:
+
+```sh
+verify_dir=$(mktemp -d)
+git clone --depth 1 "$(git remote get-url origin)" "$verify_dir/clone" >/dev/null 2>&1
+( cd "$verify_dir/clone" && bd bootstrap && bd stats | head -8 )
+rm -rf "$verify_dir"
+```
+
+The `bd stats` from the fresh clone should match the original repo's count. If it shows 0 issues, `refs/dolt/data` wasn't seeded properly or `sync.remote` isn't in `.beads/config.yaml`.
+
+Report a brief summary to the user: which transitions actually ran, issue count preserved, any decisions made.
 
 ## Idempotency
 
 Each step is independently conditional. Re-running this command on an already-modernised project should:
 
 - Pre-flight detect `dolt_mode=embedded`, correct git remote present, JSONL untracked
-- Skip Steps A, B, C entirely
+- Skip Steps A, B, C, D, E entirely
 - Run Step G and report "already in target state"
 
 ## Reverting from `/bd-enable-server-mode`
 
-`/bd-enable-server-mode` flips `dolt_mode` to `"server"`. To go back: just re-run `/bd-modernize` — Step A will detect server mode and migrate it back to embedded. No separate reverse skill exists by design.
+`/bd-enable-server-mode` flips `dolt_mode` to `"server"`. To go back: just re-run `/bd-modernize` — Step A will detect server mode and migrate it back. No separate reverse skill exists by design.
 
 ## Known issues / footnotes
 
-- The hook deadlock between `bd`-initiated git commits and bd's pre-commit hook is a real characteristic of `bd` 1.0.2 embedded mode. The hooks-disabled window in Step A is the workaround. Once modernisation is done, normal external `git commit` from a shell fires the hooks and works fine.
-- Dolt v1.81.10 has a bug where git-remote operations fail if `git` requires interactive STDIN for credentials. Use `git+ssh://` URL form (ssh-agent) or set up a git credential helper to work around it.
-- Don't run `bd init` ad-hoc on an already-initialised project later — it may re-add the BEADS INTEGRATION blocks to `CLAUDE.md` / `AGENTS.md`.
-- If the user explicitly wants to keep `.beads/issues.jsonl` in git for visibility (e.g. so PR reviewers can see issue diffs), skip Step C and document why on the project. The conflict pattern across parallel feature branches will return.
+- The deadlock between `bd init`'s post-init commit and bd's pre-commit hook is a real characteristic of `bd` 1.0.2 embedded mode. `BEADS_HOOK_TIMEOUT=2` is the resolution; on systems without `timeout` (older macOS without coreutils), fall back to manual `pkill -9 -f "bd export"`. Once modernisation is done, normal external `git commit` from a shell fires the hooks and works fine.
+- Dolt v1.81.10 has a bug where git-remote operations fail if `git` requires interactive STDIN for credentials. Use `git+ssh://` URL form (ssh-agent) or set up a git credential helper.
+- The cache-hooks removal in Step B.1 is permanent. If `pre-commit` framework is later reinstalled with `init.templatedir` regenerated, you may need to re-run that `rm` once. A future fix would be to detect this in pre-flight on every run.
+- Don't run `bd init` ad-hoc on an already-initialised project later — it will re-add the BEADS INTEGRATION blocks to `CLAUDE.md` / `AGENTS.md` which Step D removed.
+- If the user explicitly wants to keep `.beads/issues.jsonl` in git for visibility (e.g. so PR reviewers can see issue diffs), skip Step C and document why. The conflict pattern across parallel feature branches will return.
