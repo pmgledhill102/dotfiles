@@ -9,5 +9,3 @@ _lib="${HOME}/.git-templates/hooks/_lib/dispatch.sh"
 
 # Only run on branch checkout ($3 = "1"), not file checkout
 [ "${3:-0}" = "1" ] || exit 0
-
-run_beads post-checkout "$@"

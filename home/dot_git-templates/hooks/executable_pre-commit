@@ -7,6 +7,4 @@ _lib="${HOME}/.git-templates/hooks/_lib/dispatch.sh"
 # shellcheck source=_lib/dispatch.sh
 . "$_lib"
 
-# Beads first so its staged JSONL is included in pre-commit's lint pass
-run_beads pre-commit
 run_precommit pre-commit
