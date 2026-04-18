@@ -4,3 +4,13 @@ Host *.servers.pmgledhill.com
     CheckHostIP no
     ServerAliveInterval 60
     ServerAliveCountMax 3
+
+# Route ssh-to-github through port 443 via ssh.github.com.
+# Claude Code's sandbox blocks outbound port 22 to GitHub's Azure-range IPs,
+# which causes bd/dolt auto-sync to hang on ~75s TCP timeouts. 443 is GitHub's
+# official SSH-over-HTTPS endpoint and works everywhere.
+# Docs: https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port
+Host github.com
+    Hostname ssh.github.com
+    Port 443
+    User git
