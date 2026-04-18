@@ -15,6 +15,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Project-local Claude Code settings (machine-specific permissions, never shared)
+.claude/settings.local.json
+
 # Ignore shell history
 .zsh_history
 .bash_history
