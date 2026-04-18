@@ -415,6 +415,21 @@ separately.
 - `Bash(wc *)`
 - `Bash(which *)`
 
+### Network diagnostics (read-only)
+
+Port-reachability probes, DNS lookups, and SSH config/auth diagnostics.
+All are read-only: `nc -zv` is pure port probe (the `-z` zero-I/O flag
+prevents sending data), `host` is a DNS query, `ssh -G` dumps resolved
+SSH config without connecting, and `ssh -o BatchMode=yes -T` is an
+auth test only (the `-T` disables PTY allocation so remote command
+execution is impossible). `curl` is deliberately NOT listed here —
+it can exfiltrate data via arbitrary POSTs.
+
+- `Bash(host *)`
+- `Bash(nc -zv *)`
+- `Bash(ssh -G *)`
+- `Bash(ssh -o BatchMode=yes -T *)`
+
 ### GitHub MCP server
 
 The GitHub MCP server (`github/github-mcp-server`) provides structured
