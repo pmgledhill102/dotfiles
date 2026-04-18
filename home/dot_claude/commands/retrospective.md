@@ -28,6 +28,21 @@ Review the full conversation history and evaluate each of these dimensions. Skip
   - For each opportunity, name the specific MCP server (if one exists) or note that one should be found/built.
 - **Memory updates**: Were learnings captured in auto-memory files, or were they missed?
 - **Beads hygiene**: Were issues created before work started? Were they closed properly?
+- **Slash command opportunities**: Did this session perform a procedure that's likely to be repeated — either across other projects, or periodically in this one? Strong signals:
+  - The user explicitly mentioned having other projects/contexts that need the same treatment
+  - The procedure had non-obvious ordering, workarounds, or gotchas that would be easy to forget on a re-run (the kind of thing where you'd think "I hope I remember to do step 4 first next time")
+  - Five-plus coherent sequential steps completed a single logical task
+  - A back-out/retry happened because a step was performed in the wrong order, missing a pre-condition
+  - Investigation took disproportionate time relative to the eventual fix (the *knowing what to do* was the hard part — and now we know)
+
+  For each candidate, propose: a command name (kebab-case), a one-line description, the key pre-flight checks, and the gotchas the prompt must surface. Existing commands live at `~/.claude/commands/` (mirrored to `~/dev/dotfiles/home/dot_claude/commands/`) — check there first to avoid duplicates.
+
+- **Slash command improvements**: Did this session invoke any existing slash command (or manually perform work that an existing one should have handled)? For each:
+  - Was a step missing, wrong, or stale? (e.g. an upstream tool changed flags, a pre-flight check would have caught the failure earlier)
+  - Did instructions cause a wrong decision via ambiguity?
+  - Did we deviate from the command's plan? Why — and should the command codify the deviation?
+
+  Recommend the specific edit (file path + which section). Treat existing commands the same way you'd treat a regularly-used script — they rot when tools and workflows around them evolve.
 
 ### 3. Check previous recommendations
 
@@ -68,6 +83,8 @@ Append a new entry to `~/.claude/retros.md` using this format:
 - Only **Start** items get `[PENDING]` tags — these are the actionable changes. **Continue** captures what's working. **Stop** captures what to avoid. Neither need status tracking.
 - For missing tools, include **both** the immediate install command (e.g., `brew install foo`, `gcloud components install alpha`) **and** the dotfiles change needed to provision it everywhere (e.g., "add `foo` to `home/Brewfile`", "add `gcloud components install alpha` to the chezmoi setup script"). Recommend the user install the tool now and update dotfiles in the same session.
 - For MCP recommendations, explain the **specific friction being solved** (e.g., "spent 5 approval prompts on read-only `gh api` calls that could be auto-approved via a GitHub MCP server"). Include the MCP server name/repo if known, and note whether it should be added to project-level or user-level `settings.json`.
+- For new slash command proposals, include the **proposed name**, a **one-sentence description**, and the **most important gotcha or pre-flight check** the command must encode. Don't wait to be asked — if the session worked out a non-obvious procedure, surfacing it as a command is usually the highest-leverage recommendation.
+- For slash command improvement recommendations, reference the **command file path** and cite the **specific deviation or failure mode** observed this session. "Add a pre-flight check that X" is more actionable than "improve robustness".
 - Keep each entry concise — aim for 15-30 lines maximum
 - If the session was uneventful with no notable friction, say so briefly and skip the detailed sections
 - Reference specific errors, file paths, and bead IDs where relevant
