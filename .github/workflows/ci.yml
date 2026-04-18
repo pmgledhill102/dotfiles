@@ -263,18 +263,23 @@ jobs:
         ./scripts/validate-installation.sh
 
     - name: Measure Zsh Startup Time (Unix)
+      # Informational only — feeds the GITHUB_STEP_SUMMARY table.
+      # Never block the job on this measurement.
+      continue-on-error: true
       if: runner.os != 'Windows'
       run: |
-        # ubuntu-latest ships /usr/share/zsh as world-writable (drwxrwxrwx+),
-        # which makes oh-my-zsh's compinit refuse to load completions and exit 1.
-        # Tighten perms before measuring. See beads dotfiles-oz3.
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          sudo chmod -R go-w /usr/share/zsh
+        set -x
+        # Some ubuntu-latest runner images ship /usr/share/zsh as world-writable
+        # (drwxrwxrwx+), which makes oh-my-zsh's compinit refuse to load
+        # completions. Tighten perms before measuring. See beads dotfiles-oz3.
+        if [ "$RUNNER_OS" = "Linux" ] && [ -d /usr/share/zsh ]; then
+          sudo chmod -R go-w /usr/share/zsh || true
         fi
-        zsh -i -c exit  # warm run
-        ZSH_STARTUP=$( { time zsh -i -c exit; } 2>&1 )
+        # Warm + timed run. Tolerate any failure — see continue-on-error above.
+        zsh -i -c exit 2>&1 || true
+        ZSH_STARTUP=$( { time zsh -i -c exit; } 2>&1 || true )
         echo "$ZSH_STARTUP"
-        REAL_TIME=$(echo "$ZSH_STARTUP" | grep '^real' | awk '{print $2}')
+        REAL_TIME=$(echo "$ZSH_STARTUP" | grep '^real' | awk '{print $2}' || echo "unknown")
         echo "ZSH_STARTUP_TIME=$REAL_TIME" > /tmp/zsh_startup.txt
 
     - name: Run Validation Script (Windows)
