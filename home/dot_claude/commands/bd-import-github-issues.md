@@ -47,6 +47,8 @@ From the `mcp__github__list_issues` response:
 - **Filter out PRs**: any item where the `pull_request` field is non-null is a PR — exclude.
 - **Filter out already-migrated**: any item whose `body` matches the regex `Migrated to beads [a-z0-9-]+` — exclude. This is the idempotency check; re-runs skip these.
 - **For each remaining issue**, capture: `number`, `title`, `body` (may be null/empty), `labels` (array of `{name}`), `assignees`, `created_at`, `html_url`.
+- **Decode HTML entities** in titles and bodies before further processing. The GitHub API returns `&#39;` for apostrophe, `&#34;` for double-quote, `&amp;` for ampersand, etc. Pass them verbatim to `bd create` and your bead title ends up as literal `Need a &#39;dotup&#39;...` Decode at minimum: `&#39;` → `'`, `&#34;` → `"`, `&amp;` → `&`, `&lt;` → `<`, `&gt;` → `>`. A more complete decoder is fine but not required for the common cases.
+- **Normalise mojibake in bodies**. Windows tool outputs (winget, MSBuild) often dump runs of unicode block characters (U+2588, U+2592) for progress bars; these get re-encoded as ASCII garbage like `ÔûêÔûêÔûêÔûÆ` somewhere along the API path. Strip runs of these specific mojibake patterns and add a one-line note to the bead description (`progress-bar mojibake stripped during import; see source URL for original`). Don't strip anything else — preserve all real content verbatim.
 
 If after filtering the candidate list is empty, report "all open issues already migrated or are PRs" and stop.
 
@@ -76,15 +78,24 @@ These are first-pass guesses, not commitments. The user gets to override them in
 
 ### Step 3: Confirmation A — present the mapping, get explicit yes
 
-Show the user a table of candidates and proposed bd attributes. Use a compact format like:
+Show the user a table of candidates and proposed bd attributes. Add a "tip" column when the title-keyword check (below) fires — the heuristic above is labels-only, so issues with bug-shaped or feature-shaped titles but no matching labels would otherwise default to `task` and require manual override every time.
+
+**Title-keyword tips** (only emit when the labels-derived type is `task`):
+
+| Title contains (case-insensitive) | Suggested override |
+| --- | --- |
+| `fail`, `failure`, `broken`, `error`, `crash`, `regression` | `type=bug` |
+| `add`, `support`, `implement`, `new` (whole-word) | `type=feature` (weaker signal — only if the body sounds like a build-out, not a one-line tweak) |
+
+Apply both keyword sets in Step 3's display only — never auto-change the proposed type. The user is the judge.
 
 ```text
 Migrating 3 open GitHub Issues from owner/repo to beads:
 
-#  GH#  Title                                   Type     Priority   Source labels
+#  GH#  Title                                   Type     Priority   Source labels      Tip
 1  42   Fix the broken date parser              bug      P1         bug, high
 2  43   Add dark mode to settings page          feature  P3         enhancement
-3  44   Investigate slow startup time           task     P3         (none)
+3  44   Windows Package Failures - batch 1      task     P3         (none)             title looks bug-shaped → type=bug ?
 
 Proceed with the above mapping?
   - Reply "yes" to migrate all as shown
@@ -96,17 +107,28 @@ Proceed with the above mapping?
 
 ### Step 4: Create the beads
 
-For each confirmed candidate, in order:
+**Don't pass descriptions inline.** GitHub bodies routinely contain quotes, apostrophes, code fences, multi-line shell output — escaping all that into a single `--description="..."` argument is brittle and breaks differently each time. Instead:
+
+1. For each confirmed candidate, write the full description to a temp file using the `Write` tool: `/tmp/bead-desc-<gh_number>.md`. The file content is plain text, no shell-escaping needed.
+2. Then run `bd create` with `--description="$(cat /tmp/bead-desc-<gh_number>.md)"`.
+
+Description file template:
+
+```markdown
+Source: <gh html_url>
+
+<gh body, decoded and mojibake-stripped, or '(no body)'>
+
+---
+Imported from GitHub Issue #<n> on YYYY-MM-DD via /bd-import-github-issues.
+```
+
+Then for each confirmed candidate, in order:
 
 ```sh
 bd create \
-  --title="<gh title>" \
-  --description="Source: <gh html_url>
-
-<gh body, or '(no body)'>
-
----
-Imported from GitHub Issue #<n> on $(date -u +%Y-%m-%d) via /bd-import-github-issues." \
+  --title="<decoded gh title>" \
+  --description="$(cat /tmp/bead-desc-<n>.md)" \
   --type=<inferred or overridden> \
   --priority=<inferred or overridden>
 ```
@@ -119,6 +141,7 @@ Notes:
 
 - Don't try to preserve GitHub labels as bd labels — beads doesn't have a labels concept the same way. The label names are already captured indirectly via type/priority inference; the original list is in the GitHub issue's history (still accessible after closing).
 - Don't try to map GitHub assignees — for solo-dev usage they're always you; for multi-user teams the mapping needs more thought and is out of scope for v1.
+- The `/tmp/bead-desc-<n>.md` files are leftover after the run. Harmless; they're cleared on next reboot. If you want them gone immediately, `rm /tmp/bead-desc-*.md` at the end.
 
 ### Step 5: Confirmation B — close the GitHub issues?
 
