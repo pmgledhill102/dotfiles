@@ -80,7 +80,6 @@ plugins=(
   history
   copypath
   copyfile
-  z
 )
 
 # shellcheck source=/dev/null
@@ -111,6 +110,12 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1
 # fzf key bindings and fuzzy completion
 if command -v fzf >/dev/null 2>&1; then
   eval "$(fzf --zsh)"
+fi
+
+# zoxide (smarter cd via frecency: `z foo`, `zi foo`)
+# Loaded after fzf so `zi` picks up the fzf integration automatically.
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
 fi
 
 # nvm (Node Version Manager)
