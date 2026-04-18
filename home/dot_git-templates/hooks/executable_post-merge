@@ -6,5 +6,3 @@ _lib="${HOME}/.git-templates/hooks/_lib/dispatch.sh"
 [ -f "$_lib" ] || _lib="$(dirname "$0")/_lib/dispatch.sh"
 # shellcheck source=_lib/dispatch.sh
 . "$_lib"
-
-run_beads post-merge "$@"
