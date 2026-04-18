@@ -21,6 +21,7 @@ Use this command when:
 
 - **Foreground everything.** Don't background `bd init` or `bd dolt push`. Both complete in <1 minute when the procedure is followed; backgrounding turns failures into polling rounds and adds 10+ minutes of overhead.
 - **Bash sessions in agent execution are ephemeral.** Each tool call is a new shell. Don't stash state in `$VAR` and rely on it surviving — chain commands with `&&` in one call, or hardcode the value.
+- **macOS deadlock.** `bd init`'s post-init commit deadlocks on stock macOS (no GNU `timeout` on PATH). Step 4 breaks it by prepending a fake `timeout` shim to PATH. Do not skip that; without it a single `bd init` can hang indefinitely.
 - **Expected runtime**: <30s on the fast-path, 1-2 min on the nuke-and-pave path (most of which is `bd init --from-jsonl` importing the issues).
 
 ## Pre-flight
@@ -98,8 +99,34 @@ Self-healing: any half-migrated state, stale lock files, orphaned config — all
 
 ## Step 4: Fresh `bd init` and restore preserved config
 
+### 4a. Install the `timeout` shim (deadlock prevention)
+
+`bd init` does a post-init `git commit` internally. That fires the just-installed pre-commit hook, which runs `bd hooks run pre-commit` → `bd export`. `bd export` blocks on the embedded-DB lock still held by the parent `bd init` → deadlock.
+
+The hook wrapper has an escape hatch: if `timeout` is on `PATH`, it invokes the hook via `timeout "$BEADS_HOOK_TIMEOUT" ...` and treats exit 124 as "continue without beads". On stock macOS `timeout` isn't on `PATH` (it's only available as `gtimeout` if `coreutils` is brew-installed, and even then only resolves as `timeout` after a `libexec/gnubin` PATH tweak), so the wrapper falls through to the untimed branch and hangs forever.
+
+Fix: prepend a tiny shim `timeout` to `PATH` for the duration of `bd init`. The shim exits 124 unconditionally — bd's hook wrapper reads that as "timed out, move on" and `bd init` completes cleanly. `bd export` is skipped during this one commit, which is harmless because the JSONL we'd have exported was just imported seconds earlier.
+
+Create the shim (use the `Write` tool, not a heredoc):
+
+- Path: `/tmp/bd-modernize-shim/timeout`
+- Contents:
+
+  ```sh
+  #!/bin/sh
+  # Shim used only during bd init's post-init commit to break the
+  # hook → bd export → DB-lock deadlock on macOS.
+  # Exits 124 to mimic GNU timeout's "timed out" code, which bd's
+  # hook wrapper treats as "continue without running beads hook".
+  exit 124
+  ```
+
+Then `chmod +x /tmp/bd-modernize-shim/timeout`. Idempotent — safe to recreate on each run.
+
+### 4b. Run `bd init`
+
 ```sh
-BEADS_HOOK_TIMEOUT=2 bd init \
+PATH="/tmp/bd-modernize-shim:$PATH" BEADS_HOOK_TIMEOUT=2 bd init \
   --from-jsonl \
   -p <prefix from pre-flight> \
   --non-interactive \
@@ -109,10 +136,11 @@ BEADS_HOOK_TIMEOUT=2 bd init \
 
 Notes:
 
-- `BEADS_HOOK_TIMEOUT=2` is required. `bd init`'s post-init `git commit` fires the just-installed pre-commit hook, which calls `bd export`, which blocks on the embedded-DB lock that the parent `bd init` is still holding. The hook script wraps `bd hooks run` in `timeout "$BEADS_HOOK_TIMEOUT" ...` (default 300s); lowering it lets the hook timeout-as-success in 2s and `bd init` continues cleanly.
+- The `PATH` override only affects this one invocation. Subsequent commits use the normal environment — no concurrent `bd init` holds the lock, so the real hook runs fine (even without `timeout` on PATH).
+- `BEADS_HOOK_TIMEOUT=2` is belt-and-braces. On Linux, where `timeout` is real, it caps the hook at 2s. The shim bypasses the timeout check entirely on macOS, so the env var is redundant there — kept for cross-platform robustness.
 - `--skip-agents` prevents `bd init` from appending the verbose `<!-- BEGIN BEADS INTEGRATION -->` block to `CLAUDE.md` and `AGENTS.md`. Side-effect: it also skips installing `.claude/settings.json` bd-prime hooks — Step 5a installs those itself.
 - Run synchronously (foreground). Expected: 30-60s for typical small projects.
-- If `timeout` is not on `PATH` (older macOS without `brew install coreutils`), the hook scripts fall back to running without timeout and the deadlock will reappear. Manual recovery: `pkill -9 -f "bd export"` in another terminal — `bd init` will then complete.
+- Fallback if the shim is unavailable / you want to diagnose: start `bd init` without the shim, watch `ps -ef | grep "bd export"`, and run `pkill -9 -f "bd export"` to unblock the hung commit. `bd init` resumes and exits 0.
 
 Verify the import succeeded:
 
@@ -266,7 +294,7 @@ This skill does not push the resulting commit — push (or open a PR) per the pr
 
 ## Known issues / footnotes
 
-- The deadlock between `bd init`'s post-init commit and bd's pre-commit hook is real on bd 1.0.x embedded mode. `BEADS_HOOK_TIMEOUT=2` is the resolution; on systems without `timeout` (older macOS without coreutils), fall back to manual `pkill -9 -f "bd export"`.
+- The deadlock between `bd init`'s post-init commit and bd's pre-commit hook is real on bd 1.0.x embedded mode. Step 4a's `timeout` shim is the deterministic fix — works on any POSIX system without requiring `coreutils`. `pkill -9 -f "bd export"` remains the manual-recovery escape hatch if the shim is absent or something else is blocking.
 - Dolt v1.81.10 has a bug where git-remote operations fail if `git` requires interactive STDIN for credentials. Use `git+ssh://` URL form (ssh-agent) or set up a git credential helper.
 - Cache-hooks removal in Step 5c is permanent. If `pre-commit` framework is later reinstalled with `init.templatedir` regenerated, you may need to re-run that `rm` once.
 - Don't run `bd init` ad-hoc on an already-modernised project later — it would re-add `.beads/hooks/` and (without `--skip-agents`) re-add the BEADS INTEGRATION blocks to CLAUDE.md / AGENTS.md.
