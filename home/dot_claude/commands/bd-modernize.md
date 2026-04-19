@@ -148,7 +148,12 @@ Verify the import succeeded:
 bd stats   # Total Issues should match $ORIG_LINES from Step 1
 ```
 
-If the count mismatches, STOP and surface the discrepancy.
+`bd init --from-jsonl` can silently drop issues — the command exits 0 even when some rows fail to import. Surface any mismatch between `bd stats` and `$ORIG_LINES` to the user before proceeding. The raw JSONL backup from Step 1 is the recovery source if the count is wrong enough to matter.
+
+**Schema drift on pre-1.0 JSONL.** If `bd init --from-jsonl` errors out with something like `failed to import from JSONL: failed to parse issue from JSONL: json: cannot unmarshal number into Go struct field Issue.ephemeral of type bool`, the JSONL predates bd 1.0 and has number-valued booleans (`ephemeral`, `pinned`, `is_template`, `crystallizes`). Two options:
+
+- **Transform then re-import.** `jq -c '.ephemeral = (.ephemeral | if type == "number" then . != 0 else . end) | .pinned = (.pinned | if type == "number" then . != 0 else . end) | .is_template = (.is_template | if type == "number" then . != 0 else . end) | .crystallizes = (.crystallizes | if type == "number" then . != 0 else . end)' .beads/issues.jsonl > /tmp/jsonl-fixed && mv /tmp/jsonl-fixed .beads/issues.jsonl`. Retry `bd init --from-jsonl`.
+- **Skip the import.** If the issues are all closed historical records and not worth preserving, drop `--from-jsonl` from Step 4b — plain `bd init` produces an empty database (or bootstraps from the existing Dolt remote if `refs/dolt/data` is already seeded on origin). Historical data remains in git history via the JSONL's prior commits.
 
 If the project was modern (`IS_LEGACY != "yes"`), restore the preserved config:
 
@@ -205,11 +210,13 @@ case "$GH_URL" in *.git) ;; *) GH_URL="${GH_URL}.git" ;; esac
 
 If `init.templatedir` is set with hooks installed (pre-flight detects this), templated hooks were copied into Dolt's internal git-remote-cache when `bd init` created it. Those fire pre-commit framework on every `bd dolt push` and crash with `fatal: this operation must be run in a work tree`.
 
+Use `find` rather than a shell glob — the glob fails silently when the path structure differs from expectation (`.beads/embeddeddolt/<db>/.dolt/git-remote-cache/<hash>/repo.git/hooks/` depends on the Dolt-assigned `<hash>`), and a stale cache hook that survives into Step 5d breaks `bd dolt push` with the work-tree error above.
+
 ```sh
-rm -rf .beads/embeddeddolt/*/.dolt/git-remote-cache/*/repo.git/hooks/
+find .beads/embeddeddolt -type d -name hooks -exec rm -rf {} + 2>/dev/null || true
 ```
 
-Permanently delete — Dolt's internal git operations don't need them.
+Permanently delete — Dolt's internal git operations don't need hooks.
 
 ### 5d. Seed `refs/dolt/data` on the remote
 
@@ -220,6 +227,8 @@ git ls-remote origin refs/dolt/data   # non-empty hash = success
 
 If the push fails with a credential-prompt error, that's the Dolt v1.81.10 bug — switch to ssh form via `bd dolt remote remove origin && bd dolt remote add origin "git+ssh://git@github.com:<user>/<repo>.git" && bd dolt push`.
 
+If the push fails with `fatal: this operation must be run in a work tree`, Step 5c didn't catch all the cache hooks — re-run the `find … -name hooks -exec rm -rf` in 5c, then retry.
+
 ### 5e. Disable JSONL auto-staging
 
 Append (or set) `export.git-add: false` in `.beads/config.yaml`. Leave `export.auto: true` (default) so the file stays fresh on disk for IDE visibility — it just never gets staged.
@@ -227,6 +236,8 @@ Append (or set) `export.git-add: false` in `.beads/config.yaml`. Leave `export.a
 ```yaml
 export.git-add: false
 ```
+
+Use the `Edit` tool to append. If scripting it, ensure the file ends in a newline **before** appending — `bd init` often writes `.beads/config.yaml` with no trailing newline (the final line is `sync.remote: "…"` with no `\n`), and `echo "export.git-add: false" >> config.yaml` produces the string `…dispatch.sh.gitexport.git-add: false` on one line, which is invalid YAML and breaks any downstream `check-yaml` hook.
 
 ### 5f. Add `.beads/issues.jsonl` to project `.gitignore`
 
@@ -248,6 +259,24 @@ git ls-files --error-unmatch .beads/issues.jsonl >/dev/null 2>&1 \
 ```
 
 The on-disk copy stays.
+
+### 5h. Sweep stale `run_beads` lines from per-repo hooks
+
+If `init.templatedir` was set and the project had pre-existing `.git/hooks/*` from an older bd init (pre-v1.0), `bd init` may composite those existing hooks rather than overwrite them. The result is `.beads/hooks/*` files that source the shared git-templates dispatcher AND have bd's own BEADS INTEGRATION block — meaning the pre-commit fires bd twice per commit, and one of those invocations (via the dispatcher's `run_beads` function) has no timeout wrapper. Sweep the dispatcher call:
+
+```sh
+for f in .beads/hooks/post-checkout .beads/hooks/post-merge .beads/hooks/pre-commit .beads/hooks/pre-push; do
+  [ -f "$f" ] || continue
+  sed -i '' -e '/^run_beads /d' -e '/^# Beads first so its staged/d' "$f"
+done
+grep -rE "run_beads|has_beads" .beads/hooks/ && echo "WARN: run_beads still present" || echo "hooks clean"
+```
+
+(`sed -i ''` is macOS; Linux uses `sed -i` with no trailing empty string.)
+
+The `--- BEGIN BEADS INTEGRATION ---` block further down each file is **untouched** — that's the modern, timeout-aware integration and bd manages it itself. Leaving it alone is the point.
+
+Idempotent: re-running on already-swept hooks removes nothing.
 
 ## Step 6: Commit and verify
 
