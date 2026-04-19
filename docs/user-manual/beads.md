@@ -159,6 +159,51 @@ Observable behaviours from the rollout:
 Pushing issue data to `refs/dolt/data` is always a manual step unless wired
 up externally (see the cron-job discussion below).
 
+### Troubleshooting: `run_beads: command not found`
+
+If `git commit`, `git checkout`, `git pull`, or `git push` prints:
+
+```text
+.git/hooks/pre-commit: line 11: run_beads: command not found
+```
+
+…it means that clone has a **stale `.git/hooks/*`** file from before PR #153.
+The fix is environmental, not per-repo.
+
+Why it happens: `git init` and `git clone` copy template hooks from
+`~/.git-templates/hooks/` into the new clone's `.git/hooks/` **once, at
+clone time**. `chezmoi apply` updates the source templates but never touches
+already-copied hooks in existing clones. Before PR #153, templates ended with
+`run_beads <stage>`; after #153 the symbol is gone from `dispatch.sh`, so old
+hooks that still call `run_beads` fail.
+
+Important — `.git/hooks/*` are **per-clone, not tracked by git**. They do not
+travel when you push or clone. Cloning a repo on another machine produces
+fresh hooks from *that machine's* current template library.
+
+The fix: PR #157 restored `run_beads` in `dispatch.sh` as a backward-compat
+stub — no-ops when `.beads/` is absent or `bd` isn't installed; otherwise
+delegates to `bd hooks run` with timeout handling. Next `dotup` / `chezmoi
+apply` propagates it, and all stale hooks on the machine stop erroring in
+one step. The template hooks themselves still don't call `run_beads`, so new
+clones remain fully decoupled.
+
+Sanity check that the stub is live:
+
+```sh
+grep -q '^run_beads()' ~/.git-templates/hooks/_lib/dispatch.sh && echo OK
+```
+
+Confirm that a specific repo's `.git/hooks/*` are the only things calling
+`run_beads` (nothing is committed — so nothing travels):
+
+```sh
+# Files in .git/hooks/ calling run_beads:
+grep -lE '^run_beads ' .git/hooks/* 2>/dev/null
+# Tracked files calling run_beads (expect zero):
+git grep -lE '^run_beads ' HEAD -- . 2>/dev/null | wc -l
+```
+
 ## Dolt
 
 ### Embedded mode (the modern default)
