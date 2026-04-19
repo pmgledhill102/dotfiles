@@ -396,6 +396,90 @@ After `/bd-modernize`, `git ls-files .beads/` should show roughly:
 
 No `issues.jsonl`. No `embeddeddolt/`. No `backup/`. Nothing else.
 
+## Pre-commit framework and beads
+
+If a project uses the [pre-commit framework](https://pre-commit.com/) (i.e. has
+a `.pre-commit-config.yaml` at the repo root), its configured lint hooks will
+by default run against every staged file, including the bd-managed files under
+`.beads/`. That is almost never what you want:
+
+- `.beads/README.md` has lines longer than most projects' line-length limit
+  and vocabulary that `cspell` doesn't know
+- `.beads/config.yaml` doesn't start with `---` (which `yamllint --strict`
+  flags)
+- `.beads/hooks/*` source the dispatch library via a `$_lib` variable, which
+  trips `shellcheck` SC1091 (`Not following: …`)
+
+These files are **bd-managed** — they get regenerated on every `bd init`, so
+fixing them in place is pointless: the next `bd-modernize` or re-init resets
+them. The correct fix is to **exclude `.beads/` from the repo's lint hooks**.
+
+### The canonical exclusion
+
+For most pre-commit hooks:
+
+```yaml
+- id: <hook-id>
+  exclude: ^\.beads/
+```
+
+For hooks that already have an `exclude:` (e.g. `yamllint` often excludes
+`^\.github/workflows/`), extend it with a regex union:
+
+```yaml
+- id: yamllint
+  exclude: ^(\.github/workflows/|\.beads/)
+```
+
+### Which hooks to exclude
+
+On a modernised beads repo, add the exclusion to any hook that would run
+against `.beads/*`:
+
+| Hook | Why it needs the exclusion |
+| --- | --- |
+| `markdownlint-cli2` | `.beads/README.md` has long lines |
+| `cspell` | `.beads/README.md` uses bd-specific vocabulary |
+| `yamllint` | `.beads/config.yaml` lacks `---` document start |
+| `shellcheck` | `.beads/hooks/*` source via `$_lib` (SC1091) |
+| `trailing-whitespace`, `end-of-file-fixer` | Safe — bd's files pass these. No exclusion needed. |
+| `check-yaml`, `check-json` | Safe — structurally valid. No exclusion needed. |
+
+A simpler-but-broader approach: add a **top-level exclude** that applies to
+every hook in the config:
+
+```yaml
+exclude: ^\.beads/
+repos:
+  - repo: ...
+```
+
+This is tempting but may be too broad if you ever deliberately want to lint
+a file inside `.beads/` (unlikely, but possible). Per-hook excludes are more
+precise.
+
+### Sanity check
+
+After modernising a repo:
+
+```sh
+# Dry-run every pre-commit hook against the committed .beads/ files.
+# Any that fail are candidates for the exclusion.
+pre-commit run --files $(git ls-files .beads/)
+```
+
+If this passes, your excludes are complete.
+
+### Why this isn't already in `/bd-modernize`
+
+The skill can detect that `.pre-commit-config.yaml` exists, but it can't
+automatically patch it safely — every project's hook list is different and
+structured differently (some share `exclude:` keys, some have top-level
+`exclude:`, some use `args:` variants that matter for re-ordering).
+`/bd-modernize` Step 6 now surfaces the list of hooks that would likely need
+an exclusion as a post-modernise checklist, and this section is the
+reference.
+
 ## Strategic use — project shapes
 
 The right configuration depends on who uses the project and on what kind of
