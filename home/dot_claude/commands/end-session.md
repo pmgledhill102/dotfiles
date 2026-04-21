@@ -14,11 +14,13 @@ When in doubt, downgrade a tier (Tier 1 → 2, or 2 → 3). Never upgrade silent
 
 ## Pre-flight
 
-This command **requires a git-backed repository**. If the current directory is not inside a git work tree, print a single-line warning ("`/end-session` requires a git-backed repo — nothing to tidy, stopping.") and exit. Do not run any further checks, do not proceed to Phase 2.
+This command **requires a git-backed repository**. Run the bare command below and branch on its exit code — don't paste a compound `||` / `&&` form, which won't match any single allow rule and will trigger a permission prompt.
 
 ```sh
-git rev-parse --is-inside-work-tree 2>/dev/null || { echo "not a git repo"; exit 1; }
+git rev-parse --is-inside-work-tree
 ```
+
+If the exit code is non-zero (or stdout is not `true`), print a single-line warning (`` `/end-session` requires a git-backed repo — nothing to tidy, stopping. ``) and stop. Do not run any further checks, do not proceed to Phase 2.
 
 ## Phase 1 — Tidy-up
 

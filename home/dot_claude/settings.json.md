@@ -213,23 +213,45 @@ GitHub MCP server is validated — see GitHub MCP section below.
 
 ### Git
 
-Standard git workflow operations. Destructive operations (`reset --hard`,
-`push --force`, `clean`) still require prompting.
+Standard git workflow operations plus read-only porcelain/plumbing.
+Destructive operations (`reset --hard`, `push --force`, `clean`,
+`gc`, `prune`) still require prompting.
+
+Deliberately **not** auto-allowed:
+
+- `git config *` — the `--set` form mutates config; per CLAUDE.md,
+  Claude must never update git config. Use an explicit prompt.
+- `git symbolic-ref *` — has a set form (`git symbolic-ref <name>
+  <ref>`). If needed, allow narrowly or prompt.
+- `git reflog *` — `expire` / `delete` subcommands mutate the reflog.
+- `git gc *`, `git prune *`, `git clean *`, `git fsck *`,
+  `git archive *` — rewrite objects, remove data, or slow/specialised.
 
 - `Bash(git add *)`
+- `Bash(git blame *)`
 - `Bash(git branch *)`
+- `Bash(git check-ignore *)`
 - `Bash(git checkout *)`
 - `Bash(git cherry-pick *)`
 - `Bash(git commit *)`
+- `Bash(git describe *)`
 - `Bash(git diff *)`
 - `Bash(git fetch *)`
+- `Bash(git for-each-ref *)`
 - `Bash(git log *)`
+- `Bash(git ls-files *)`
+- `Bash(git ls-remote *)`
 - `Bash(git ls-tree *)`
 - `Bash(git merge *)`
+- `Bash(git name-rev *)`
 - `Bash(git pull *)`
 - `Bash(git push *)`
+- `Bash(git range-diff *)`
 - `Bash(git remote *)`
+- `Bash(git rev-list *)`
+- `Bash(git rev-parse *)`
 - `Bash(git rm *)`
+- `Bash(git shortlog *)`
 - `Bash(git show *)`
 - `Bash(git stash *)`
 - `Bash(git status *)`
