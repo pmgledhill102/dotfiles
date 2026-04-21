@@ -27,6 +27,20 @@ changing permission rules, update both files together.
 
 - `Bash(dolt *)`
 
+### End-of-session scripts
+
+The `/end-session` slash command delegates its multi-line gather and
+pipeline steps to dotfiles-managed scripts in `~/.claude/bin/`. Inline
+compound shell commands can't match single-pattern allow rules (a
+command like `echo A; git status; echo B` is one string to the matcher,
+not three matches), so extracting them to scripts + one prefix rule
+removes recurring approval prompts. One rule covers current and future
+`end-session-*` scripts; scoped narrowly by prefix.
+
+- `Bash(~/.claude/bin/end-session-*)`
+
+See `docs/end-session-design.md` for the full rationale.
+
 ### draw.io (CLI export, read-only)
 
 - `Bash(/Applications/draw.io.app/Contents/MacOS/draw.io *)`

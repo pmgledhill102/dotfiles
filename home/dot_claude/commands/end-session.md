@@ -22,48 +22,55 @@ git rev-parse --is-inside-work-tree 2>/dev/null || { echo "not a git repo"; exit
 
 ## Phase 1 — Tidy-up
 
-### 1. Gather state (read-only)
+### 1. Gather state (Tier 1 — one tool call)
 
-Run as a single shell block so the full picture lands in one output:
-
-```sh
-echo "===pwd==="; pwd
-echo "===current branch==="; git branch --show-current
-echo "===status==="; git status --porcelain=v1 --branch
-echo "===origin==="; git remote get-url origin 2>&1
-echo "===main branch name==="; git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
-echo "===unpushed commits on current branch==="; git log @{u}..HEAD --oneline 2>&1 | head -20
-echo "===beads workspace==="; [ -f .beads/metadata.json ] && echo "yes" || echo "no"
-```
-
-### 2. Fetch and prune remote-tracking refs (Tier 1)
+Run the parallel gather script. It does `git fetch --all --prune --tags` first, then fans out all read-only queries (status/branch/log, stashes, worktrees, merged branches, `main` CI, open PRs, beads in-progress, beads preflight) in parallel.
 
 ```sh
-git fetch --all --prune --tags
+~/.claude/bin/end-session-gather-state
 ```
+
+Output is a sectioned stream. Each section starts with `===<name> (exit=<N>)===`. The sections are:
+
+| Section | Drives step(s) | Notes on exit code |
+| --- | --- | --- |
+| `fetch` | 2 (folded in) | Non-zero = network/auth issue — surface before proceeding. |
+| `local_state` | 1, 4 | Dirty tree + unpushed commits for step 4. |
+| `stashes` | 9 | Exit 0 even when empty. |
+| `worktrees` | 12 | Exit 0 even when empty. |
+| `merged_brs` | 6 Batch A | Script appends `\|\| true` — exit 0 even if no matches. |
+| `main_ci` | 3 | Content `gh-unavailable` = silent skip. Non-zero with other content = real error. |
+| `open_prs` | 8 | Same skip convention as `main_ci`. |
+| `bd_progress` | 10 | Section absent if no beads workspace. |
+| `bd_preflight` | 11 | Non-zero = preflight flagged something — surface its output. |
+
+Rules for interpreting exit codes:
+
+- `exit=0` with empty content: clean result (no stashes, no merged branches, no in-progress issues, etc.). Treat as "none".
+- `exit=0` with content: normal data — parse it for the relevant step.
+- `exit != 0` with content equal to `gh-unavailable`: silent skip (step 3 / step 8 degrade gracefully).
+- `exit != 0` with other content: real error — surface it before continuing Phase 1.
+
+### 2. Fetch and prune remote-tracking refs
+
+Folded into step 1's gather. The `fetch` section contains the output. If its exit code is non-zero, stop and surface before proceeding.
 
 ### 3. Check `main` CI status (Tier 1 — surface)
 
-If `gh` is available and the repo has a remote:
-
-```sh
-gh run list --branch main --limit 10 --json status,conclusion,name,headSha,createdAt,url 2>/dev/null
-```
-
-Parse the most recent run per workflow:
+From gather section `main_ci`. Parse the most recent run per workflow:
 
 - **Failed**: flag loudly with workflow name + URL. A red `main` is the loudest "not clean" signal.
 - **In progress**: list with elapsed time. Means a deploy / long check is mid-flight.
 - **All green**: silent.
 
-If `gh` isn't installed or there's no remote, skip silently. Carry the result forward — it gates the Phase 2 prompt.
+If the section content is `gh-unavailable` or the repo has no remote, skip silently. Carry the result forward — it gates the Phase 2 prompt.
 
 ### 4. Handle uncommitted or unpushed work (Tier 3)
 
-Before any branch switching or deletion:
+Read from gather section `local_state`. Before any branch switching or deletion:
 
-- **Dirty working tree** (uncommitted changes in `git status --porcelain`): stop, show the user what's dirty, ask whether to (a) commit, (b) stash, or (c) abort the tidy-up. Do **not** silently stash.
-- **Current branch has unpushed commits** and isn't `main`: surface this — ask whether to push (create PR if needed) or abort. Don't switch away from a branch with unpushed work without explicit permission.
+- **Dirty working tree** (non-empty `status` block): stop, show the user what's dirty, ask whether to (a) commit, (b) stash, or (c) abort the tidy-up. Do **not** silently stash.
+- **Current branch has unpushed commits** and isn't `main` (non-empty `unpushed` block): surface this — ask whether to push (create PR if needed) or abort. Don't switch away from a branch with unpushed work without explicit permission.
 
 ### 5. Return to main and rebase (Tier 1)
 
@@ -82,20 +89,12 @@ Two batches. Present each list, ask **one** y/n per batch, then act on the whole
 
 **Batch A — Branches fully merged into `origin/main`** (safe, uses `-d`):
 
-```sh
-git branch --merged origin/main --format='%(refname:short)' \
-  | grep -vE '^(main|master|HEAD)$'
-```
+Take the list from gather section `merged_brs`.
 
 **Batch B — Squash-merged branches** — branches whose upstream was deleted (`[upstream: gone]`, typical after GitHub squash-merge + branch delete) AND whose tree is identical to `main`. These won't show up in Batch A because squash-merging rewrites history; `-d` would refuse them. The empty-diff check is the safety net — if it passes, the content is already on `main` and `-D` is safe:
 
 ```sh
-git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ \
-  | awk '$2 ~ /gone/ { print $1 }' \
-  | grep -vE '^(main|master)$' \
-  | while read -r branch; do
-      git diff --quiet main.."$branch" 2>/dev/null && echo "$branch"
-    done
+~/.claude/bin/end-session-squash-merged
 ```
 
 For each batch:
@@ -118,11 +117,7 @@ If main is ahead of origin/main (shouldn't normally happen, but catches the case
 
 ### 8. Open PRs needing your action (Tier 3 — surface only)
 
-For PRs you authored (open). Prefer `mcp__github__list_pull_requests` (state=open, head filter); fall back to:
-
-```sh
-gh pr list --author @me --state open --json number,title,isDraft,mergeable,statusCheckRollup,reviewDecision,url
-```
+From gather section `open_prs`. If the section content is `gh-unavailable`, either skip or fall back to `mcp__github__list_pull_requests` (state=open, head filter) — the MCP path doesn't need `gh` on PATH.
 
 Categorise and present:
 
@@ -136,39 +131,19 @@ Never auto-merge. List, link, move on.
 
 ### 9. Stashes (Tier 1 — surface)
 
-```sh
-git stash list
-```
-
-If non-empty, surface count + entries. Don't drop or apply anything.
+From gather section `stashes`. If non-empty, surface count + entries. Don't drop or apply anything.
 
 ### 10. Beads in-progress check (Tier 3 — surface)
 
-If beads workspace:
-
-```sh
-bd list --status=in_progress
-```
-
-Filter to issues claimed by the current user (assignee matches `git config user.email` or local username). Surface count + IDs/titles. User decides which to close — common forgetfulness pattern.
+From gather section `bd_progress` (absent if no beads workspace). Filter to issues claimed by the current user (assignee matches `git config user.email` or local username). Surface count + IDs/titles. User decides which to close — common forgetfulness pattern.
 
 ### 11. Beads preflight (Tier 1)
 
-If beads workspace:
-
-```sh
-bd preflight
-```
-
-Surface output. Includes lint, stale, orphans checks — all read-only.
+From gather section `bd_preflight` (absent if no beads workspace). Surface output. Includes lint, stale, orphans checks — all read-only.
 
 ### 12. Other worktrees (Tier 3 — surface)
 
-```sh
-git worktree list
-```
-
-If more than one entry, list non-primary worktrees with their branch. If any have uncommitted work, flag with `*`. Don't remove anything.
+From gather section `worktrees`. If more than one entry, list non-primary worktrees with their branch. If any have uncommitted work, flag with `*`. Don't remove anything.
 
 ### 13. Background processes
 
