@@ -75,8 +75,19 @@ run_sh local_state '
         ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null)
         behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null)
         echo "ahead=$ahead behind=$behind"
+        echo "upstream_status=alive"
     else
-        echo "(no upstream)"
+        # Distinguish "configured upstream but remote ref pruned" (gone) from
+        # "no upstream ever set" (none). The gone state is the canonical
+        # signal that a PR was merged and the remote branch auto-deleted.
+        upstream_ref=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || true)
+        if [ -n "$upstream_ref" ]; then
+            echo "(no upstream ref — pruned)"
+            echo "upstream_status=gone"
+        else
+            echo "(no upstream)"
+            echo "upstream_status=none"
+        fi
     fi
     echo "---vs origin/$DEFAULT_BRANCH---"
     if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
