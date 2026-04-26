@@ -12,7 +12,8 @@ jobs:
     name: Generate Ghostty Terminfo
     runs-on: macos-latest
     permissions:
-      contents: write  # Required to commit and push changes
+      contents: write        # Required to push to the bot-owned chore branch
+      pull-requests: write   # Required to open / update the chore PR
 
     steps:
       - name: Checkout repository
@@ -60,15 +61,35 @@ jobs:
             echo "Changes detected in $TERMINFO_PATH"
           fi
 
-      - name: Commit and push if changed
+      - name: Open or update PR with terminfo refresh
         if: steps.check_changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: chore/ghostty-terminfo-update
         run: |
           git config --local user.email \
             "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+
+          # Stable bot-owned branch — repeated weekly runs update the same
+          # PR rather than stacking new ones. Force-push is safe here because
+          # nothing else writes to this ref.
+          git checkout -b "$BRANCH"
           git add home/dot_config/ghostty/xterm-ghostty.terminfo
           git commit -m "chore: update xterm-ghostty.terminfo"
-          git push
+          git push --force origin "$BRANCH"
+
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open \
+            --json number --jq '.[0].number')
+          if [ -z "$EXISTING_PR" ]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: update xterm-ghostty.terminfo" \
+              --body "Automated weekly refresh from the \`Generate Ghostty Term Info\` workflow."
+          else
+            echo "PR #$EXISTING_PR already open; pushed updated terminfo to its branch."
+          fi
 
       - name: Upload terminfo as artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
