@@ -271,11 +271,13 @@ or download code. Bare `go mod tidy` (no args) needs its own entry since
 - `Bash(go doc *)`
 - `Bash(go env *)`
 - `Bash(go fmt *)`
+- `Bash(go list *)`
 - `Bash(go mod tidy)`
 - `Bash(go mod tidy *)`
 - `Bash(go test *)`
 - `Bash(go version *)`
 - `Bash(go vet *)`
+- `Bash(go-mod-outdated *)`
 - `Bash(gofmt *)`
 - `Bash(goimports *)`
 - `Bash(golangci-lint *)`
@@ -303,14 +305,18 @@ and runs packages) require prompting. Only `npm run` and read-only
 subcommands are auto-allowed.
 
 - `Bash(eslint *)`
+- `Bash(knip *)`
 - `Bash(npm list *)`
 - `Bash(npm outdated *)`
 - `Bash(npm run *)`
 - `Bash(npm test *)`
+- `Bash(npm-check-updates *)`
 - `Bash(pnpm list *)`
+- `Bash(pnpm outdated *)`
 - `Bash(pnpm run *)`
 - `Bash(pnpm test *)`
 - `Bash(yarn list *)`
+- `Bash(yarn outdated *)`
 - `Bash(yarn run *)`
 - `Bash(yarn test *)`
 
@@ -341,10 +347,14 @@ dependencies.
 (installs packages) require prompting. Linters and test runners are safe.
 
 - `Bash(bandit *)`
+- `Bash(deptry *)`
 - `Bash(mypy *)`
+- `Bash(pip list *)`
+- `Bash(pip-audit *)`
 - `Bash(pylint *)`
 - `Bash(pytest *)`
 - `Bash(ruff *)`
+- `Bash(vulture *)`
 
 ### Ruby
 
@@ -359,6 +369,7 @@ security scanners are safe.
 
 `cargo run`, `cargo install`, and `cargo publish` require prompting.
 
+- `Bash(cargo audit *)`
 - `Bash(cargo bench *)`
 - `Bash(cargo build *)`
 - `Bash(cargo check *)`
@@ -366,7 +377,9 @@ security scanners are safe.
 - `Bash(cargo doc *)`
 - `Bash(cargo fmt *)`
 - `Bash(cargo deny *)`
+- `Bash(cargo outdated *)`
 - `Bash(cargo test *)`
+- `Bash(cargo udeps *)`
 
 ### Terraform
 
@@ -384,6 +397,7 @@ security scanners are safe.
 
 - `Bash(actionlint *)`
 - `Bash(cspell *)`
+- `Bash(lychee *)`
 - `Bash(markdownlint *)`
 - `Bash(markdownlint-cli2 *)`
 - `Bash(pre-commit *)`
