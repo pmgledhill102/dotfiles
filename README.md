@@ -114,6 +114,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/mai
 
 ```powershell
 winget install --id twpayne.chezmoi
+
 chezmoi init --apply pmgledhill102
 ```
 
