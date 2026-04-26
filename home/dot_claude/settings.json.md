@@ -27,17 +27,20 @@ changing permission rules, update both files together.
 
 - `Bash(dolt *)`
 
-### End-of-session scripts
+### Session-lifecycle scripts
 
-The `/end-session` slash command delegates its multi-line gather and
-pipeline steps to dotfiles-managed scripts in `~/.claude/bin/`. Inline
-compound shell commands can't match single-pattern allow rules (a
-command like `echo A; git status; echo B` is one string to the matcher,
-not three matches), so extracting them to scripts + one prefix rule
-removes recurring approval prompts. One rule covers current and future
-`end-session-*` scripts; scoped narrowly by prefix.
+The `/end-session` and `/start-session` slash commands delegate their
+multi-line gather and pipeline steps to dotfiles-managed scripts in
+`~/.claude/bin/`. Inline compound shell commands can't match
+single-pattern allow rules (a command like `echo A; git status; echo B`
+is one string to the matcher, not three matches), so extracting them to
+scripts + one prefix rule per command removes recurring approval
+prompts. Each rule covers current and future scripts of its respective
+prefix; scoped narrowly so unrelated scripts in `~/.claude/bin/` still
+prompt.
 
 - `Bash(~/.claude/bin/end-session-*)`
+- `Bash(~/.claude/bin/start-session-*)`
 
 See `docs/end-session-design.md` for the full rationale.
 
