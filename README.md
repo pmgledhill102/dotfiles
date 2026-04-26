@@ -121,27 +121,14 @@ This installs chezmoi, packages (Homebrew/apt/winget), shell config (Zsh +
 Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, tmux, VS Code
 settings, JetBrains Mono Nerd Font, and platform-specific defaults.
 
-## What's Included
+## Per-Platform Reference
 
-### Shell
-
-- **Unix**: Zsh + Oh My Zsh (autosuggestions, syntax-highlighting, history, etc.)
-- **Windows**: PowerShell Core with enhanced profile
-- **Prompt**: Starship (all platforms)
-- **Terminal**: Ghostty (macOS), Windows Terminal (Windows)
-- **Multiplexer**: tmux (Unix)
-
-### Dev Tools
-
-- **Packages**: Brewfile (macOS), apt list (Linux), winget JSON (Windows)
-- **Git**: git-delta diffs, lazygit TUI, global gitignore
-- **Editor**: VS Code with synced settings and keybindings
-- **Fonts**: JetBrains Mono Nerd Font
-
-### Security
-
-- **Secrets**: age encryption for sensitive configs
-- **Platform tweaks**: macOS developer defaults, Windows Long Paths + Developer Mode
+| | macOS | Linux / WSL | Windows |
+| --- | --- | --- | --- |
+| Shell | Zsh + Oh My Zsh | Zsh + Oh My Zsh | PowerShell Core |
+| Terminal | Ghostty | (host terminal) | Windows Terminal |
+| Package source | `Brewfile` | `apt` package list | `winget` JSON |
+| Platform tweaks | Developer defaults | — | Long Paths + Developer Mode |
 
 ## Machine Types
 
