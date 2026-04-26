@@ -93,7 +93,8 @@ Each `/setup-*` slash command configures the tools listed below. All commands ar
     ├── setup-ruby.md
     ├── setup-php.md
     ├── setup-node.md
-    └── setup-typescript.md
+    ├── setup-typescript.md
+    └── repo-review.md         # Currency / cleanup audit (any repo)
 ```
 
 ## Slash Commands
@@ -113,6 +114,18 @@ Each `/setup-*` command contains:
 /setup-common     # Local tooling foundation (depends on branch protection for auto-merge)
 /setup-python     # Language-specific tooling
 ```
+
+**Maintenance and review:**
+
+```text
+/repo-review      # Currency audit: ADR validity, deprecated deps, stale docs, dead code
+```
+
+`/repo-review` is portable — runs on any repo. Per-language scanners are
+required only when their manifest is detected (e.g. `pip-audit` only if
+`pyproject.toml` exists). Action items are emitted as Beads tasks when
+the project uses Beads, otherwise as a markdown report at
+`docs/reviews/repo-review-YYYY-MM-DD.md`.
 
 **Day-to-day coding:**
 Claude Code edits files -> hooks auto-run -> Claude sees failures -> fixes them. No context spent on rules — tooling output *is* the context.
