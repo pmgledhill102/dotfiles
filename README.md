@@ -210,12 +210,6 @@ chezmoi apply
 
 Highly sensitive secrets (API keys, passwords) belong in Bitwarden, not here.
 
-## Migrating from Old Setup (Stow)
-
-See [docs/MIGRATION.md](docs/MIGRATION.md) for the full cleanup guide
-covering stow symlink removal, Oh My Posh → Starship transition, and
-per-platform notes.
-
 ## Platform Support
 
 - macOS (Sonoma and later)
