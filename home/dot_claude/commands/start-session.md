@@ -58,14 +58,26 @@ Folded into step 1's gather. The `fetch` section contains the output. If its exi
 
 ### 3. Sync the default branch (Tier 1 / Tier 3)
 
-Read `local_state`. Behavior depends on which branch you're on:
+Read `local_state`, including the `upstream_status` line (`alive` / `gone` / `none`). Behavior depends on which branch you're on:
 
 - **On the default branch** (`branch` matches `default_branch`) and behind `origin/<default>`: run `git pull --rebase --autostash`. Tier 1.
 - **On the default branch** and clean / up-to-date: silent.
-- **On a feature branch** with `default_branch` advanced (`vs origin/<default>` shows non-zero `behind`): surface the count — "`<default>` is N commits ahead of your branch". Do **not** auto-rebase. Tier 3 — the user decides whether to rebase, merge, or carry on.
+- **On a feature branch with `upstream_status=gone` and a clean working tree**: auto-switch back to the default branch and bring it up to date. Tier 1.
+
+  `upstream_status=gone` means an upstream is configured in `.git/config` but its remote ref has been pruned during fetch — the canonical signal that the PR was merged and the branch was auto-deleted on the remote. Run:
+
+  ```sh
+  git checkout <default_branch>
+  git pull --rebase --autostash
+  ```
+
+  Add `auto-switched <feature> → <default> (upstream gone)` as an extra line under `Sync:` in the session brief. Leave the local feature branch in place — never delete it. The user can return to it with `git checkout <feature>` if they need to.
+
+- **On a feature branch with `upstream_status=gone` but the working tree is dirty**: do NOT auto-switch. The dirty work might sit on top of commits that are now squash-merged into `main`, and switching would risk surprising the user. Surface as Tier 3: `<branch>'s upstream is gone (PR merged?) but tree is dirty — commit or stash, then switch manually`.
+- **On a feature branch with `upstream_status=alive`** and `default_branch` advanced (`vs origin/<default>` shows non-zero `behind`): surface the count — "`<default>` is N commits ahead of your branch". Do **not** auto-rebase. Tier 3 — the user decides whether to rebase, merge, or carry on.
 - **On a feature branch with unpushed commits** (non-zero `ahead` vs `@{u}`): surface the count. Don't push from here; that's `/end-session`'s job.
 
-Never switch branches. The user's current branch is left alone.
+Don't switch branches outside of the auto-switch case above.
 
 ### 4. Beads Dolt pull (Tier 1)
 
@@ -115,7 +127,8 @@ Always print, even when everything is clean. This is the user-facing payoff — 
 ```text
 ── Session brief ──────────────────────────────
 Repo:     <repo>             Branch: <branch> (<clean|dirty>)
-Sync:     <default> <ahead/behind/even>   upstream <ahead/behind/even/n/a>
+Sync:     <default> <ahead/behind/even>   upstream <ahead/behind/even/gone/n/a>
+          [auto-switched <feature> → <default> (upstream gone)]    (only when Step 3 auto-switched)
 Dolt:     <pulled / up-to-date / no remote / FAILED>
 CI:       <green / N failing / N in-progress / n/a>
 
@@ -130,7 +143,8 @@ Needs attention:
   • <unmigrated GH issues: N>      (omit when 0 / n/a)
   • <main CI red on workflow X>    (omit when green)
   • <bd preflight flagged …>       (omit when clean)
-  • <feature branch behind main by N>  (omit when on default or even)
+  • <feature branch behind main by N>          (omit when on default, even, or auto-switched)
+  • <branch upstream gone but tree dirty>      (omit unless that case fires)
 ───────────────────────────────────────────────
 ```
 
@@ -146,7 +160,7 @@ Rules:
 
 - **Pre-flight gate is non-negotiable.** Never proceed when not in a git repo.
 - **Never auto-rebase a feature branch** onto an advanced default branch. Surface the gap and stop. The user picks the strategy.
-- **Never switch branches.** `/start-session` reports state on whatever branch the user is on.
+- **Never switch branches except when the upstream is gone and the tree is clean.** That single case (PR merged + branch auto-deleted on remote, no local uncommitted work) is auto-handled per Step 3. Otherwise, `/start-session` reports state on whatever branch the user is on.
 - **`bd dolt pull` failures halt the phase.** Don't attempt auto-resolve, don't fall back to JSONL, don't rebuild the DB. Surface and stop.
 - **Don't push anything.** Pushes belong to `/end-session` (for git/`main`) and `/bd-import-github-issues` (for beads after import). `/start-session` is read-mostly.
 - **Don't modify settings, config, or unrelated files.** Scope is git, beads, and GitHub-issue surface only.
