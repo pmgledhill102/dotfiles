@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# start-session-gather-state — parallel read-only state gather for /start-session.
+#
+# Mirrors end-session-gather-state's shape: runs `git fetch` first, fans out
+# independent read-only queries in parallel, and collates results into a
+# single sectioned stdout stream that /start-session's Phase 1 consumes in
+# one tool call.
+#
+# Output protocol (stdout):
+#   ===<section> (exit=<N>)===
+#   <section stdout+stderr>
+#
+# Progress pings go to stderr so a human watching sees something move;
+# parseable data is stdout-only.
+#
+# Exit codes per section are preserved so the agent can distinguish silent
+# skips ("gh-unavailable") from real errors.
+
+set -uo pipefail
+
+progress() { printf '[gather] %s\n' "$*" >&2; }
+
+TMP=$(mktemp -d -t start-session-gather.XXXXXX)
+trap 'rm -rf "$TMP"' EXIT
+
+# --- Phase 1: git fetch (blocks remote-aware sections below) ---
+progress "git fetch --all --prune --tags"
+git fetch --all --prune --tags >"$TMP/fetch.out" 2>&1
+FETCH_EXIT=$?
+progress "fetch exit=$FETCH_EXIT"
+
+# Resolve the repo's default branch once so subsequent sections can compare
+# against it. Fall back to main, then master, then leave empty.
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+if [ -z "$DEFAULT_BRANCH" ]; then
+    if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+        DEFAULT_BRANCH=main
+    elif git rev-parse --verify --quiet origin/master >/dev/null 2>&1; then
+        DEFAULT_BRANCH=master
+    else
+        DEFAULT_BRANCH=main
+    fi
+fi
+export DEFAULT_BRANCH
+
+# --- Phase 2: parallel fan-out of independent reads ---
+
+run_section() {
+    local name=$1
+    shift
+    (
+        "$@" >"$TMP/$name.out" 2>&1
+        echo $? >"$TMP/$name.exit"
+    ) &
+}
+
+run_sh() {
+    local name=$1
+    local script=$2
+    (
+        sh -c "$script" >"$TMP/$name.out" 2>&1
+        echo $? >"$TMP/$name.exit"
+    ) &
+}
+
+# shellcheck disable=SC2016  # Intentional single quotes: expansion happens inside `sh -c`.
+run_sh local_state '
+    echo "pwd=$(pwd)"
+    echo "branch=$(git branch --show-current)"
+    echo "default_branch=$DEFAULT_BRANCH"
+    echo "---status---"
+    git status --porcelain=v1 --branch
+    echo "---vs upstream (@{u})---"
+    if git rev-parse --verify --quiet "@{u}" >/dev/null 2>&1; then
+        ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null)
+        behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null)
+        echo "ahead=$ahead behind=$behind"
+    else
+        echo "(no upstream)"
+    fi
+    echo "---vs origin/$DEFAULT_BRANCH---"
+    if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
+        ahead=$(git rev-list --count "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null)
+        behind=$(git rev-list --count "HEAD..origin/$DEFAULT_BRANCH" 2>/dev/null)
+        echo "ahead=$ahead behind=$behind"
+    else
+        echo "(no origin/$DEFAULT_BRANCH)"
+    fi
+    echo "---origin---"
+    git remote get-url origin 2>&1
+'
+
+# shellcheck disable=SC2016
+run_sh main_ci '
+    if command -v gh >/dev/null 2>&1; then
+        gh run list --branch "$DEFAULT_BRANCH" --limit 10 \
+            --json status,conclusion,name,headSha,createdAt,url
+    else
+        echo "gh-unavailable"
+    fi
+'
+
+# shellcheck disable=SC2016
+run_sh gh_unmigrated '
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "gh-unavailable"
+        exit 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "jq-unavailable"
+        exit 1
+    fi
+    # gh issue list excludes PRs by default. The marker `Migrated to beads `
+    # is the idempotency anchor written by /bd-import-github-issues.
+    # Bind the filtered list to $u so we can both count and iterate it.
+    # The '\'' sequence closes/reopens the outer single quote so jq can
+    # take a single-quoted filter argument.
+    gh issue list --state open --limit 100 --json number,title,body \
+      | jq -r '\''
+          map(select((.body // "") | test("Migrated to beads ") | not)) as $u
+          | "count=\($u | length)",
+            ($u[] | "#\(.number) \(.title)")
+        '\''
+'
+
+if [ -f .beads/metadata.json ]; then
+    run_section bd_remote bd dolt remote list
+    run_section bd_preflight bd preflight
+    run_section bd_ready bd ready
+    run_section bd_in_progress bd list --status=in_progress
+fi
+
+wait
+progress "all sections complete"
+
+# --- Emit consolidated output ---
+emit() {
+    local name=$1
+    local exit_code
+    exit_code=$(cat "$TMP/$name.exit" 2>/dev/null || echo "n/a")
+    printf '===%s (exit=%s)===\n' "$name" "$exit_code"
+    cat "$TMP/$name.out" 2>/dev/null
+    printf '\n'
+}
+
+printf '===fetch (exit=%s)===\n' "$FETCH_EXIT"
+cat "$TMP/fetch.out"
+printf '\n'
+
+for s in local_state main_ci gh_unmigrated bd_remote bd_preflight bd_ready bd_in_progress; do
+    [ -f "$TMP/$s.exit" ] && emit "$s"
+done

@@ -35,6 +35,7 @@
       "Bash(deptry *)",
       "Bash(dolt *)",
       "Bash(~/.claude/bin/end-session-*)",
+      "Bash(~/.claude/bin/start-session-*)",
       "Bash(/Applications/draw.io.app/Contents/MacOS/draw.io *)",
       "Bash(podman build *)",
       "Bash(podman compose *)",

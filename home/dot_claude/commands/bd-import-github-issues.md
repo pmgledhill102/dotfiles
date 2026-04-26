@@ -17,6 +17,7 @@ Run at the start of a session when the GitHub Issues tab on this repo has accumu
 
 - Use `mcp__github__*` tools throughout, not the `gh` CLI (per the user's global preference). Specifically: `mcp__github__list_issues`, `mcp__github__add_issue_comment`, `mcp__github__issue_write` (for closing).
 - Run all `bd create` calls synchronously in the foreground. Each is fast (~1 sec).
+- **Syncs the embedded Dolt DB.** Step 0 pulls before importing; Step 8 pushes after. Both are no-ops on projects without a Dolt remote configured. This keeps the command correct when run standalone — `/start-session` chains into it on yes-prompt, but invocation via either entry point lands beads in the same synced state.
 - Expected total runtime: 30 sec to 2 min for a typical batch of 1-10 issues.
 
 ## Pre-flight checks
@@ -39,6 +40,21 @@ If `.beads/metadata.json` is missing: report "this isn't a beads project; run `/
 If the open-issues list is empty (or contains only PRs): report "no open GitHub Issues to migrate" and stop.
 
 ## Procedure
+
+### Step 0: Sync local DB from remote
+
+Before any reads or writes against the embedded Dolt DB, bring it up to date with what's on the remote so subsequent `bd create` calls land on top of the latest state.
+
+```sh
+bd dolt remote list 2>&1 | head -5
+```
+
+- **Empty output** (no remote configured — single-machine setup): print `(no Dolt remote — skipping pull)`, set `HAS_REMOTE=0`, proceed to Step 1.
+- **One or more remotes**: set `HAS_REMOTE=1` and run `bd dolt pull` synchronously, foreground.
+  - **Clean exit**: proceed to Step 1.
+  - **Non-zero exit**: STOP. Surface stderr verbatim and tell the user to resolve manually (`bd dolt pull`, then re-run this command). Do not attempt auto-merge or fall back to JSONL. If the failure looks like the Dolt v1.81.10 credential-prompt bug, point at `/bd-modernize` step 5d for the ssh-form workaround.
+
+This step is Tier 1 — pull is reversible, the only failure modes (auth, network, true conflict) halt cleanly without changing local state.
 
 ### Step 1: Build the candidate list
 
@@ -190,7 +206,21 @@ Report a summary to the user:
 - N GitHub issues closed (or skipped if Step 5 was "skip")
 - Any failures (issues whose close didn't go through, etc.)
 
-If `bd dolt push` is configured for this project, mention that the new beads will sync on next push.
+### Step 8: Push imported beads to remote
+
+If `HAS_REMOTE=0` from Step 0 (no Dolt remote configured), skip this step silently.
+
+Otherwise — and regardless of whether Step 5 was `yes` or `skip`, since beads were created either way — run:
+
+```sh
+bd dolt push
+```
+
+- **Clean exit**: report `pushed N new beads to refs/dolt/data` and finish.
+- **Push rejected** (remote advanced again during the run): tell the user `remote advanced — re-run /bd-import-github-issues (idempotent)`. Local beads are safe; nothing is lost.
+- **Other failure** (auth, network, the Dolt v1.81.10 credential-prompt bug): surface the error. Tell the user beads are local and they can retry `bd dolt push` manually once the underlying issue is fixed. Reference `/bd-modernize` step 5d for the ssh-form workaround if the symptoms match.
+
+This is Tier 1 — push of fresh beads to a known-pulled remote is safe and expected.
 
 ## Idempotency
 
