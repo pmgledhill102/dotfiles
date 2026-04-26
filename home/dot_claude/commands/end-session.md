@@ -140,6 +140,7 @@ From gather section `stashes`. If non-empty, surface count + entries. Don't drop
 From gather section `bd_progress` (absent if no beads workspace). The section is the output of `bd list --status=in_progress`, so **every entry is in_progress** — never report these as "blocked". Filter to issues claimed by the current user (assignee matches `git config user.email` or local username). Surface count + IDs/titles. User decides which to close — common forgetfulness pattern.
 
 **Reading bd's symbols (don't conflate them):**
+
 - The leading glyph on each line is the **status**: `○` open · `◐` in_progress · `●` blocked · `✓` closed · `❄` deferred. In this section it's always `◐`.
 - A `●` appearing later in the line (e.g., inside `[● P2]`) is a **priority indicator**, not a blocked-status flag. The bd legend printed at the bottom of `bd list` uses `●` for "blocked" and reuses the same glyph for priority — that collision is the trap.
 - If you want to know what's actually blocked, run `bd blocked` — don't infer from later-line glyphs.
