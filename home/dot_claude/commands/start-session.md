@@ -37,13 +37,14 @@ Output is a sectioned stream. Each section starts with `===<name> (exit=<N>)===`
 | Section | Drives step(s) | Notes on exit code |
 | --- | --- | --- |
 | `fetch` | 2 (folded in) | Non-zero = network/auth issue — surface before proceeding. |
-| `local_state` | 3, 8 | Includes branch, dirty/clean, ahead/behind upstream, ahead/behind `origin/<default>`. |
-| `main_ci` | 6 | Content `gh-unavailable` = silent skip. Non-zero with other content = real error. |
-| `gh_unmigrated` | 7 | Content `gh-unavailable` or `jq-unavailable` = silent skip. First line is `count=<N>`; remaining lines are `#<n> <title>` per unmigrated issue. |
+| `local_state` | 3, 9 | Includes branch, dirty/clean, ahead/behind upstream, ahead/behind `origin/<default>`. |
+| `main_ci` | 7 | Content `gh-unavailable` = silent skip. Non-zero with other content = real error. |
+| `gh_unmigrated` | 8 | Content `gh-unavailable` or `jq-unavailable` = silent skip. First line is `count=<N>`; remaining lines are `#<n> <title>` per unmigrated issue. |
 | `bd_remote` | 4 | Section absent if no beads workspace. Empty content = no remote configured (single-machine setup). |
-| `bd_preflight` | 5 | Section absent if no beads workspace. Non-zero = preflight flagged something — surface. |
-| `bd_ready` | 8 | Section absent if no beads workspace. Plain `bd ready` output — pick the top 5 entries for the brief. |
-| `bd_in_progress` | 8 | Section absent if no beads workspace. Mirrors `/end-session`'s `bd_progress` section. |
+| `bd_preflight` | 6 | Section absent if no beads workspace. Non-zero = preflight flagged something — surface. |
+| `bd_ready` | 9 | Section absent if no beads workspace. Plain `bd ready` output — pick the top 5 entries for the brief. |
+| `bd_in_progress` | 9 | Section absent if no beads workspace. Mirrors `/end-session`'s `bd_progress` section. |
+| `bd_inprogress_delivered` | 5 | Section absent if no beads workspace. Empty content = nothing to auto-close. Each line is `<id>\|<short-sha>\|<subject>` for an in_progress bead whose ID was referenced by a merged commit on `<default>` (`Closes <id>` / `Fixes <id>`). |
 
 Rules for interpreting exit codes:
 
@@ -93,11 +94,27 @@ bd dolt pull
 
 If it fails (auth, network, or genuine conflict), halt the phase and surface the error verbatim. Do **not** attempt auto-merge or auto-resolve — the user needs to fix this manually before continuing. Mention the v1.81.10 credential-prompt workaround documented in `/bd-modernize` step 5d if the failure looks like it.
 
-### 5. Beads preflight (Tier 1 — surface)
+### 5. Auto-close delivered in_progress beads (Tier 1)
+
+Read gather section `bd_inprogress_delivered` (absent if no beads workspace; empty if nothing matched). Each line is `<id>|<short-sha>|<subject>` — an `in_progress` bead whose ID was referenced by a merged commit on the default branch with `Closes <id>` or `Fixes <id>` in the message.
+
+These are deliveries that never got their bead closed. The PR was already reviewed and merged; closing the bead is bookkeeping, not a judgment call. Auto-close each one — no prompt:
+
+```sh
+bd close <id> --reason="Auto-closed by /start-session: shipped via <short-sha>"
+```
+
+After all auto-closes, run `bd dolt push` once so the closures persist to the remote (otherwise a second machine that pulls afterwards re-detects the same beads as in_progress and re-closes them — harmless but noisy). This is a deliberate carve-out from the general "don't push" guardrail; it's the only push `/start-session` ever issues.
+
+If the section is absent, empty, or nothing matched: skip silently. The session brief shows an `Auto-closed (delivered):` line listing what was closed (omit the line entirely when nothing was closed).
+
+False-positive risk is low: a stray `Closes <bead-id>` reference in a non-closing context would trigger a spurious close. If hit, recovery is `bd reopen <id>` — Tier 1 acceptable in exchange for not having to manually close every shipped bead.
+
+### 6. Beads preflight (Tier 1 — surface)
 
 From gather section `bd_preflight` (absent if no beads workspace). Surface output verbatim. Includes lint, stale, orphans checks — all read-only. Carry the result forward into the session brief.
 
-### 6. `main` CI status (Tier 1 — surface)
+### 7. `main` CI status (Tier 1 — surface)
 
 From gather section `main_ci`. Parse the most recent run per workflow:
 
@@ -107,7 +124,7 @@ From gather section `main_ci`. Parse the most recent run per workflow:
 
 If the section content is `gh-unavailable` or the repo has no remote, skip silently and report `n/a` in the brief.
 
-### 7. Unmigrated GitHub Issues (Tier 2 — prompt)
+### 8. Unmigrated GitHub Issues (Tier 2 — prompt)
 
 From gather section `gh_unmigrated`. The first line is `count=<N>`; remaining lines are `#<number> <title>` per unmigrated issue.
 
@@ -120,7 +137,7 @@ From gather section `gh_unmigrated`. The first line is `count=<N>`; remaining li
   - **yes** → invoke `/bd-import-github-issues` directly. That command does its own `bd dolt pull` (Step 0) and `bd dolt push` (Step 8); a second pull right after step 4 is a clean no-op, and the push at the end is what we want anyway.
   - **no / empty / cancel** → carry on. Surface the count in the session brief under "Needs attention" so it's visible at a glance.
 
-### 8. Session brief (Tier 1 — final summary)
+### 9. Session brief (Tier 1 — final summary)
 
 Always print, even when everything is clean. This is the user-facing payoff — one screenful, scannable, no surprises. Format:
 
@@ -131,6 +148,9 @@ Sync:     <default> <ahead/behind/even>   upstream <ahead/behind/even/gone/n/a>
           [auto-switched <feature> → <default> (upstream gone)]    (only when Step 3 auto-switched)
 Dolt:     <pulled / up-to-date / no remote / FAILED>
 CI:       <green / N failing / N in-progress / n/a>
+
+Auto-closed (delivered):                            (omit when none)
+  <id>  via <short-sha>  <commit subject>
 
 In progress (you left these mid-flight):
   <id>  P<pri>  <title>            (or "none")
@@ -152,7 +172,8 @@ Rules:
 
 - Sections with nothing to say collapse to a single `none` line; "Needs attention" is omitted entirely when empty.
 - "Ready to pick up next" is sourced from gather section `bd_ready`. Take the first 5 rows of `bd ready`'s output. `bd ready` already filters to issues whose blockers are all closed and sorts sensibly — preserve its order.
-- "In progress" is sourced from gather section `bd_in_progress`. No cap (usually 0–3 items).
+- "In progress" is sourced from gather section `bd_in_progress`. No cap (usually 0–3 items). Note: any beads auto-closed in Step 5 won't appear here — they're already closed by the time the brief renders.
+- "Auto-closed (delivered)" is sourced from the IDs Step 5 closed. Omit the entire section when Step 5 closed nothing.
 - If the repo has no beads workspace, drop both Beads sections silently (the brief still shows git/CI/GH lines).
 - Truncate any title to ~78 columns to keep rows on one line.
 
@@ -162,5 +183,5 @@ Rules:
 - **Never auto-rebase a feature branch** onto an advanced default branch. Surface the gap and stop. The user picks the strategy.
 - **Never switch branches except when the upstream is gone and the tree is clean.** That single case (PR merged + branch auto-deleted on remote, no local uncommitted work) is auto-handled per Step 3. Otherwise, `/start-session` reports state on whatever branch the user is on.
 - **`bd dolt pull` failures halt the phase.** Don't attempt auto-resolve, don't fall back to JSONL, don't rebuild the DB. Surface and stop.
-- **Don't push anything.** Pushes belong to `/end-session` (for git/`main`) and `/bd-import-github-issues` (for beads after import). `/start-session` is read-mostly.
+- **Don't push anything except the auto-close result in Step 5.** Pushes generally belong to `/end-session` (for git/`main`) and `/bd-import-github-issues` (for beads after import). The single carve-out is Step 5's `bd dolt push` after auto-closing delivered in_progress beads — that push is what makes the auto-close cross-machine durable. `/start-session` is otherwise read-mostly.
 - **Don't modify settings, config, or unrelated files.** Scope is git, beads, and GitHub-issue surface only.
