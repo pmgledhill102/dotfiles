@@ -139,6 +139,28 @@ if [ -f .beads/metadata.json ]; then
     run_section bd_preflight bd preflight
     run_section bd_ready bd ready
     run_section bd_in_progress bd list --status=in_progress
+    # shellcheck disable=SC2016
+    run_sh bd_inprogress_delivered '
+        # For each in_progress bead, find any merged commit on $DEFAULT_BRANCH
+        # whose message contains "Closes <id>" or "Fixes <id>" (case-insensitive)
+        # — those signal the bead was delivered but never closed. Output:
+        #   <id>|<short-sha>|<subject>
+        # one per line. Empty output is fine (nothing to auto-close).
+        bd list --status=in_progress 2>/dev/null \
+            | grep -oE "[a-z][a-z0-9-]+-[a-z0-9]{3}" \
+            | sort -u \
+            | while read -r id; do
+                sha=$(git log "$DEFAULT_BRANCH" \
+                    --grep="closes\s*${id}" \
+                    --grep="fixes\s*${id}" \
+                    -i -1 --format="%H" 2>/dev/null)
+                if [ -n "$sha" ]; then
+                    short=$(git rev-parse --short "$sha" 2>/dev/null)
+                    subject=$(git log -1 --format="%s" "$sha" 2>/dev/null)
+                    echo "${id}|${short}|${subject}"
+                fi
+              done
+    '
 fi
 
 wait
@@ -158,6 +180,6 @@ printf '===fetch (exit=%s)===\n' "$FETCH_EXIT"
 cat "$TMP/fetch.out"
 printf '\n'
 
-for s in local_state main_ci gh_unmigrated bd_remote bd_preflight bd_ready bd_in_progress; do
+for s in local_state main_ci gh_unmigrated bd_remote bd_preflight bd_ready bd_in_progress bd_inprogress_delivered; do
     [ -f "$TMP/$s.exit" ] && emit "$s"
 done
