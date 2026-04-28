@@ -1,6 +1,6 @@
 #!/bin/zsh
 # shellcheck disable=SC1071
-# Update Homebrew, install everything in your Brewfile, then upgrade
+# Update Homebrew + Brewfile, then any non-brew package managers (rustup)
 
 brewup() {
   if ! command -v brew >/dev/null 2>&1; then
@@ -22,5 +22,13 @@ brewup() {
   echo "\n==> Upgrading installed packages..."
   brew upgrade
 
-  echo "\n==> Homebrew packages up to date."
+  # Rust isn't in the Brewfile (rustup manages its own toolchain channel),
+  # but it IS a package-manager update, which is brewup's remit. Belongs
+  # here, not in dotup.
+  if command -v rustup >/dev/null 2>&1; then
+    echo "\n==> Updating Rust toolchain..."
+    rustup update
+  fi
+
+  echo "\n==> Packages up to date."
 }

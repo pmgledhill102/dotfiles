@@ -11,7 +11,7 @@ several multi-step incantations that nobody remembers off the top of
 their head:
 
 - Pull the latest dotfiles, refresh Oh My Zsh and its plugins, update
-  Starship and Rust, reload functions in the current shell.
+  Starship, reload functions in the current shell.
 - Update Homebrew, install everything declared in the Brewfile, then
   upgrade.
 - Configure Claude Code MCP servers with the right credentials.
@@ -29,8 +29,8 @@ under `home/dot_config/zsh/functions/`, autoloaded by the shell.
 
 | Function | Purpose |
 | -------- | ------- |
-| `dotup` | Pull dotfiles, refresh Oh My Zsh + plugins, update Starship (Linux) + Rust toolchain, reload aliases/functions in the current shell. |
-| `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade`. (Was `dotbrew`; renamed for clarity. `dotbrew` remains as a one-cycle deprecation alias that prints a notice and forwards.) |
+| `dotup` | Pull dotfiles, refresh Oh My Zsh + plugins, update Starship (Linux), reload aliases/functions in the current shell. |
+| `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade` + `rustup update` (rust toolchain isn't in the Brewfile but is a package-manager update). (Was `dotbrew`; renamed for clarity. `dotbrew` remains as a one-cycle deprecation alias that prints a notice and forwards.) |
 | `dotclaude` | Interactive Claude Code MCP server setup (GitHub MCP from `gh` token, Google Developer Knowledge from Bitwarden). |
 | `dotstatus` | Print machine type, chezmoi source path, last applied time, and any pending diff. |
 | `dotfuncs` | List every custom function with its one-line description (self-documenting). |

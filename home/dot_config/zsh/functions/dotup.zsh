@@ -30,11 +30,6 @@ dotup() {
     curl -sS https://starship.rs/install.sh | sh -s -- -y
   fi
 
-  if command -v rustup >/dev/null 2>&1; then
-    echo "\n==> Updating Rust toolchain..."
-    rustup update
-  fi
-
   echo "\n==> Reloading shell aliases and functions..."
   # shellcheck source=/dev/null
   [ -f "$HOME/.config/zsh/aliases.zsh" ] && source "$HOME/.config/zsh/aliases.zsh"

@@ -51,10 +51,10 @@ Zsh + Oh My Zsh with quality-of-life add-ons:
 You don't need to remember chezmoi or brew incantations:
 
 - **`dotup`** — pull latest dotfiles, update Oh My Zsh + plugins, refresh
-  nano syntax, update Starship (Linux) and Rust toolchain, then reload
-  aliases/functions in the current shell
+  nano syntax, update Starship (Linux), then reload aliases/functions in
+  the current shell
 - **`brewup`** — `brew update` + install everything in your Brewfile +
-  `brew upgrade`, in one step
+  `brew upgrade` + `rustup update`, in one step
 - **`dotclaude`** — interactive Claude Code MCP server setup (GitHub MCP
   wired to your `gh` auth token, Google Developer Knowledge keyed from
   Bitwarden)
@@ -150,8 +150,8 @@ run `chezmoi apply`.
 ### Daily helpers
 
 ```bash
-dotup                 # Pull latest dotfiles + update OMZ, plugins, Starship, Rust
-brewup                # brew update + install Brewfile + brew upgrade
+dotup                 # Pull latest dotfiles + update OMZ, plugins, Starship
+brewup                # brew update + install Brewfile + brew upgrade + rustup update
 dotclaude             # Interactive Claude Code MCP server setup
 dotstatus             # Machine type, source path, last applied, pending changes
 dotfuncs              # List all custom shell functions with descriptions
