@@ -258,6 +258,7 @@ Deliberately **not** auto-allowed:
 - `Bash(git show *)`
 - `Bash(git stash *)`
 - `Bash(git status *)`
+- `Bash(git switch *)`
 - `Bash(git tag *)`
 - `Bash(git worktree *)`
 
