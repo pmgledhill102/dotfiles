@@ -23,8 +23,9 @@ Macos packages live exclusively in `home/Brewfile.tmpl`.
   the active machine type (personal / work / minimal).
 - `dotbrew` runs `brew update`, `brew bundle install --file ~/Brewfile`,
   then `brew upgrade` — the daily refresh path.
-- `run_onchange_after_install-brewfile.sh.tmpl` ensures fresh installs
-  install the bundle automatically when the Brewfile content changes.
+- `run_once_after_install-brewfile.sh.tmpl` runs the bundle install on the
+  first `chezmoi apply`, so a fresh machine bootstraps the full package set
+  without manual intervention. Ongoing updates run through `dotbrew`.
 - apt and winget lists do not duplicate Homebrew formulae.
 
 ## Consequences
