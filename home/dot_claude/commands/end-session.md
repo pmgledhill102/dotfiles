@@ -61,7 +61,7 @@ Folded into step 1's gather. The `fetch` section contains the output. If its exi
 
 From gather section `main_ci`. Parse the most recent run per workflow:
 
-- **Failed**: flag loudly with workflow name + URL. A red `main` is the loudest "not clean" signal.
+- **Failed**: flag loudly with `<workflow name>: <full run URL>` on its own line so the user can click straight through. The gather script already returns the URL in `main_ci` — print it inline; don't make the user chase it with a follow-up `gh run view`. A red `main` is the loudest "not clean" signal.
 - **In progress**: list with elapsed time. Means a deploy / long check is mid-flight.
 - **All green**: silent.
 
@@ -178,7 +178,7 @@ Print a concise summary. Each line says "none" loudly when clean, so noise scale
 - Branches pruned (squash-merged): `<list or "none">`
 - Stashed/committed work this run: `<describe or "none">`
 - Main rebased: `<yes/no, behind/ahead counts>`
-- `main` CI status: `<green / running: N (<workflow names>) / FAILED: <workflow names>>`
+- `main` CI status: `<green / running: N (<workflow names>) / FAILED: <workflow name + run URL>>`
 - Open PRs needing action: `<count by category, or "none">`
 - Stashes outstanding: `<count, or "none">`
 - Beads in_progress (yours): `<count, or "none">`
