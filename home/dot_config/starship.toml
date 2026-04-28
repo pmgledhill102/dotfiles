@@ -48,6 +48,13 @@ style = "fg:#20b664"
 format = "[$path]($style)[$read_only]($read_only_style) "
 truncation_length = 3
 truncation_symbol = "…/"
+# Show the path from cwd, not from the git-repo root, so sibling checkouts of
+# the same repo name (e.g. ~/dev/dotfiles vs /tmp/jacks-dot/.dotfiles) are
+# distinguishable in the prompt. With truncation_length=3 this gives:
+#   ~/dev/dotfiles               → ~/dev/dotfiles
+#   /tmp/jacks-dot/.dotfiles     → …/tmp/jacks-dot/.dotfiles
+#   ~/dev/some/deep/nested/path  → …/some/deep/nested/path
+truncate_to_repo = false
 
 [git_branch]
 symbol = ""
