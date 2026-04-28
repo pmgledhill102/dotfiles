@@ -49,6 +49,29 @@ manager.
   (`git-delta` vs `dandavison.delta`).
 - Cross-platform PRs touch multiple files.
 
+### When apt and Brewfile entries intersect
+
+Some packages appear in both `[data.packages.apt]` and the Brewfile
+(currently: `bat`, `git`, `git-delta`, `jq`, `podman`, `tmux`, `wget`).
+This is *intentional* cross-platform coverage, not duplication:
+
+- `home/run_once_after_install-brewfile.sh.tmpl` is gated by
+  `case "$(uname -s)" in Darwin*)` — brew bundle only fires on macOS.
+- The apt installer runs on Linux only.
+- On the standard install path the two managers run on disjoint hosts;
+  there is no PATH race.
+
+The risk is non-standard environments where both fire on the same host
+— e.g. a Linux machine where the user has manually installed Linuxbrew
+on top of apt. In that case, whichever manager runs last (or whichever
+puts its bin dir earlier on `PATH`) wins, and a stale entry from the
+loser can shadow the canonical one. This bit `fzf` once
+(2026-04-18 retro): apt's stale 0.44.1 won the PATH race over a fresh
+Homebrew copy. The fix was to drop fzf from apt — but the general rule
+remains: the dotfiles can't prevent stale-version shadowing in
+user-mixed setups; if you've added a third package manager, you own the
+PATH ordering.
+
 ## Alternatives considered
 
 - **Nix / home-manager** — single source, but heavy; would require Nix on
