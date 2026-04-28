@@ -7,7 +7,7 @@
 # Runs exactly once per machine via chezmoi's run_once_ prefix.
 # Idempotent: no-op on Linux, fresh installs, or already-migrated machines.
 #
-# After this script removes the legacy cask, the next 'dotbrew' run will
+# After this script removes the legacy cask, the next 'brewup' run will
 # install 'claude-code@latest' from the updated Brewfile.
 
 set -eu
@@ -29,5 +29,5 @@ fi
 if brew list --cask claude-code >/dev/null 2>&1; then
   echo "==> Removing legacy 'claude-code' cask (replaced by 'claude-code@latest' in Brewfile)..."
   brew uninstall --cask claude-code
-  echo "==> Done. Run 'dotbrew' to install claude-code@latest from the updated Brewfile."
+  echo "==> Done. Run 'brewup' to install claude-code@latest from the updated Brewfile."
 fi

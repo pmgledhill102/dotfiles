@@ -26,7 +26,7 @@ dotclaude() {
     read -r answer
     if [ "$answer" = "y" ]; then
       if ! command -v github-mcp-server >/dev/null 2>&1; then
-        echo "Warning: github-mcp-server not found — run 'dotbrew' first"
+        echo "Warning: github-mcp-server not found — run 'brewup' first"
       elif ! command -v gh >/dev/null 2>&1; then
         echo "Warning: gh CLI not found — skipping GitHub MCP"
       else
