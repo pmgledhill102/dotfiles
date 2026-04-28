@@ -184,8 +184,10 @@ chezmoi add ~/.foo    # Start managing a new file
 # macOS — packages auto-install when Brewfile changes
 brew bundle
 
-# Linux — packages auto-install when list changes
-chezmoi edit ~/.config/ubuntu_pkglist
+# Linux — apt packages live under [data.packages.apt] in
+# home/.chezmoi.toml.tmpl; the rendered ~/.config/ubuntu_pkglist
+# regenerates from it, and changes auto-install on the next apply.
+chezmoi init --apply
 ```
 
 ## Secret Management
