@@ -18,6 +18,9 @@ Thumbs.db
 # Project-local Claude Code settings (machine-specific permissions, never shared)
 .claude/settings.local.json
 
+# Claude Code scheduled-task lock file (created by Monitor / ScheduleWakeup tools)
+.claude/scheduled_tasks.lock
+
 # Ignore shell history
 .zsh_history
 .bash_history
