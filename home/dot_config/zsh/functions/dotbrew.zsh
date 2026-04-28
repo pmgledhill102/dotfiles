@@ -1,26 +1,8 @@
 #!/bin/zsh
 # shellcheck disable=SC1071
-# Install and upgrade Homebrew packages from Brewfile
+# Deprecated alias — 'dotbrew' was renamed to 'brewup'. Remove after one release cycle
 
 dotbrew() {
-  if ! command -v brew >/dev/null 2>&1; then
-    echo "Error: Homebrew is not installed."
-    return 1
-  fi
-
-  echo "==> Updating Homebrew..."
-  brew update
-
-  local brewfile="$HOME/Brewfile"
-  if [ -f "$brewfile" ]; then
-    echo "\n==> Installing packages from Brewfile..."
-    brew bundle install --file "$brewfile"
-  else
-    echo "Warning: Brewfile not found at $brewfile"
-  fi
-
-  echo "\n==> Upgrading installed packages..."
-  brew upgrade
-
-  echo "\n==> Homebrew packages up to date."
+  echo "==> 'dotbrew' has been renamed to 'brewup' — running brewup; update your muscle memory." >&2
+  brewup "$@"
 }

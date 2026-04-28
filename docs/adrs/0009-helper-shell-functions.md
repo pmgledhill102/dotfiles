@@ -30,7 +30,7 @@ under `home/dot_config/zsh/functions/`, autoloaded by the shell.
 | Function | Purpose |
 | -------- | ------- |
 | `dotup` | Pull dotfiles, refresh Oh My Zsh + plugins, update Starship (Linux) + Rust toolchain, reload aliases/functions in the current shell. |
-| `dotbrew` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade`. |
+| `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade`. (Was `dotbrew`; renamed for clarity. `dotbrew` remains as a one-cycle deprecation alias that prints a notice and forwards.) |
 | `dotclaude` | Interactive Claude Code MCP server setup (GitHub MCP from `gh` token, Google Developer Knowledge from Bitwarden). |
 | `dotstatus` | Print machine type, chezmoi source path, last applied time, and any pending diff. |
 | `dotfuncs` | List every custom function with its one-line description (self-documenting). |

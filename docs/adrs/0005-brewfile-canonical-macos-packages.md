@@ -21,11 +21,11 @@ Macos packages live exclusively in `home/Brewfile.tmpl`.
 
 - `Brewfile.tmpl` is templated by chezmoi and renders to `~/Brewfile` per
   the active machine type (personal / work / minimal).
-- `dotbrew` runs `brew update`, `brew bundle install --file ~/Brewfile`,
+- `brewup` runs `brew update`, `brew bundle install --file ~/Brewfile`,
   then `brew upgrade` — the daily refresh path.
 - `run_once_after_install-brewfile.sh.tmpl` runs the bundle install on the
   first `chezmoi apply`, so a fresh machine bootstraps the full package set
-  without manual intervention. Ongoing updates run through `dotbrew`.
+  without manual intervention. Ongoing updates run through `brewup`.
 - apt and winget lists do not duplicate Homebrew formulae.
 
 ## Consequences
@@ -33,7 +33,7 @@ Macos packages live exclusively in `home/Brewfile.tmpl`.
 ### Positive
 
 - One file to edit when adding or removing macOS packages.
-- `dotbrew` always picks up the latest list with no chezmoi reapply.
+- `brewup` always picks up the latest list with no chezmoi reapply.
 - `brew bundle dump` round-trips cleanly into the same format.
 - Templated tier branches keep personal / work / minimal in one place.
 
