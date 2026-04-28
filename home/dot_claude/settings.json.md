@@ -276,6 +276,7 @@ or download code. Bare `go mod tidy` (no args) needs its own entry since
 - `Bash(go mod tidy)`
 - `Bash(go mod tidy *)`
 - `Bash(go test *)`
+- `Bash(go tool cover *)`
 - `Bash(go version *)`
 - `Bash(go vet *)`
 - `Bash(go-mod-outdated *)`
@@ -457,6 +458,7 @@ separately.
 
 - `Bash(command -v *)`
 - `Bash(cp *)`
+- `Bash(diff *)`
 - `Bash(echo *)`
 - `Bash(find *)`
 - `Bash(grep *)`
@@ -535,6 +537,7 @@ permissions below control which MCP tools are auto-approved.
 
 ### Google Developer Knowledge MCP server (read-only)
 
+- `mcp__google-developer-knowledge__answer_query`
 - `mcp__google-developer-knowledge__get_documents`
 - `mcp__google-developer-knowledge__search_documents`
 
