@@ -16,7 +16,7 @@ Run at the start of a session when the GitHub Issues tab on this repo has accumu
 ## Operational notes
 
 - Use `mcp__github__*` tools throughout, not the `gh` CLI (per the user's global preference). Specifically: `mcp__github__list_issues`, `mcp__github__add_issue_comment`, `mcp__github__issue_write` (for closing).
-- Run all `bd create` calls synchronously in the foreground. Each is fast (~1 sec).
+- **Foreground all bd operations.** Don't background `bd dolt pull`, `bd dolt push`, or `bd create` calls. Each completes in <30 sec when the procedure is followed; backgrounding turns transient failures into polling rounds and adds 5+ minutes of overhead per attempt.
 - **Syncs the embedded Dolt DB.** Step 0 pulls before importing; Step 8 pushes after. Both are no-ops on projects without a Dolt remote configured. This keeps the command correct when run standalone — `/start-session` chains into it on yes-prompt, but invocation via either entry point lands beads in the same synced state.
 - Expected total runtime: 30 sec to 2 min for a typical batch of 1-10 issues.
 
