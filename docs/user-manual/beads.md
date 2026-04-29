@@ -145,19 +145,29 @@ migration (Step 5h).
 
 ### What each hook actually does
 
-Observable behaviours from the rollout:
+Verified against `cmd/bd/hooks.go` in `gastownhall/beads` (v1.0.3):
 
-| Hook | Purpose |
-| --- | --- |
-| `pre-commit` | Exports current DB to `.beads/issues.jsonl` via `bd export` |
-| `pre-push` | Runs `bd hooks run pre-push` — purpose not deeply verified; assumed to be a lightweight bookkeeping step |
-| `post-checkout` | Only fires on branch checkout; `bd hooks run post-checkout` — internal bookkeeping |
-| `post-merge` | Same pattern |
-| `prepare-commit-msg` | Lightweight — probably records commit context for the audit trail |
+| Hook | bd-specific behaviour | Side effects | Read-only? |
+| --- | --- | --- | --- |
+| `pre-commit` | Runs `bd export` to dump DB → `.beads/issues.jsonl`. If `export.git-add: true`, stages the export for commit. Guarded by `export.auto`. | Writes JSONL on disk; may stage in git index. | No |
+| `prepare-commit-msg` | When `BD_ACTOR` env var is set (orchestrator / agent context), appends an `Executed-By: <actor>` trailer to the commit message. Skips merge commits. Idempotent. | Modifies the commit-message file when `BD_ACTOR` is set; no-op otherwise. | No (when triggered) |
+| `post-checkout` | **No bd-specific logic.** Only chains to `<hook>.old` if present. | None from bd. | Yes |
+| `post-merge` | **No bd-specific logic.** Only chains to `<hook>.old`. Always returns 0 — warnings never block merges. | None from bd. | Yes |
+| `pre-push` | **No bd-specific logic.** Only chains to `<hook>.old`. (See below for what does *not* live here.) | None from bd. | Yes |
 
-**Note:** `bd dolt push` is **not** automatically triggered by any hook.
-Pushing issue data to `refs/dolt/data` is always a manual step unless wired
-up externally (see the cron-job discussion below).
+**Surprise from the source-level verification:** `post-checkout`, `post-merge`,
+and `pre-push` are pure no-ops for bd — they exist as thin shim locations
+for chained user hooks (`<hook>.old`) only. The earlier doc characterised
+them as "lightweight bookkeeping"; in practice they don't even reach bd's
+issue-tracking code.
+
+**`bd dolt push` is NOT triggered by any git hook.** When `dolt.auto-push: true`
+is set in `.beads/config.yaml`, the auto-push runs from the bd command's
+`PersistentPostRun` epilogue (after the command completes), not from
+`pre-push`. The default is `dolt.auto-push: false` (disabled for concurrency
+safety, GH#2453), so pushing issue data to `refs/dolt/data` is a manual
+`bd dolt push` unless explicitly opted-in or wired via cron — see the cron-job
+discussion below.
 
 ### Troubleshooting: `run_beads: command not found`
 
@@ -734,10 +744,6 @@ for a week is the worst of both worlds.
 
 ## Open questions
 
-- Exact semantics of `bd hooks run pre-push`, `post-checkout`, `post-merge`,
-  `prepare-commit-msg` — not deeply verified in the rollout. Known safe to
-  call; likely internal audit-trail bookkeeping. Worth cracking open bd's
-  source when next in this area.
 - `bd init --from-jsonl` drops issues silently in some cases (273 → 272 on
   `discord-bot-test-suite`). Cause not determined. Worth a reproducer.
 - A cron for `bd dolt push` is not yet set up on any of Paul's machines —
