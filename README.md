@@ -122,6 +122,24 @@ This installs chezmoi, packages (Homebrew/apt/winget), shell config (Zsh +
 Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, tmux, VS Code
 settings, JetBrains Mono Nerd Font, and platform-specific defaults.
 
+## First-run extras (optional)
+
+A few one-time bootstrap steps that aren't auto-run on first apply because
+they're heavy or workflow-specific.
+
+### Container runtime (macOS only)
+
+The Brewfile installs `podman` + `podman-compose`, but on macOS the podman
+machine VM still needs to be initialised once before the CLI is usable:
+
+```bash
+podman machine init   # ~800 MB image download
+podman machine start
+podman info           # verify
+```
+
+Linux uses the host kernel directly — no `podman machine` step needed.
+
 ## Per-Platform Reference
 
 | | macOS | Linux / WSL | Windows |
