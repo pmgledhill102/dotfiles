@@ -131,6 +131,14 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init zsh)"
 fi
 
+# fzf: use fd as the file source so default ignores (.git, node_modules,
+# build dirs) apply to Ctrl-T file picker and fuzzy completion. fd is faster
+# than find and respects .gitignore by default.
+if command -v fd >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .cache'
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+fi
+
 # nvm (Node Version Manager)
 export NVM_DIR="$HOME/.nvm"
 # shellcheck disable=SC1091
