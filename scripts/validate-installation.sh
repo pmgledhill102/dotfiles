@@ -118,11 +118,10 @@ fi
 PROMPT_CHECK_FILE="/tmp/zsh_prompt_check_$(date +%s)"
 if [[ "$(uname -s)" == "Darwin" ]]; then
     # macOS syntax: script [file] [command]
-    # We clear VSCODE_COPILOT_CHAT_TERMINAL to ensure starship loads even if running from VS Code
-    script -q "$PROMPT_CHECK_FILE" env VSCODE_COPILOT_CHAT_TERMINAL="" zsh -ic "echo \"PROMPT=\$PROMPT\"" >/dev/null 2>&1
+    script -q "$PROMPT_CHECK_FILE" zsh -ic "echo \"PROMPT=\$PROMPT\"" >/dev/null 2>&1
 elif [[ "$(uname -s)" == "Linux" ]]; then
     # Linux syntax: script -c [command] [file]
-    script -q -c "env VSCODE_COPILOT_CHAT_TERMINAL='' zsh -ic 'echo \"PROMPT=\$PROMPT\"'" "$PROMPT_CHECK_FILE" >/dev/null 2>&1
+    script -q -c "zsh -ic 'echo \"PROMPT=\$PROMPT\"'" "$PROMPT_CHECK_FILE" >/dev/null 2>&1
 fi
 
 validate_test_pkg "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
@@ -176,9 +175,9 @@ if command -v pwsh >/dev/null 2>&1; then
     # Verify Starship loads in PowerShell by capturing the prompt output
     PWSH_CHECK_FILE="/tmp/pwsh_check_$(date +%s)"
     if [[ "$(uname -s)" == "Darwin" ]]; then
-        script -q "$PWSH_CHECK_FILE" env VSCODE_COPILOT_CHAT_TERMINAL="" pwsh -Command "prompt" >/dev/null 2>&1
+        script -q "$PWSH_CHECK_FILE" pwsh -Command "prompt" >/dev/null 2>&1
     elif [[ "$(uname -s)" == "Linux" ]]; then
-        script -q -c "env VSCODE_COPILOT_CHAT_TERMINAL='' pwsh -Command 'prompt'" "$PWSH_CHECK_FILE" >/dev/null 2>&1
+        script -q -c "pwsh -Command 'prompt'" "$PWSH_CHECK_FILE" >/dev/null 2>&1
     fi
     
     if [[ "$(uname -s)" == "Darwin" ]]; then

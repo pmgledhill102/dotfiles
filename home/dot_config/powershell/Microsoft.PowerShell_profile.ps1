@@ -1,12 +1,10 @@
 # PowerShell Profile - Cross-platform configuration
 # This profile is managed by chezmoi and provides a consistent experience across Windows and WSL
 
-# Initialize Starship prompt (unless in VS Code Copilot Chat terminal)
-if ($env:VSCODE_COPILOT_CHAT_TERMINAL -ne "1") {
-    if (Get-Command starship -ErrorAction SilentlyContinue) {
-        $env:STARSHIP_CONFIG = "$HOME/.config/starship.toml"
-        Invoke-Expression (&starship init powershell)
-    }
+# Initialize Starship prompt
+if (Get-Command starship -ErrorAction SilentlyContinue) {
+    $env:STARSHIP_CONFIG = "$HOME/.config/starship.toml"
+    Invoke-Expression (&starship init powershell)
 }
 
 # Set PSReadLine options for better command line editing
