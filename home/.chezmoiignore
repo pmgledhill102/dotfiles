@@ -78,6 +78,13 @@ run_onchange_after_install-cship.sh
 install-cship.sh
 {{- end }}
 
+# Don't apply the personal-identity ~/.gitconfig on work machines.
+# Work machines manage their own git identity (corporate email, signing key, etc.)
+# outside of these dotfiles.
+{{- if eq $machineType "work" }}
+.gitconfig
+{{- end }}
+
 # Skip GUI app configs on minimal/server machines
 {{- if eq $machineType "minimal" }}
 .config/Code/

@@ -85,6 +85,19 @@ plugins=(
 # shellcheck source=/dev/null
 source "$ZSH/oh-my-zsh.sh"
 
+# --- History + completion (override OMZ defaults) ---
+
+# Larger history with sane dedup and cross-session sharing.
+# HIST_IGNORE_SPACE: commands prefixed with a space are not recorded — handy
+# for one-off sensitive commands you don't want stored.
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE SHARE_HISTORY EXTENDED_HISTORY
+
+# Case-insensitive prefix completion (typing lowercase matches uppercase too).
+# OMZ's default already does this; this is the explicit, idempotent override.
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
