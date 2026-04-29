@@ -89,17 +89,6 @@ code so that `$PROMPT` and `$RPROMPT` are already set when they are
 captured. Both must happen **after** `source "$ZSH/oh-my-zsh.sh"` to avoid
 Oh My Zsh overwriting the prompt.
 
-### VS Code Copilot Chat terminal
-
-The entire Starship + transient prompt block is wrapped in a guard:
-
-```zsh
-if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then
-```
-
-This prevents prompt issues in VS Code's Copilot Chat terminal, which
-manages its own prompt rendering.
-
 ## Configuration
 
 ### `starship.toml`

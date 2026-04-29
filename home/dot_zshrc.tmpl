@@ -157,25 +157,23 @@ if [ -d "$HOME/.config/zsh/functions" ]; then
 fi
 
 # Starship prompt (init after OMZ source to preserve transient prompt hooks)
-if [ -z "$VSCODE_COPILOT_CHAT_TERMINAL" ] || [ "$VSCODE_COPILOT_CHAT_TERMINAL" != "1" ]; then
-  export STARSHIP_CONFIG="$HOME/.config/starship.toml"
-  eval "$(starship init zsh)"
+export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+eval "$(starship init zsh)"
 
-  # Transient prompt: collapse previous prompts to just the character symbol.
-  # See docs/TRANSIENT-PROMPT.md for details.
-  __starship_full_prompt=$PROMPT
-  __starship_full_rprompt=$RPROMPT
+# Transient prompt: collapse previous prompts to just the character symbol.
+# See docs/TRANSIENT-PROMPT.md for details.
+__starship_full_prompt=$PROMPT
+__starship_full_rprompt=$RPROMPT
 
-  __starship_transient_accept_line() {
-    PROMPT='$(starship module character)'
-    RPROMPT=''
-    zle reset-prompt
-    PROMPT=$__starship_full_prompt
-    RPROMPT=$__starship_full_rprompt
-    zle .accept-line
-  }
-  zle -N accept-line __starship_transient_accept_line
-fi
+__starship_transient_accept_line() {
+  PROMPT='$(starship module character)'
+  RPROMPT=''
+  zle reset-prompt
+  PROMPT=$__starship_full_prompt
+  RPROMPT=$__starship_full_rprompt
+  zle .accept-line
+}
+zle -N accept-line __starship_transient_accept_line
 
 # Optional machine-local overrides (not managed by chezmoi)
 # shellcheck source=/dev/null
