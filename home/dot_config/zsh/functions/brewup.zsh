@@ -26,8 +26,15 @@ brewup() {
   # but it IS a package-manager update, which is brewup's remit. Belongs
   # here, not in dotup.
   if command -v rustup >/dev/null 2>&1; then
-    echo "\n==> Updating Rust toolchain..."
-    rustup update
+    if [ "$BREWUP_SKIP_RUST" = "1" ]; then
+      echo "\n==> Skipping Rust toolchain update (BREWUP_SKIP_RUST=1)"
+    else
+      echo "\n==> Updating Rust toolchain..."
+      # Pre-clean rustup's scratch dirs to avoid hours-long per-file cleanup
+      # walks on EDR/AV-scanned machines. rustup recreates them as needed.
+      rm -rf "$HOME/.rustup/tmp" "$HOME/.rustup/downloads"
+      rustup update
+    fi
   fi
 
   echo "\n==> Packages up to date."
