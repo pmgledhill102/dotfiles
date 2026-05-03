@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-This is a subdirectory of a **chezmoi-managed dotfiles repository** (`/Users/paul/dev/dotfiles`). The full repo provisions a development environment across macOS, Linux (Ubuntu/Debian), WSL, and Windows.
+This is a **chezmoi-managed dotfiles repository**. It provisions a development environment across macOS, Linux (Ubuntu/Debian), WSL, and Windows.
 
-This directory (`home/dot_claude/`) maps to `~/.claude/` when chezmoi applies dotfiles. It contains centralized Claude Code configuration (hooks, slash commands, policy) intended for use across all repositories.
+Claude Code's user-level configuration (slash commands, hooks, settings, MCP) lives in a separate repo, [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — mounted into `~/.claude/` via chezmoi externals (see `home/.chezmoiexternal.toml.tmpl`). When working in this repo, agentic edits go in *that* repo; this repo handles machine config (shell, brew/winget, OS bootstrap).
 
 ## Repository Architecture
 
-The parent dotfiles repo uses **chezmoi** with `.chezmoiroot` set to `home/`, meaning files in `home/` map to `$HOME`. Chezmoi naming conventions:
+This repo uses **chezmoi** with `.chezmoiroot` set to `home/`, meaning files in `home/` map to `$HOME`. Chezmoi naming conventions:
 
 - `dot_` prefix = `.` in target (e.g., `dot_zshrc` -> `~/.zshrc`)
 - `.tmpl` suffix = Go template processed with data from `.chezmoi.toml`
@@ -21,7 +21,10 @@ Key paths relative to repo root:
 
 - `.chezmoi.toml` — config data (user info, package lists per platform)
 - `home/` — all managed dotfiles and scripts
-- `home/dot_claude/` — this directory, Claude Code config
+- `home/.chezmoiexternal.toml.tmpl` — declares the agentic-coding-config repo as a git-repo external mounted at `.claude/`
+- `home/.chezmoiignore` — target-side rules; includes `.claude/<file>` exclusions for repo-meta files inside the external
+- `home/Brewfile.tmpl` — installs `claude` and `claude-code@latest` casks (the binaries; their config lives in agentic-coding-config)
+- `home/run_onchange_setup-claude.sh` — configures MCP servers per machine; reads keys from `~/.secrets`. Stays here because it's machine-bootstrap, not content
 - `scripts/` — validation scripts for CI
 - `specs/REQUIREMENTS.md` — consolidated project requirements and key decisions
 - `docs/` — documentation (testing, troubleshooting)
@@ -42,16 +45,7 @@ Pre-commit hooks (`.pre-commit-config.yaml`) run markdownlint-cli2.
 Conventional commits: `<type>(<scope>): <description>`
 Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
 
-## Claude Code Config Architecture (This Directory)
+## Related repos
 
-The design separates concerns by context cost:
-
-- **Slash commands** (`/setup-python`, etc.) — loaded only when invoked, set up language tooling
-- **Hooks** — run tools automatically (pre-commit, formatters) with zero context cost
-- **CLAUDE.md** — lean universal policy, always loaded
-
-See `README.md` in this directory for the full implementation plan including enforcement layers and per-language tool matrices.
-
-### settings.json and settings.json.md
-
-`home/dot_claude/settings.json` contains Claude Code permission rules and hooks. Since JSON does not support comments, `home/dot_claude/settings.json.md` is the annotated companion with groupings and rationale. **These two files must stay in sync** — when adding, removing, or changing entries in one, update the other in the same commit.
+- [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — Claude Code commands/hooks/settings/MCP. Mounted at `~/.claude/` from this repo.
+- [`paul-context`](https://github.com/pmgledhill102/paul-context) — private personal context: principles, decisions, repo registry, direction.

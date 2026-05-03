@@ -75,7 +75,11 @@ You don't need to remember chezmoi or brew incantations:
 
 ### A centralised Claude Code setup that follows you everywhere
 
-Every machine gets the same `~/.claude/` config:
+Every machine gets the same `~/.claude/` config — sourced from a separate
+repo,
+[`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config),
+mounted into `~/.claude/` via [chezmoi externals][chezmoi-externals]. One
+`dotup` pulls both repos and applies.
 
 - Curated permission allowlist so common dev/build/lint/GitHub commands
   don't prompt every time, but destructive things still do
@@ -89,6 +93,8 @@ Every machine gets the same `~/.claude/` config:
 - Session helpers — `/end-session`, `/retrospective`
 - Auto-fix hooks — Terraform formatted on save, pre-commit enforced before
   `git push`
+
+[chezmoi-externals]: https://www.chezmoi.io/reference/special-files-and-directories/chezmoiexternal-format/
 
 ### Secrets handled safely
 
