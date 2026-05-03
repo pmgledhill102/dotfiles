@@ -4,7 +4,11 @@
 
 dotup() {
   echo "==> Updating dotfiles..."
-  PAGER=cat chezmoi update -v
+  # --refresh-externals forces chezmoi externals (e.g. agentic-coding-config
+  # mounted at ~/.claude/) to re-fetch, bypassing their refreshPeriod. Cheap
+  # for small repos and the user is always online during dotup, so the
+  # always-latest semantics are worth the extra ~1s.
+  PAGER=cat chezmoi update -v --refresh-externals
 
   if [ -d "$ZSH" ]; then
     echo "\n==> Updating Oh My Zsh..."
