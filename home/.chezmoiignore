@@ -4,9 +4,10 @@
 {{- end -}}
 .secrets
 
-# Documentation files — keep in repo, don't deploy to $HOME
-.claude/README.md
-.claude/settings.json.md
+# .claude/* filtering is now handled by the archive external's `include`
+# pattern in .chezmoiexternal.toml.tmpl — only agentic-coding-config's
+# home/** deploys, so repo-meta (README, adrs/, .github/, .beads/, etc.)
+# never reaches ~/.claude/. No per-target .chezmoiignore lines needed.
 
 # Only apply PowerShell scripts on Windows
 {{- if ne .chezmoi.os "windows" }}

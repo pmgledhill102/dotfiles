@@ -1,0 +1,23 @@
+# Mount agentic-coding-config's home/ subdirectory at ~/.claude/.
+#
+# We use chezmoi's `archive` external (downloading the GitHub-generated
+# tarball) rather than `git-repo`, because git-repo externals mount the
+# entire repo tree at the target with no filtering — .git/, .beads/,
+# .github/, README, ADRs, all of it would flood ~/.claude/. Archive
+# externals support stripComponents + include glob patterns, which lets
+# only home/** deploy.
+#
+# Trade-off accepted: archive re-downloads on each refresh (vs git-repo's
+# incremental fetch). For a repo this small that's fine; refreshPeriod
+# bounds the frequency.
+#
+# stripComponents=2 strips both "agentic-coding-config-main/" (GitHub's
+# auto-generated archive root) and "home/" so paths land directly under
+# ~/.claude/. include filters out everything outside home/.
+
+[".claude"]
+type = "archive"
+url = "https://github.com/pmgledhill102/agentic-coding-config/archive/refs/heads/main.tar.gz"
+stripComponents = 2
+refreshPeriod = "168h"
+include = ["agentic-coding-config-main/home/**"]
