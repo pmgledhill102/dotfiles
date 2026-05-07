@@ -212,6 +212,11 @@ brew bundle
 # home/.chezmoi.toml.tmpl; the rendered ~/.config/ubuntu_pkglist
 # regenerates from it, and changes auto-install on the next apply.
 chezmoi init --apply
+
+# npm globals — declared under [data.packages.npm] in
+# home/.chezmoi.toml.tmpl. run_onchange_after_install-npm-globals
+# sources nvm, ensures NodeJS LTS is installed, then `npm install -g`
+# each entry. Re-runs whenever the list changes.
 ```
 
 ## Secret Management
