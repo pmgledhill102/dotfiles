@@ -28,6 +28,8 @@ run_once_macos_defaults.sh
 macos_defaults.sh
 run_once_after_install-brewfile.sh
 install-brewfile.sh
+run_onchange_after_install-npm-globals.sh
+install-npm-globals.sh
 run_once_remove-claude-code-cask.sh
 remove-claude-code-cask.sh
 run_onchange_install-ubuntu-packages.sh

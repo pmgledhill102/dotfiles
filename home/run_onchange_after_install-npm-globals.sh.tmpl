@@ -1,0 +1,63 @@
+#!/bin/sh
+
+# Install global npm packages declared in .chezmoi.toml.tmpl under
+# [data.packages.npm]. Re-runs whenever the rendered package list changes
+# (run_onchange contract). Sequenced after run_once_after_install-brewfile so
+# brew-installed nvm is present on a fresh macOS box.
+
+set -e
+
+{{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping npm-globals install (fast CI mode)"
+exit 0
+{{- end }}
+
+case "$(uname -s)" in
+  Darwin*|Linux*) ;;
+  *)
+    echo "Not Darwin/Linux — skipping npm-globals install"
+    exit 0
+    ;;
+esac
+
+{{ $pkgs := .packages.npm.packages -}}
+{{- if eq (len $pkgs) 0 }}
+echo "No npm globals declared for this machine — skipping"
+exit 0
+{{- else }}
+
+# Source nvm from common locations. Brew installs nvm but does not auto-source.
+NVM_SH=""
+for candidate in \
+  "/opt/homebrew/opt/nvm/nvm.sh" \
+  "/usr/local/opt/nvm/nvm.sh" \
+  "$HOME/.nvm/nvm.sh"; do
+  if [ -s "$candidate" ]; then
+    NVM_SH="$candidate"
+    break
+  fi
+done
+
+if [ -z "$NVM_SH" ]; then
+  echo "ERROR: nvm not found in /opt/homebrew/opt/nvm, /usr/local/opt/nvm, or \$HOME/.nvm"
+  echo "Install nvm first (macOS: 'brew install nvm'; otherwise see https://github.com/nvm-sh/nvm)"
+  exit 1
+fi
+
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+mkdir -p "$NVM_DIR"
+# shellcheck source=/dev/null
+. "$NVM_SH"
+
+echo "Ensuring NodeJS LTS is installed via nvm..."
+nvm install --lts
+nvm use --lts
+
+echo "Installing npm global packages..."
+{{ range $pkgs }}
+echo "  -> {{ . }}"
+npm install -g "{{ . }}"
+{{- end }}
+
+echo "npm-globals install complete."
+{{- end }}
