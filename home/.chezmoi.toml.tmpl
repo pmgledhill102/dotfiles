@@ -166,6 +166,18 @@
             packages_pinned = []
 {{- end }}
 
+        # npm - global packages installed via npm install -g
+        # Requires nvm (already in Brewfile for macOS personal/work).
+        # Install pattern: home/run_onchange_after_install-npm-globals.sh.tmpl
+        [data.packages.npm]
+{{- if eq $machineType "personal" }}
+            packages = [
+                "@google/clasp",
+            ]
+{{- else }}
+            packages = []
+{{- end }}
+
     # VS Code extensions - organized by scope
     [data.vscode]
         # Core extensions — installed on work and personal machines
