@@ -12,7 +12,9 @@ dotup() {
 
   if [ -d "$ZSH" ]; then
     echo "\n==> Updating Oh My Zsh..."
-    "$ZSH/tools/upgrade.sh"
+    # -v silent: skip OMZ's ASCII-art banner and social-media plugs on success.
+    # Errors still surface; our own ==> header announces the section.
+    "$ZSH/tools/upgrade.sh" -v silent
   fi
 
   local plugin_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
