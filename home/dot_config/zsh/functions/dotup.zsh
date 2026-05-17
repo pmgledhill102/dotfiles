@@ -8,7 +8,22 @@ dotup() {
   # mounted at ~/.claude/) to re-fetch, bypassing their refreshPeriod. Cheap
   # for small repos and the user is always online during dotup, so the
   # always-latest semantics are worth the extra ~1s.
-  PAGER=cat chezmoi update -v --refresh-externals
+  local update_log
+  update_log=$(mktemp)
+  PAGER=cat chezmoi update -v --refresh-externals 2>&1 | tee "$update_log"
+
+  # Auto-recover when chezmoi warns the rendered ~/.config/chezmoi/chezmoi.toml
+  # is stale (typically: a new [data.*] block was added to .chezmoi.toml.tmpl
+  # since the user last ran init, so downstream templates referencing the new
+  # key fail with "map has no entry for key X"). Re-init re-uses stored
+  # promptChoiceOnce answers, so it's non-interactive.
+  if grep -q "config file template has changed" "$update_log"; then
+    echo "\n==> Config template changed — regenerating with 'chezmoi init'..."
+    chezmoi init
+    echo "\n==> Re-applying with refreshed config..."
+    PAGER=cat chezmoi apply -v
+  fi
+  rm -f "$update_log"
 
   if [ -d "$ZSH" ]; then
     echo "\n==> Updating Oh My Zsh..."
