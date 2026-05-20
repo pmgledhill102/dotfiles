@@ -41,7 +41,7 @@ Zsh + Oh My Zsh with quality-of-life add-ons:
   `fzf`, `zoxide`
 - **Git + dev** — `gh`, `lazygit`, `pre-commit`, `gitleaks`
 - **Languages** — Go, .NET, OpenJDK + `jenv`, `nvm`, `uv` (Python), Rust
-- **Cloud / infra** — `gcloud`, `awscli`, `azure-cli`, `tenv` + `tflint`,
+- **Cloud / infra** — `gcloud`, `awscli`, `azure-cli`, `tenv`,
   `checkov`, `trivy`, `semgrep`, `podman`
 - **Personal-tier GUI apps** — VS Code, Ghostty, Bitwarden, Rectangle,
   Chrome, JetBrains Mono Nerd Font, Claude Desktop, and more
