@@ -14,13 +14,15 @@ brewup() {
   local brewfile="$HOME/Brewfile"
   if [ -f "$brewfile" ]; then
     echo "\n==> Installing packages from Brewfile..."
-    brew bundle install --file "$brewfile"
+    # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts;
+    # brewup's whole point is unattended install/upgrade
+    HOMEBREW_NO_ASK=1 brew bundle install --file "$brewfile"
   else
     echo "Warning: Brewfile not found at $brewfile"
   fi
 
   echo "\n==> Upgrading installed packages..."
-  brew upgrade
+  HOMEBREW_NO_ASK=1 brew upgrade
 
   # Rust isn't in the Brewfile (rustup manages its own toolchain channel),
   # but it IS a package-manager update, which is brewup's remit. Belongs
