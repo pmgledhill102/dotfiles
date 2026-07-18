@@ -18,20 +18,29 @@ case "$(uname -s)" in
     BREWFILE="$HOME/Brewfile"
     if [ ! -f "$BREWFILE" ]; then
       echo "Warning: Brewfile not found at $BREWFILE, skipping brew bundle"
-    elif brew bundle check --file "$BREWFILE" >/dev/null 2>&1; then
+    elif brew bundle check --no-upgrade --file "$BREWFILE" >/dev/null 2>&1; then
       # This is a run_once script, keyed by chezmoi on its content hash — so any
       # edit to this file makes chezmoi re-run it on the next 'chezmoi apply'.
       # Since 'dotup' calls 'chezmoi update' (= pull + apply), an unguarded
       # install here would fire during dotup, breaking ADR-0005's rule that
-      # dotup never touches packages ('brewup' owns that). Guard on 'brew bundle
-      # check': an already-provisioned machine satisfies the Brewfile, so we
-      # skip and stay a no-op. Only a genuinely fresh machine (missing formulae)
-      # falls through to the install below.
+      # dotup never touches packages ('brewup' owns that).
+      #
+      # --no-upgrade is load-bearing: without it 'brew bundle check' returns
+      # non-zero when any package is merely OUTDATED (not just missing), so a
+      # fully-provisioned machine with stale packages would fail the guard and
+      # fall through to install — silently upgrading everything during dotup.
+      # With --no-upgrade the guard tests presence only: a provisioned machine
+      # passes and stays a no-op. Only a genuinely fresh machine (missing
+      # formulae) falls through to the install below.
       echo "Homebrew packages already satisfy Brewfile — skipping (use 'brewup' to update)."
     else
       echo "Installing Homebrew packages from Brewfile..."
-      # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts
-      HOMEBREW_BUNDLE_NO_LOCK=1 HOMEBREW_NO_ASK=1 brew bundle install --file "$BREWFILE"
+      # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts.
+      # HOMEBREW_BUNDLE_NO_UPGRADE=1: install missing formulae only, leave
+      # already-present-but-outdated packages alone — 'brewup' owns upgrades
+      # (ADR-0005), so even the fresh-install path must not upgrade.
+      HOMEBREW_BUNDLE_NO_LOCK=1 HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_NO_UPGRADE=1 \
+        brew bundle install --file "$BREWFILE"
     fi
     ;;
   *)
