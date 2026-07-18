@@ -815,6 +815,47 @@ Found a bug in the dotfiles? Please report it:
 3. **Create minimal reproduction**: Simplify to core issue
 4. **Submit issue**: Include all relevant information
 
+## Chezmoi Workflow Gotchas
+
+Hard-won operational knowledge (ported from the retired beads memory store,
+July 2026):
+
+### Stale rendered config after a new `[data.*]` key
+
+When `chezmoi update`/`dotup` says "config file template has changed, run
+chezmoi init to regenerate config file" AND a template fails with
+"map has no entry for key X": a new `[data....]` block was added to
+`home/.chezmoi.toml.tmpl` after your local `~/.config/chezmoi/chezmoi.toml`
+was rendered. Fix: `chezmoi init` (no flags) — `promptChoiceOnce` reuses the
+existing `machine_type` answer. This repeats whenever a new `data.*` key
+lands; PRs touching `home/.chezmoi.toml.tmpl` should flag that existing
+users must re-init. (Confirmed with PR #207: `[data.packages.npm]`.)
+
+### New `.sh.tmpl` scripts break Windows CI without a `.chezmoiignore` entry
+
+Before pushing a new shell script under `home/`, add it to the "Only apply
+Unix files on Unix" block in `home/.chezmoiignore` (list both with and
+without the `run_once_`/`run_onchange_` prefix). Without it, chezmoi tries
+to exec the `.sh` on Windows and CI fails with "%1 is not a valid Win32
+application" before the script's own platform check can fire. (Confirmed
+with PR #207 — the fix was a 2-line `.chezmoiignore` addition.)
+
+### Two clones: edits don't take effect until `dotup`
+
+This repo exists twice locally: `~/dev/dotfiles` (working clone for
+editing/PRs) and `~/.local/share/chezmoi` (the clone chezmoi reads).
+Edits and merged PRs do NOT reach `$HOME` until `dotup` (`chezmoi update
+-v`) fetches and applies. If a merged PR "isn't working", this is why.
+
+### `dotup` hangs silently on overwrite prompts
+
+If a managed file has unmanaged local changes, `chezmoi update -v` waits on
+an interactive overwrite prompt in its own terminal — from anywhere else it
+just looks hung, and chezmoi holds its state lock so `chezmoi diff`/
+`status`/`apply` all time out with "timeout obtaining persistent state
+lock". Diagnose with `pgrep -fl chezmoi`; resolve by answering the prompt
+in the original terminal.
+
 ## Conclusion
 
 Most issues can be resolved by:
