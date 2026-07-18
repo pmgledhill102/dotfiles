@@ -8,9 +8,14 @@ dotup() {
   # mounted at ~/.claude/) to re-fetch, bypassing their refreshPeriod. Cheap
   # for small repos and the user is always online during dotup, so the
   # always-latest semantics are worth the extra ~1s.
+  # No -v: verbose mode prints the full unified diff of every changed file,
+  # which buries the run in noise on each dotup. Without it, chezmoi applies
+  # quietly and git's own pull summary still reports what came in. The
+  # "config file template has changed" warning below is a warning, not verbose
+  # output, so it still surfaces and the recovery path keeps working.
   local update_log
   update_log=$(mktemp)
-  PAGER=cat chezmoi update -v --refresh-externals 2>&1 | tee "$update_log"
+  PAGER=cat chezmoi update --refresh-externals 2>&1 | tee "$update_log"
 
   # Auto-recover when chezmoi warns the rendered ~/.config/chezmoi/chezmoi.toml
   # is stale (typically: a new [data.*] block was added to .chezmoi.toml.tmpl
@@ -21,7 +26,7 @@ dotup() {
     echo "\n==> Config template changed — regenerating with 'chezmoi init'..."
     chezmoi init
     echo "\n==> Re-applying with refreshed config..."
-    PAGER=cat chezmoi apply -v
+    PAGER=cat chezmoi apply
   fi
   rm -f "$update_log"
 
