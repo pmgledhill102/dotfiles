@@ -28,8 +28,10 @@ xcodeup() {
   echo "==> Currently installed Xcode versions:"
   xcodes installed || echo "  (none)"
 
+  # 'xcodes update' dumps the entire catalogue (every Xcode back to 1.0) to
+  # stdout. Only the refresh matters here; stderr stays open for real errors.
   echo "\n==> Refreshing available version list..."
-  xcodes update
+  xcodes update >/dev/null
 
   # xcodes no-ops if the latest release is already installed. --select points
   # xcode-select at it either way, which is the part that silently stays on
