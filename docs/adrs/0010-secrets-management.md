@@ -22,7 +22,7 @@ The current state of the repo blends two approaches:
   `~/.config/chezmoi/key.txt` from a secure store before
   `chezmoi init --apply`.
 - The `personal` Brewfile already installs `bitwarden-cli` and the
-  Bitwarden cask. The `dotclaude` helper reads the Google Developer
+  Bitwarden cask. The `claudeup` helper reads the Google Developer
   Knowledge API key from Bitwarden at MCP setup time. Beads
   `dotfiles-7r3` was closed with "Superseded by Bitwarden approach".
 
@@ -35,7 +35,7 @@ two have not been reconciled.
 Lean towards **Bitwarden as the source of truth for human-managed
 credentials**, including the seed needed to bootstrap a fresh machine.
 
-- `dotclaude` already pulls the Google Developer Knowledge MCP key from
+- `claudeup` already pulls the Google Developer Knowledge MCP key from
   Bitwarden. Extend the same pattern to any other API key the run scripts
   need.
 - Keep `age` available as an option for files that genuinely need to

@@ -1,7 +1,11 @@
 # ADR-0009: Helper shell functions for daily dotfiles workflow
 
 - **Status**: Accepted
-- **Date**: 2026-04-26
+- **Date**: 2026-04-26 (amended 2026-07-19: naming rule made explicit,
+  `dotclaude` → `claudeup`, `xcodeup` added, `dotbrew` alias removed)
+- **Note**: deprecation aliases are only warranted for everyday commands.
+  `dotbrew` got one because `brewup` runs constantly; `dotclaude` did not,
+  because it runs once per machine build.
 - **Tags**: shell, dx
 
 ## Context
@@ -24,14 +28,27 @@ somewhere. The previous repo had only a few ad-hoc helpers (e.g.
 
 ## Decision
 
-Define a small set of `dot*` and `note*` zsh functions, one per file,
-under `home/dot_config/zsh/functions/`, autoloaded by the shell.
+Define a small set of zsh functions, one per file, under
+`home/dot_config/zsh/functions/`, autoloaded by the shell.
+
+Naming follows one rule, by scope of effect:
+
+- **`dot*`** — acts on the dotfiles/chezmoi system itself
+  (`dotup`, `dotstatus`, `dotfuncs`).
+- **`<tool>up`** — brings a specific third-party tool current on this
+  machine (`brewup`, `claudeup`, `xcodeup`).
+
+The original set used `dot*` for everything, which made the prefix a
+vanity namespace rather than a meaningful signal: `dotbrew` never
+touched dotfiles, it managed Homebrew. Renaming it to `brewup`
+established the split above, and `dotclaude` → `claudeup` completes it.
 
 | Function | Purpose |
 | -------- | ------- |
 | `dotup` | Pull dotfiles, refresh Oh My Zsh + plugins, update Starship (Linux), reload aliases/functions in the current shell. |
-| `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade` + `rustup update` (rust toolchain isn't in the Brewfile but is a package-manager update). (Was `dotbrew`; renamed for clarity. `dotbrew` remains as a one-cycle deprecation alias that prints a notice and forwards.) |
-| `dotclaude` | Interactive Claude Code MCP server setup (GitHub MCP from `gh` token, Google Developer Knowledge from Bitwarden). |
+| `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade` + `rustup update` (rust toolchain isn't in the Brewfile but is a package-manager update). |
+| `claudeup` | Interactive Claude Code MCP server setup (GitHub MCP from `gh` token, Google Developer Knowledge from Bitwarden). (Was `dotclaude`; renamed outright with no deprecation alias — it runs once per machine build, so there is no muscle memory to protect.) |
+| `xcodeup` | macOS only. Install/update the latest Xcode via `xcodes`, select the toolchain, and report simulator runtime status. Interactive — Apple ID sign-in cannot be automated. |
 | `dotstatus` | Print machine type, chezmoi source path, last applied time, and any pending diff. |
 | `dotfuncs` | List every custom function with its one-line description (self-documenting). |
 | `note` / `n` | Append a timestamped bullet to `~/notes/<project>.md` (project = git repo basename or cwd basename). `note -e` opens it in `$EDITOR`. |
@@ -47,7 +64,8 @@ reloaded individually. `dotfuncs` is the entry point for discovery.
 - Memorable, short commands replace multi-step incantations.
 - One file per function keeps the shell config tidy and easy to lint.
 - `dotfuncs` keeps the helper set discoverable without external docs.
-- The `dot*` prefix makes them easy to grep and to tab-complete.
+- The prefix now carries meaning: `dot*` signals "touches my dotfiles",
+  `<tool>up` signals "touches that tool" — readable without the docs.
 
 ### Negative / trade-offs
 

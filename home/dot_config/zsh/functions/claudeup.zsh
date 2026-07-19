@@ -2,14 +2,14 @@
 # shellcheck disable=SC1071
 # Configure Claude Code MCP servers (interactive, personal machines only)
 
-dotclaude() {
+claudeup() {
   if ! command -v claude >/dev/null 2>&1; then
     echo "Error: Claude Code CLI is not installed."
     return 1
   fi
 
   if [ ! -t 0 ]; then
-    echo "Error: dotclaude requires an interactive shell."
+    echo "Error: claudeup requires an interactive shell."
     return 1
   fi
 
@@ -58,7 +58,7 @@ dotclaude() {
     read -r answer
     if [ "$answer" = "y" ]; then
       local dk_key
-      dk_key="$(_dotclaude_bw_get "claude-mcp-google-developer-knowledge-api-key")"
+      dk_key="$(_claudeup_bw_get "claude-mcp-google-developer-knowledge-api-key")"
       if [ -z "$dk_key" ]; then
         echo "Warning: could not retrieve API key — skipping Google Developer Knowledge MCP"
       else
@@ -76,8 +76,8 @@ dotclaude() {
   echo "Run 'claude mcp list' to verify."
 }
 
-# Helper: retrieve a secret from Bitwarden (unlocks once per dotclaude run)
-_dotclaude_bw_get() {
+# Helper: retrieve a secret from Bitwarden (unlocks once per claudeup run)
+_claudeup_bw_get() {
   local item_name="$1"
 
   if ! command -v bw >/dev/null 2>&1; then
