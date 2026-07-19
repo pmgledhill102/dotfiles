@@ -1,6 +1,6 @@
 #!/bin/zsh
 # shellcheck disable=SC1071
-# Install/update Xcode via xcodes, select the toolchain, report simulator runtimes
+# Install/update Xcode via xcodes, select the toolchain, download the iOS platform
 
 xcodeup() {
   if [ "$(uname -s)" != "Darwin" ]; then
@@ -43,17 +43,17 @@ xcodeup() {
   echo "\n==> Active toolchain: $(xcode-select -p)"
 
   # A fresh Xcode ships with no simulator runtimes; they are a separate
-  # multi-GB download. Report rather than auto-install — most work does
-  # not need them and the download is large.
+  # multi-GB download. xcodebuild no-ops when the platform is already
+  # current, so this is safe to run on every invocation.
+  echo "\n==> Downloading iOS platform (simulator runtime)..."
+  if ! xcodebuild -downloadPlatform iOS; then
+    echo "Warning: iOS platform download failed."
+    echo "         Retry with: xcodebuild -downloadPlatform iOS"
+  fi
+
   local runtimes
   runtimes="$(xcrun simctl list runtimes 2>/dev/null | grep -c '^iOS\|^watchOS\|^tvOS\|^visionOS')"
-  if [ "$runtimes" -eq 0 ]; then
-    echo "\nNote: no simulator runtimes installed."
-    echo "      Install one with: xcodes runtimes install \"iOS 26.5\""
-    echo "      List available:   xcodes runtimes"
-  else
-    echo "\n==> ${runtimes} simulator runtime(s) installed."
-  fi
+  echo "\n==> ${runtimes} simulator runtime(s) installed."
 
   echo "\n==> Xcode up to date."
 }

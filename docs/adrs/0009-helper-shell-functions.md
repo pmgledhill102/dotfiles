@@ -48,9 +48,9 @@ established the split above, and `dotclaude` → `claudeup` completes it.
 | `dotup` | Pull dotfiles, refresh Oh My Zsh + plugins, update Starship (Linux), reload aliases/functions in the current shell. |
 | `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade` + `rustup update` (rust toolchain isn't in the Brewfile but is a package-manager update). |
 | `claudeup` | Interactive Claude Code MCP server setup (GitHub MCP from `gh` token, Google Developer Knowledge from Bitwarden). (Was `dotclaude`; renamed outright with no deprecation alias — it runs once per machine build, so there is no muscle memory to protect.) |
-| `xcodeup` | macOS only. Install/update the latest Xcode via `xcodes`, select the toolchain, and report simulator runtime status. Interactive — Apple ID sign-in cannot be automated. |
+| `xcodeup` | macOS only. Install/update the latest Xcode via `xcodes`, select the toolchain, and download the iOS platform (simulator runtime). Interactive — Apple ID sign-in cannot be automated. |
 | `dotstatus` | Print machine type, chezmoi source path, last applied time, and any pending diff. |
-| `dotfuncs` | List every custom function with its one-line description (self-documenting). |
+| `dotfuncs` | List every custom function with its one-line description (self-documenting), grouped into `*up` update commands and everything else. |
 | `note` / `n` | Append a timestamped bullet to `~/notes/<project>.md` (project = git repo basename or cwd basename). `note -e` opens it in `$EDITOR`. |
 | `notes` | List all note files, or grep across them. |
 

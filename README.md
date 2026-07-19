@@ -59,8 +59,8 @@ You don't need to remember chezmoi or brew incantations:
   wired to your `gh` auth token, Google Developer Knowledge keyed from
   Bitwarden)
 - **`xcodeup`** — macOS only: install/update the latest Xcode via
-  `xcodes`, point the toolchain at it, and report simulator runtimes.
-  Interactive — Apple sign-in can't be automated
+  `xcodes`, point the toolchain at it, and download the iOS platform
+  (simulator runtime). Interactive — Apple sign-in can't be automated
 - **`dotstatus`** — machine type, source path, last applied, and any
   pending changes
 - **`dotfuncs`** — list every custom function with its one-line description
