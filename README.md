@@ -55,9 +55,12 @@ You don't need to remember chezmoi or brew incantations:
   the current shell
 - **`brewup`** — `brew update` + install everything in your Brewfile +
   `brew upgrade` + `rustup update`, in one step
-- **`dotclaude`** — interactive Claude Code MCP server setup (GitHub MCP
+- **`claudeup`** — interactive Claude Code MCP server setup (GitHub MCP
   wired to your `gh` auth token, Google Developer Knowledge keyed from
   Bitwarden)
+- **`xcodeup`** — macOS only: install/update the latest Xcode via
+  `xcodes`, point the toolchain at it, and report simulator runtimes.
+  Interactive — Apple sign-in can't be automated
 - **`dotstatus`** — machine type, source path, last applied, and any
   pending changes
 - **`dotfuncs`** — list every custom function with its one-line description
@@ -176,7 +179,8 @@ run `chezmoi apply`.
 ```bash
 dotup                 # Pull latest dotfiles + update OMZ, plugins, Starship
 brewup                # brew update + install Brewfile + brew upgrade + rustup update
-dotclaude             # Interactive Claude Code MCP server setup
+claudeup              # Interactive Claude Code MCP server setup
+xcodeup               # macOS: install/select latest Xcode via xcodes
 dotstatus             # Machine type, source path, last applied, pending changes
 dotfuncs              # List all custom shell functions with descriptions
 ```
