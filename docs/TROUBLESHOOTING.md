@@ -553,6 +553,48 @@ brew install --cask ghostty
 # https://github.com/mitchellh/ghostty/releases
 ```
 
+#### Issue: Constant "fastlane_tmp_keychain-db" password prompts
+
+**Symptoms:**
+
+- Apps (Logi Options+, browsers, etc.) repeatedly pop up a macOS dialog:
+  *"… wants to use the 'fastlane_tmp_keychain-db' keychain. Please enter
+  the keychain password."*
+- Your login password is rejected — it never unlocks the keychain.
+- Started around the time `fastlane` was added and first run.
+
+**Cause:**
+
+fastlane creates a throwaway keychain (`fastlane_tmp_keychain`) when it runs
+`setup_ci`, `create_keychain`, `match`, or `gym`, and adds it to your
+**user keychain search list**. On success it deletes it again, but a crashed
+or interrupted run leaves the entry behind. macOS then asks *every* app that
+touches the keychain to unlock this orphaned one. Your login password fails
+because fastlane created the keychain with its own random/empty password —
+so no password you know will open it. The fix is to remove it, not guess it.
+
+**Solution:**
+
+```bash
+# 1. Inspect the search list — look for a stray fastlane_tmp_keychain
+#    entry alongside login.keychain-db
+security list-keychains -d user
+
+# 2. Reset the search list back to just the login keychain
+security list-keychains -d user -s login.keychain-db
+
+# 3. Delete the orphaned keychain (ignore the error if it's already gone)
+security delete-keychain fastlane_tmp_keychain 2>/dev/null || true
+```
+
+The prompts stop immediately — no logout or reboot needed.
+
+**Prevention:**
+
+- Reserve `setup_ci` for actual CI runs, not local invocations.
+- If you run `match`/`gym` locally, make the lane clean up after itself
+  (call `delete_keychain` in an `after_all`/`error` block).
+
 ### Ubuntu/Debian Issues
 
 #### Issue: apt-get Fails
