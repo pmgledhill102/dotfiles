@@ -8,7 +8,7 @@
 
 [cship]
 lines = [
-  "$directory$git_branch$git_status",
+  "$directory$git_branch$git_status$custom.gh_issues$custom.gh_prs",
   "$cship.model $cship.context_bar"
 ]
 

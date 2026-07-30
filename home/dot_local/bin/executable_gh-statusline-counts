@@ -1,0 +1,82 @@
+#!/bin/sh
+# gh-statusline-counts — open GitHub issue/PR counts for the current repo.
+#
+# Backs the [custom.gh_issues] / [custom.gh_prs] Starship modules rendered by
+# cship (see ~/.config/cship.toml). Prints a bare count and exits 0, or prints
+# nothing and exits 1 when the count is zero, the cwd isn't a GitHub repo, gh
+# is missing/unauthenticated, or no value has been fetched yet. The exit code
+# drives the modules' `when` clause, so a hidden module renders no symbol.
+#
+# Never blocks on the network: cship re-renders every few seconds, so cached
+# values (fresh or stale) are served immediately and refreshed in a background
+# subprocess at most once per TTL.
+#
+# Usage: gh-statusline-counts issues|prs
+
+set -u
+
+TTL=300
+LOCK_TTL=60
+
+field="${1:-}"
+case "$field" in
+  issues | prs) ;;
+  *)
+    echo "usage: gh-statusline-counts issues|prs" >&2
+    exit 2
+    ;;
+esac
+
+command -v gh >/dev/null 2>&1 || exit 1
+command -v git >/dev/null 2>&1 || exit 1
+
+url="$(git remote get-url origin 2>/dev/null)" || exit 1
+slug="$(printf '%s\n' "$url" | sed -n 's#.*github\.com[:/]\([^/][^/]*\)/\([^/][^/]*\)$#\1/\2#p')"
+slug="${slug%.git}"
+[ -n "$slug" ] || exit 1
+owner="${slug%%/*}"
+name="${slug##*/}"
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-statusline"
+cache="$cache_dir/$owner-$name"
+mkdir -p "$cache_dir" || exit 1
+
+file_age() {
+  # Seconds since last modification; BSD stat then GNU stat.
+  mtime="$(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null)" || mtime=0
+  echo "$(($(date +%s) - mtime))"
+}
+
+refresh() {
+  lock="$cache.lock"
+  if ! mkdir "$lock" 2>/dev/null; then
+    # A concurrent refresh holds the lock; reap it only if abandoned.
+    [ "$(file_age "$lock")" -gt "$LOCK_TTL" ] && rmdir "$lock" 2>/dev/null
+    return 0
+  fi
+  trap 'rmdir "$lock" 2>/dev/null' EXIT
+  # shellcheck disable=SC2016  # $owner/$name are GraphQL variables, not shell
+  counts="$(gh api graphql \
+    -F owner="$owner" -F name="$name" \
+    -f query='query($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) {
+          issues(states: OPEN) { totalCount }
+          pullRequests(states: OPEN) { totalCount }
+        }
+      }' \
+    --jq '"issues=\(.data.repository.issues.totalCount)\nprs=\(.data.repository.pullRequests.totalCount)"' \
+    2>/dev/null)" || return 0
+  printf '%s\n' "$counts" >"$cache.tmp.$$" && mv "$cache.tmp.$$" "$cache"
+}
+
+if [ ! -f "$cache" ] || [ "$(file_age "$cache")" -gt "$TTL" ]; then
+  (refresh >/dev/null 2>&1 &)
+fi
+
+[ -f "$cache" ] || exit 1
+val="$(sed -n "s/^$field=//p" "$cache")"
+case "$val" in
+  '' | *[!0-9]*) exit 1 ;;
+  0) exit 1 ;;
+esac
+printf '%s' "$val"
