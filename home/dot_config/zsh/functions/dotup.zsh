@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # Update dotfiles and plugins (does not install/upgrade packages)
 
 dotup() {
@@ -15,6 +15,7 @@ dotup() {
   # output, so it still surfaces and the recovery path keeps working.
   local update_log
   update_log=$(mktemp)
+  # shellcheck disable=SC2209  # PAGER=cat is an env prefix, not an assignment
   PAGER=cat chezmoi update --refresh-externals 2>&1 | tee "$update_log"
 
   # Auto-recover when chezmoi warns the rendered ~/.config/chezmoi/chezmoi.toml
@@ -23,15 +24,16 @@ dotup() {
   # key fail with "map has no entry for key X"). Re-init re-uses stored
   # promptChoiceOnce answers, so it's non-interactive.
   if grep -q "config file template has changed" "$update_log"; then
-    echo "\n==> Config template changed — regenerating with 'chezmoi init'..."
+    printf "\n==> Config template changed — regenerating with 'chezmoi init'...\n"
     chezmoi init
-    echo "\n==> Re-applying with refreshed config..."
+    printf "\n==> Re-applying with refreshed config...\n"
+    # shellcheck disable=SC2209  # PAGER=cat is an env prefix, not an assignment
     PAGER=cat chezmoi apply
   fi
   rm -f "$update_log"
 
   if [ -d "$ZSH" ]; then
-    echo "\n==> Updating Oh My Zsh..."
+    printf "\n==> Updating Oh My Zsh...\n"
     # -v silent: skip OMZ's ASCII-art banner and social-media plugs on success.
     # Errors still surface; our own ==> header announces the section.
     "$ZSH/tools/upgrade.sh" -v silent
@@ -40,23 +42,23 @@ dotup() {
   local plugin_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
   for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
     if [ -d "$plugin_dir/$plugin/.git" ]; then
-      echo "\n==> Updating $plugin..."
+      printf "\n==> Updating %s...\n" "$plugin"
       git -C "$plugin_dir/$plugin" pull
     fi
   done
 
   if [ -d "$HOME/.nano/.git" ]; then
-    echo "\n==> Updating nano syntax highlighting..."
+    printf "\n==> Updating nano syntax highlighting...\n"
     git -C "$HOME/.nano" pull
   fi
 
   if [ "$(uname -s)" = "Linux" ] && ! command -v brew >/dev/null 2>&1 \
      && command -v starship >/dev/null 2>&1; then
-    echo "\n==> Updating Starship..."
+    printf "\n==> Updating Starship...\n"
     curl -sS https://starship.rs/install.sh | sh -s -- -y
   fi
 
-  echo "\n==> Reloading shell aliases and functions..."
+  printf "\n==> Reloading shell aliases and functions...\n"
   # shellcheck source=/dev/null
   [ -f "$HOME/.config/zsh/aliases.zsh" ] && source "$HOME/.config/zsh/aliases.zsh"
   if [ -d "$HOME/.config/zsh/functions" ]; then
@@ -66,7 +68,7 @@ dotup() {
     done
   fi
 
-  echo "\n==> All updates complete."
+  printf "\n==> All updates complete.\n"
 
   # Remind the user what custom commands are available post-update.
   echo

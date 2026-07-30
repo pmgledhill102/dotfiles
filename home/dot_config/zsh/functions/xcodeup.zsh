@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # Install/update Xcode via xcodes, select the toolchain, download the iOS platform
 
 xcodeup() {
@@ -30,24 +30,24 @@ xcodeup() {
 
   # 'xcodes update' dumps the entire catalogue (every Xcode back to 1.0) to
   # stdout. Only the refresh matters here; stderr stays open for real errors.
-  echo "\n==> Refreshing available version list..."
+  printf "\n==> Refreshing available version list...\n"
   xcodes update >/dev/null
 
   # xcodes no-ops if the latest release is already installed. --select points
   # xcode-select at it either way, which is the part that silently stays on
   # CommandLineTools otherwise.
-  echo "\n==> Installing latest Xcode (prompts for Apple ID)..."
+  printf "\n==> Installing latest Xcode (prompts for Apple ID)...\n"
   if ! xcodes install --latest --select --experimental-unxip; then
     echo "Error: Xcode install failed."
     return 1
   fi
 
-  echo "\n==> Active toolchain: $(xcode-select -p)"
+  printf "\n==> Active toolchain: %s\n" "$(xcode-select -p)"
 
   # A fresh Xcode ships with no simulator runtimes; they are a separate
   # multi-GB download. xcodebuild no-ops when the platform is already
   # current, so this is safe to run on every invocation.
-  echo "\n==> Downloading iOS platform (simulator runtime)..."
+  printf "\n==> Downloading iOS platform (simulator runtime)...\n"
   if ! xcodebuild -downloadPlatform iOS; then
     echo "Warning: iOS platform download failed."
     echo "         Retry with: xcodebuild -downloadPlatform iOS"
@@ -55,7 +55,7 @@ xcodeup() {
 
   local runtimes
   runtimes="$(xcrun simctl list runtimes 2>/dev/null | grep -c '^iOS\|^watchOS\|^tvOS\|^visionOS')"
-  echo "\n==> ${runtimes} simulator runtime(s) installed."
+  printf "\n==> %s simulator runtime(s) installed.\n" "${runtimes}"
 
-  echo "\n==> Xcode up to date."
+  printf "\n==> Xcode up to date.\n"
 }
