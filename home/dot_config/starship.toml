@@ -101,6 +101,25 @@ format = "[ $version](fg:#AE1401) "
 [rust]
 format = "[ $version](fg:#CE412B) "
 
+# gh_issues / gh_prs are rendered only by cship (statusline passthrough) —
+# the prompt `format` above deliberately omits $custom so the shell prompt
+# never runs them. Counts come from a cached helper; see gh-statusline-counts.
+[custom.gh_issues]
+command = "~/.local/bin/gh-statusline-counts issues"
+when = "~/.local/bin/gh-statusline-counts issues"
+shell = ["sh"]
+symbol = " "
+style = "fg:#e0af68"
+format = "[$symbol$output]($style) "
+
+[custom.gh_prs]
+command = "~/.local/bin/gh-statusline-counts prs"
+when = "~/.local/bin/gh-statusline-counts prs"
+shell = ["sh"]
+symbol = " "
+style = "fg:#bb9af7"
+format = "[$symbol$output]($style) "
+
 #[aws]
 #symbol = ""
 #format = '[$symbol ($profile@$region)]($style) '
