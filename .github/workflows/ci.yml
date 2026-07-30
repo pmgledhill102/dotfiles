@@ -26,7 +26,11 @@ jobs:
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # master
         with:
-          scandir: './scripts ./home'
+          # scandir is a single directory (the action passes it to find as one
+          # quoted path — './scripts ./home' made find fail and lint nothing).
+          # Scan the repo root: the action's own find picks up *.sh and *.zsh
+          # and excludes .git; .tmpl files never match, so templates are skipped.
+          scandir: '.'
 
   markdown-lint:
     name: Markdown Lint

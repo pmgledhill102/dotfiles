@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # Configure Claude Code MCP servers (interactive, personal machines only)
 
 claudeup() {
@@ -20,7 +20,7 @@ claudeup() {
 
   # --- GitHub MCP (local binary + token from gh auth) ---
   if echo "$configured" | grep -q "github"; then
-    echo "\n==> GitHub MCP: already configured — skipping"
+    printf "\n==> GitHub MCP: already configured — skipping\n"
   else
     printf "\nConfigure GitHub MCP server? (y/n) "
     read -r answer
@@ -52,7 +52,7 @@ claudeup() {
 
   # --- Google Developer Knowledge API ---
   if echo "$configured" | grep -q "google-developer-knowledge"; then
-    echo "\n==> Google Developer Knowledge MCP: already configured — skipping"
+    printf "\n==> Google Developer Knowledge MCP: already configured — skipping\n"
   else
     printf "\nConfigure Google Developer Knowledge MCP server? (y/n) "
     read -r answer
@@ -72,7 +72,7 @@ claudeup() {
     fi
   fi
 
-  echo "\n==> MCP server setup complete."
+  printf "\n==> MCP server setup complete.\n"
   echo "Run 'claude mcp list' to verify."
 }
 
