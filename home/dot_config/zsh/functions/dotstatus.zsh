@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # Show dotfiles status: machine type, last applied, pending changes
 
 dotstatus() {

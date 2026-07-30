@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # Zsh aliases
 #
 # Shell functions live in ~/.config/zsh/functions/ — one file per command.

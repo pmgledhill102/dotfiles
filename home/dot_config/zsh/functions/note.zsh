@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # Quick project-scoped notes (also: notes, n alias)
 #
 # Notes are appended to ~/notes/<project>.md, where <project> is the git repo

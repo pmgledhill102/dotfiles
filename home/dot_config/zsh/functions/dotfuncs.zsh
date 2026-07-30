@@ -1,5 +1,5 @@
 #!/bin/zsh
-# shellcheck disable=SC1071
+# shellcheck shell=bash
 # List the custom shell functions installed by these dotfiles
 
 dotfuncs() {
@@ -13,7 +13,7 @@ dotfuncs() {
 
   echo "Update commands:"
   _dotfuncs_list "$dir" up
-  echo "\nOther commands:"
+  printf "\nOther commands:\n"
   _dotfuncs_list "$dir" other
 }
 
