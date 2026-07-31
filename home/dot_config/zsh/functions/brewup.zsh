@@ -23,8 +23,11 @@ brewup() {
     fi
     printf "\n==> Installing packages from Brewfile...\n"
     # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts;
-    # brewup's whole point is unattended install/upgrade
-    HOMEBREW_NO_ASK=1 brew bundle install --file "$brewfile"
+    # brewup's whole point is unattended install/upgrade.
+    # HOMEBREW_BUNDLE_JOBS=1: Homebrew 6's parallel installer (default 'auto')
+    # has lock races on shared dependencies (Homebrew/brew#23328); sequential
+    # is the pre-brew-6 behavior. Revisit: dotfiles#368.
+    HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_JOBS=1 brew bundle install --file "$brewfile"
   else
     echo "Warning: Brewfile not found at $brewfile"
   fi
