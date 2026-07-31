@@ -16,6 +16,19 @@ case "$(uname -s)" in
     eval "$(/opt/homebrew/bin/brew shellenv)"
 
     BREWFILE="$HOME/Brewfile"
+
+    # Homebrew 6 refuses to load formulae/casks from non-official taps unless
+    # trusted via 'brew trust' (HOMEBREW_REQUIRE_TAP_TRUST defaults on).
+    # Declaring a tap in the Brewfile IS the trust decision, so trust each one
+    # here. This must run BEFORE the 'brew bundle check' guard below: an
+    # untrusted tap makes the check itself fail, which would fall through to
+    # the install path on every apply. Guarded for older brews without 'trust'.
+    if [ -f "$BREWFILE" ] && brew trust --help >/dev/null 2>&1; then
+      grep '^tap "' "$BREWFILE" | awk -F'"' '{print $2}' | while read -r tap_name; do
+        brew trust --tap "$tap_name" || true
+      done
+    fi
+
     if [ ! -f "$BREWFILE" ]; then
       echo "Warning: Brewfile not found at $BREWFILE, skipping brew bundle"
     elif brew bundle check --no-upgrade --file "$BREWFILE" >/dev/null 2>&1; then
