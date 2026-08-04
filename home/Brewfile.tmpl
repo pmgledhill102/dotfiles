@@ -91,6 +91,8 @@ cask "visual-studio-code"
 cask "voiceink"
 cask "whatsapp"
 {{- else if eq .machine_type "work" }}
+tap "terraform-linters/tap"
+
 brew "actionlint"
 brew "bat"
 brew "checkov"
@@ -134,6 +136,7 @@ brew "zoxide"
 cask "font-jetbrains-mono-nerd-font"
 cask "ghostty"
 cask "rectangle"
+cask "terraform-linters/tap/tflint"
 {{- else }}
 brew "bat"
 brew "fzf"
