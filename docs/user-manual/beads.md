@@ -60,45 +60,35 @@ The result is:
 
 ## Git hooks
 
-There are **two separate sets of hooks** and it's important to know which is
-which.
+### Machine-level templates — removed
 
-### 1. Machine-level templates
+This dotfiles repo used to ship a `~/.git-templates/` hook library and set it
+as git's `init.templatedir`, so every `git init` and `git clone` copied a
+`pre-commit`/`pre-push`/`post-checkout`/`post-merge` dispatch set into the new
+repo's `.git/hooks/`.
 
-Location: `~/.git-templates/` (managed by chezmoi from
-`home/dot_git-templates/` in this dotfiles repo).
+**That machinery is gone.** `git init` and `git clone` now fall back to the
+inert system template, which contains only `.sample` files.
 
-This directory is set as git's `init.templatedir`, so every `git init` and
-`git clone` copies these files into the new repo's `.git/hooks/`.
+Pre-commit enforcement moved to `agentic-coding-config`: a global Claude Code
+`PreToolUse(Bash)` hook runs the pre-commit framework on every `git commit` /
+`git push` Claude makes in any repo with a `.pre-commit-config.yaml`, and CI
+runs `pre-commit run --all-files`. Manual (non-Claude) terminal commits get no
+local pre-commit — CI is the backstop. Accepted trade-off, decided 2026-06-18.
 
-Files:
+The templates were never beads-aware (the `run_beads` coupling was removed in
+PR #153, 2026-04-18), so their removal does not affect bd.
 
-```text
-~/.git-templates/hooks/
-  _lib/dispatch.sh
-  post-checkout
-  post-merge
-  pre-commit
-  pre-push
-```
-
-**These hooks do NOT know about beads.** After PR #153 (2026-04-18), the only
-thing they do is dispatch to the `pre-commit` framework if a
-`.pre-commit-config.yaml` is present:
+Existing clones still carry the copied hook files in `.git/hooks/`. They are
+harmless once the dispatch targets no longer exist; to strip them:
 
 ```sh
-. "$_lib"
-run_precommit pre-commit
+for d in ~/dev/*/.git/hooks; do
+  rm -f "$d/pre-commit" "$d/pre-push" "$d/post-checkout" "$d/post-merge"
+done
 ```
 
-Prior to PR #153, `dispatch.sh` had a `run_beads` function and every template
-hook called it. That coupling was removed for three reasons: (a) generic git
-tooling shouldn't know about specific apps; (b) the dispatcher called
-`bd hooks run` without a timeout wrapper, which deadlocks with `bd init`'s
-post-init commit; (c) in beads-enabled repos it caused bd's hook to fire
-twice per commit.
-
-### 2. Per-repo hooks installed by `bd init`
+### Per-repo hooks installed by `bd init`
 
 Location: `.beads/hooks/` inside each beads-enabled project.
 
@@ -138,8 +128,8 @@ Step 4a).
 
 Older bd versions (seen in e.g. `discord-bot-test-suite`, `cloud-run-overlap-ips-with-nat`
 before modernisation) produced **composite** hooks — they sourced the
-git-templates dispatcher AND had bd's integration block, leading to the
-double-invocation / deadlock problems above. The modern `/bd-modernize` skill
+now-removed git-templates dispatcher AND had bd's integration block, leading to
+the double-invocation / deadlock problems above. The modern `/bd-modernize` skill
 sweeps any surviving `run_beads <stage>` lines out of `.beads/hooks/*` during
 migration (Step 5h).
 
@@ -177,32 +167,28 @@ If `git commit`, `git checkout`, `git pull`, or `git push` prints:
 .git/hooks/pre-commit: line 11: run_beads: command not found
 ```
 
-…it means that clone has a **stale `.git/hooks/*`** file from before PR #153.
-The fix is environmental, not per-repo.
+…it means that clone has a **stale `.git/hooks/*`** file left over from the
+removed git-templates library.
 
-Why it happens: `git init` and `git clone` copy template hooks from
+Why it happens: `git init` and `git clone` copied template hooks from
 `~/.git-templates/hooks/` into the new clone's `.git/hooks/` **once, at
-clone time**. `chezmoi apply` updates the source templates but never touches
-already-copied hooks in existing clones. Before PR #153, templates ended with
-`run_beads <stage>`; after #153 the symbol is gone from `dispatch.sh`, so old
-hooks that still call `run_beads` fail.
+clone time**. `chezmoi apply` never touches already-copied hooks in existing
+clones, so they outlive the source templates. With the library now removed,
+the `run_beads` / `dispatch.sh` symbols they reference no longer resolve.
 
 Important — `.git/hooks/*` are **per-clone, not tracked by git**. They do not
-travel when you push or clone. Cloning a repo on another machine produces
-fresh hooks from *that machine's* current template library.
+travel when you push or clone. Repos age out naturally on re-clone.
 
-The fix: PR #157 restored `run_beads` in `dispatch.sh` as a backward-compat
-stub — no-ops when `.beads/` is absent or `bd` isn't installed; otherwise
-delegates to `bd hooks run` with timeout handling. Next `dotup` / `chezmoi
-apply` propagates it, and all stale hooks on the machine stop erroring in
-one step. The template hooks themselves still don't call `run_beads`, so new
-clones remain fully decoupled.
-
-Sanity check that the stub is live:
+The fix is to delete the stale copies:
 
 ```sh
-grep -q '^run_beads()' ~/.git-templates/hooks/_lib/dispatch.sh && echo OK
+for d in ~/dev/*/.git/hooks; do
+  rm -f "$d/pre-commit" "$d/pre-push" "$d/post-checkout" "$d/post-merge"
+done
 ```
+
+(Only removes the dispatch copies; `.sample` files are untouched. Repos using
+bd are unaffected — bd points `core.hooksPath` at `.beads/hooks/`.)
 
 Confirm that a specific repo's `.git/hooks/*` are the only things calling
 `run_beads` (nothing is committed — so nothing travels):
@@ -274,11 +260,14 @@ on other setups, use a git credential helper or keep the ssh form.
 ### The git-remote-cache gotcha
 
 `bd init` creates an internal git-remote cache inside
-`.beads/embeddeddolt/<db>/.dolt/git-remote-cache/<hash>/repo.git/`. If
-`init.templatedir` is set, git copies its template hooks into **that cache's
-`.git/hooks/` directory**, and the pre-commit framework fires every time
-Dolt talks to origin, crashing `bd dolt push` with
-`fatal: this operation must be run in a work tree`.
+`.beads/embeddeddolt/<db>/.dolt/git-remote-cache/<hash>/repo.git/`. This was
+the original reason for dropping `init.templatedir`: while it was set, git
+copied its template hooks into **that cache's `.git/hooks/` directory**, and
+the pre-commit framework fired every time Dolt talked to origin, crashing
+`bd dolt push` with `fatal: this operation must be run in a work tree`.
+
+Removing the templatedir setting fixes this at the source. The cleanup below
+still applies to caches created while it was set.
 
 `/bd-modernize` Step 5c removes these cache-hooks:
 
@@ -721,9 +710,6 @@ for a week is the worst of both worlds.
 ## File locations cheat sheet
 
 ```text
-~/.git-templates/hooks/                # Machine-level git-hook templates
-                                       # (chezmoi-managed, beads-agnostic)
-
 ~/.local/share/chezmoi/                # The chezmoi source used by chezmoi apply
                                        # Separate clone from ~/dev/dotfiles!
                                        # Sync both with `dotup`.
