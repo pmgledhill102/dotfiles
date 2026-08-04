@@ -16,6 +16,19 @@ case "$(uname -s)" in
     eval "$(/opt/homebrew/bin/brew shellenv)"
 
     BREWFILE="$HOME/Brewfile"
+
+    # Homebrew 6 refuses to load formulae/casks from non-official taps unless
+    # trusted via 'brew trust' (HOMEBREW_REQUIRE_TAP_TRUST defaults on).
+    # Declaring a tap in the Brewfile IS the trust decision, so trust each one
+    # here. This must run BEFORE the 'brew bundle check' guard below: an
+    # untrusted tap makes the check itself fail, which would fall through to
+    # the install path on every apply. Guarded for older brews without 'trust'.
+    if [ -f "$BREWFILE" ] && brew trust --help >/dev/null 2>&1; then
+      grep '^tap "' "$BREWFILE" | awk -F'"' '{print $2}' | while read -r tap_name; do
+        brew trust --tap "$tap_name" || true
+      done
+    fi
+
     if [ ! -f "$BREWFILE" ]; then
       echo "Warning: Brewfile not found at $BREWFILE, skipping brew bundle"
     elif brew bundle check --no-upgrade --file "$BREWFILE" >/dev/null 2>&1; then
@@ -39,7 +52,11 @@ case "$(uname -s)" in
       # HOMEBREW_BUNDLE_NO_UPGRADE=1: install missing formulae only, leave
       # already-present-but-outdated packages alone — 'brewup' owns upgrades
       # (ADR-0005), so even the fresh-install path must not upgrade.
+      # HOMEBREW_BUNDLE_JOBS=1: Homebrew 6's parallel installer (default
+      # 'auto') has lock races on shared dependencies (Homebrew/brew#23328);
+      # sequential is the pre-brew-6 behavior. Revisit: dotfiles#368.
       HOMEBREW_BUNDLE_NO_LOCK=1 HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_NO_UPGRADE=1 \
+        HOMEBREW_BUNDLE_JOBS=1 \
         brew bundle install --file "$BREWFILE"
     fi
     ;;

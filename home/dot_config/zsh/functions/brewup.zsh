@@ -13,10 +13,21 @@ brewup() {
 
   local brewfile="$HOME/Brewfile"
   if [ -f "$brewfile" ]; then
+    # Homebrew 6 refuses non-official-tap formulae/casks unless trusted via
+    # 'brew trust'. Taps declared in the Brewfile are trusted by definition.
+    # Guarded for older brews without the 'trust' command.
+    if brew trust --help >/dev/null 2>&1; then
+      grep '^tap "' "$brewfile" | awk -F'"' '{print $2}' | while read -r tap_name; do
+        brew trust --tap "$tap_name" || true
+      done
+    fi
     printf "\n==> Installing packages from Brewfile...\n"
     # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts;
-    # brewup's whole point is unattended install/upgrade
-    HOMEBREW_NO_ASK=1 brew bundle install --file "$brewfile"
+    # brewup's whole point is unattended install/upgrade.
+    # HOMEBREW_BUNDLE_JOBS=1: Homebrew 6's parallel installer (default 'auto')
+    # has lock races on shared dependencies (Homebrew/brew#23328); sequential
+    # is the pre-brew-6 behavior. Revisit: dotfiles#368.
+    HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_JOBS=1 brew bundle install --file "$brewfile"
   else
     echo "Warning: Brewfile not found at $brewfile"
   fi
