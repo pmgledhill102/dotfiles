@@ -42,6 +42,8 @@ Brewfile
 .tmux.conf
 run_onchange_setup-claude.sh
 setup-claude.sh
+run_after_prune-retired-claude-files.sh
+prune-retired-claude-files.sh
 run_once_after_setup-secrets.sh
 setup-secrets.sh
 {{- end }}
