@@ -7,7 +7,7 @@ account. Four scripts build, start, stop and destroy it:
 | Script | Does |
 | --- | --- |
 | `ci-vm-build` | Clone the Xcode image, size it, boot it, push an SSH key, install the build tooling, register the runner, install it as a launchd service. Idempotent. |
-| `ci-vm-up` | Start headless and detached, wait for an IP, poll GitHub until the runner reports online. Non-zero exit if it doesn't. |
+| `ci-vm-up` | Start headless and detached, wait for an IP, wait for the guest to boot and its runner agent to start, then poll GitHub until the runner reports online. Non-zero exit if any of that times out. |
 | `ci-vm-down` | Graceful `tart stop`. Refuses while the runner is mid-job unless `--force`. |
 | `ci-vm-destroy` | Deregister the runner from GitHub, then delete the VM. Prompts first. |
 
@@ -131,6 +131,24 @@ are easy to get wrong by hand:
   registration time. Over SSH that can omit `/opt/homebrew/bin`, and the
   workflows call `brew install xcodegen` — so `ci-vm-build` overwrites `.path`
   with `CI_VM_PATH` afterwards.
+
+## Why `ci-vm-up` doesn't just trust the API
+
+GitHub keeps reporting a runner as `online` for up to a minute after its VM
+stops. A `ci-vm-down; ci-vm-up` pair therefore reads that stale status and
+returns success while the guest is still booting — observed in practice, with
+`ci-vm-up` exiting successfully 0.4s after `tart run`.
+
+So `ci-vm-up` gates on evidence the API cannot provide, in order:
+
+1. `tart ip` returns an address,
+2. the guest answers on port 22 — it has actually booted,
+3. `launchctl` in the guest's GUI session shows a live pid for the runner
+   agent — it is alive in *this* boot,
+4. only then, the API reports `online`.
+
+A warm cycle takes about ten seconds end to end; the first boot after
+provisioning takes closer to 75.
 
 ## Labels
 

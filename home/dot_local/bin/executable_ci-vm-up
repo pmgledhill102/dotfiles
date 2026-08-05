@@ -33,6 +33,8 @@ EOF
 : "${CI_VM_REPO:=pmgledhill102/lifeos}"
 : "${CI_VM_RUNNER_NAME:=$CI_VM_NAME}"
 : "${CI_VM_LOG_DIR:=${XDG_STATE_HOME:-$HOME/.local/state}/ci-vm}"
+: "${CI_VM_USER:=admin}"
+: "${CI_VM_KEY:=$HOME/.ssh/ci-vm_ed25519}"
 
 # --- Helpers ------------------------------------------------------------
 
@@ -81,6 +83,7 @@ command -v tart >/dev/null 2>&1 || die "tart is not installed"
 
 # --- Boot ---------------------------------------------------------------
 
+BOOTED=0
 if [ "$(vm_state)" = "running" ]; then
   log "VM '$CI_VM_NAME' is already running"
 else
@@ -90,6 +93,7 @@ else
   # Detached: `tart run` stays in the foreground for the VM's lifetime, so it
   # has to outlive this shell.
   nohup tart run --no-graphics "$CI_VM_NAME" >>"$VM_LOG" 2>&1 &
+  BOOTED=1
 fi
 
 log "Waiting for an IP address"
@@ -105,11 +109,49 @@ done
      Check $CI_VM_LOG_DIR/$CI_VM_NAME.log"
 log "VM is at $IP"
 
+# GitHub keeps reporting a runner online for up to a minute after its VM stops,
+# so a `ci-vm-down; ci-vm-up` pair would otherwise read that stale "online" and
+# return success while the guest was still booting. Waiting for sshd proves the
+# guest is actually up before any status is believed.
+if [ "$BOOTED" -eq 1 ]; then
+  log "Waiting for the guest to finish booting"
+  i=0
+  while [ "$i" -lt 90 ]; do
+    nc -z -G 2 "$IP" 22 >/dev/null 2>&1 && break
+    i=$((i + 1))
+    sleep 2
+  done
+  [ "$i" -lt 90 ] || die "guest did not answer on port 22 within three minutes.
+     Check $CI_VM_LOG_DIR/$CI_VM_NAME.log"
+fi
+
 [ "$WAIT_RUNNER" -eq 1 ] || exit 0
 
 # --- Wait for the runner ------------------------------------------------
 
 command -v gh >/dev/null 2>&1 || die "gh is not installed — cannot check runner status"
+
+# Belt and braces on the stale-status problem above: the LaunchAgent holding a
+# pid in the guest is proof the runner is alive in *this* boot, which no reading
+# of the API can give us. Skipped when the key is missing, since the API poll
+# below is still a useful check on its own.
+if [ -f "$CI_VM_KEY" ]; then
+  log "Waiting for the runner agent to start in the guest"
+  i=0
+  while [ "$i" -lt 60 ]; do
+    ssh -i "$CI_VM_KEY" \
+      -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+      -o LogLevel=ERROR -o BatchMode=yes -o ConnectTimeout=10 \
+      "$CI_VM_USER@$IP" \
+      'sudo launchctl asuser "$(id -u)" launchctl list |
+         awk "/actions\.runner/ && \$1 != \"-\" { found = 1 } END { exit !found }"' \
+      >/dev/null 2>&1 && break
+    i=$((i + 1))
+    sleep 5
+  done
+  [ "$i" -lt 60 ] || die "the runner agent never started inside the guest.
+     Inspect it: ssh -i $CI_VM_KEY $CI_VM_USER@$IP 'tail -50 ~/Library/Logs/actions.runner.*/stderr.log'"
+fi
 
 log "Waiting for runner '$CI_VM_RUNNER_NAME' to report online"
 status=""
