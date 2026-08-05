@@ -4,3 +4,15 @@ repos:
     hooks:
       - id: markdownlint-cli2
         # fix: true # Uncomment to auto-fix
+
+  # Layer 2 of ADR-0013 for ADR-0014: this repo is public, so private-repo
+  # references must not be committed. Scans the whole tree rather than the
+  # staged files, so it also catches a name that arrived some other way.
+  - repo: local
+    hooks:
+      - id: check-no-private-repos
+        name: No private repo references
+        entry: scripts/check-no-private-repos.sh
+        language: script
+        pass_filenames: false
+        always_run: true

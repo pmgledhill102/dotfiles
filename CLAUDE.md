@@ -45,7 +45,35 @@ Pre-commit hooks (`.pre-commit-config.yaml`) run markdownlint-cli2.
 Conventional commits: `<type>(<scope>): <description>`
 Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
 
+## This repository is public
+
+`dotfiles` is public, and has to be: the bootstrap is a single `curl` on a fresh
+machine, before any credential exists to authenticate with. Anything committed
+here is world-readable and indexed **permanently** — git history included, so
+deleting a line later does not unpublish it. The same applies to issues and pull
+requests on this repo.
+
+**Therefore: no direct references to private repositories.** Do not commit, and
+do not write in an issue or PR here:
+
+- the name or URL of a private repo;
+- its issue or PR numbers — especially paired with what they were about;
+- its workflow, job, or branch names;
+- its architecture, security arrangements, or release process;
+- anything identifying what a private project *is* or *does*.
+
+Tooling here may perfectly well **operate on** private repos — the CI runner VM
+scripts do. Make the repo an *input*, never a constant: read it from untracked
+machine config such as `~/.config/<tool>.conf`, with no default committed here.
+
+If a document genuinely needs private specifics, it belongs in the private
+personal-context repo, not this one.
+
+`scripts/check-no-private-repos.sh` enforces this in CI and pre-commit, against
+the allowlist in `scripts/public-repos.txt`. Reasoning: ADR-0014.
+
 ## Related repos
 
 - [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — Claude Code commands/hooks/settings/MCP. Mounted at `~/.claude/` from this repo.
-- [`paul-context`](https://github.com/pmgledhill102/paul-context) — private personal context: principles, decisions, repo registry, direction.
+- A separate **private** repo holds personal context: principles, decisions, repo
+  registry, direction. Not named here, per the section above.

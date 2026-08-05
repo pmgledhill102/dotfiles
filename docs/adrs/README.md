@@ -44,3 +44,4 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0011](0011-beads-task-tracking.md) | Beads with embedded Dolt for task tracking | Accepted |
 | [0012](0012-claude-code-config-via-dotfiles.md) | Claude Code configuration shipped via the dotfiles repo | Accepted |
 | [0013](0013-three-layer-enforcement.md) | Three-layer enforcement — CI, pre-commit, Claude Code hooks | Accepted |
+| [0014](0014-public-repo-no-private-references.md) | This repo is public by design; no private-repo references | Accepted |

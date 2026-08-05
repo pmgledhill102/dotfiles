@@ -1,0 +1,8 @@
+# Repositories under this owner that may be named in this public repo.
+#
+# Bare names, one per line. Only add a repo here once it is genuinely public —
+# this file is the allowlist for scripts/check-no-private-repos.sh, and the
+# whole point is that private names never get committed. See
+# docs/adrs/0014-public-repo-no-private-references.md
+dotfiles
+agentic-coding-config

@@ -62,11 +62,32 @@ fix(install): correct Ubuntu package installation
 
 CI is defined in `.github/workflows/ci.yml`:
 
-- **PRs**: lint only — ShellCheck, markdownlint-cli2, actionlint (~2 min)
+- **PRs**: lint only — ShellCheck, markdownlint-cli2, actionlint, private-repo
+  reference check (~2 min)
 - **Push to main**: lint + full install test matrix (Ubuntu, macOS, Windows)
 - **Weekly / manual dispatch**: full install tests to catch upstream breakage
 
 Pre-commit hooks run markdownlint-cli2 locally.
+
+## This repository is public
+
+It has to be: the bootstrap is a single `curl` on a fresh machine, before any
+credential exists to authenticate with. So everything here is world-readable and
+indexed **permanently** — git history included, meaning a later deletion does
+not unpublish anything. Issue and PR bodies on this repo are public too.
+
+**No direct references to private repositories.** Not their names or URLs, not
+their issue numbers (especially paired with what they were about), not their
+workflow or branch names, not their architecture or release process.
+
+Tooling here may still *operate on* private repos — make the repo an input read
+from untracked machine config (`~/.config/<tool>.conf`), never a committed
+default. The `ci-vm-*` scripts work this way.
+
+`scripts/check-no-private-repos.sh` enforces this in CI and pre-commit against
+the allowlist in `scripts/public-repos.txt`. If it flags a repo that really is
+public, add its bare name to that file. Full reasoning in
+[ADR-0014](docs/adrs/0014-public-repo-no-private-references.md).
 
 ## Secrets
 
