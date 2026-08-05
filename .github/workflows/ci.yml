@@ -38,6 +38,18 @@ jobs:
           # executable_*.ps1 would need excluding here.
           additional_files: 'executable_*'
 
+  private-repo-refs:
+    name: Private Repo References
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check for private repo references
+        # This repo is public by design (ADR-0014). Allowlist, not denylist —
+        # a list of private repo names committed here would leak the very
+        # thing it protects.
+        run: ./scripts/check-no-private-repos.sh
+
   markdown-lint:
     name: Markdown Lint
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -70,7 +82,7 @@ jobs:
   test-install-pr:
     name: Test Install on ${{ matrix.os }}
     if: github.event_name == 'pull_request'
-    needs: [shellcheck, markdown-lint, actionlint]
+    needs: [shellcheck, markdown-lint, actionlint, private-repo-refs]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -138,7 +150,7 @@ jobs:
   test-install:
     name: Test Install on ${{ matrix.os }}
     if: github.event_name != 'pull_request'
-    needs: [shellcheck, markdown-lint, actionlint]
+    needs: [shellcheck, markdown-lint, actionlint, private-repo-refs]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
