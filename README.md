@@ -3,6 +3,12 @@
 Personal dotfiles managed by [chezmoi](https://www.chezmoi.io/). Provides a
 consistent dev environment across macOS, Linux, WSL, and Windows.
 
+> **This repository is public by design** — the bootstrap is a single `curl` on
+> a fresh machine, before any credential exists. Nothing here may reference a
+> private repository; tooling that operates on one reads it from untracked
+> machine config. See
+> [ADR-0014](docs/adrs/0014-public-repo-no-private-references.md).
+
 ## What You Get
 
 One curl command on a fresh machine and you walk away with a tuned shell, a
