@@ -149,6 +149,28 @@ podman info           # verify
 
 Linux uses the host kernel directly — no `podman machine` step needed.
 
+### Self-hosted CI runner VM (macOS only)
+
+The GitHub Actions runner for `lifeos` lives in a [Tart](https://tart.run) VM
+rather than on your own user account, so CI never runs as you with your
+keychain and session. `tart` comes from the Brewfile; the VM itself is a
+one-time build:
+
+```bash
+ci-vm-build     # ~66 GB image pull, then registers the runner. Idempotent.
+```
+
+Day to day it's two commands:
+
+```bash
+ci-vm-up        # before opening a PR or shipping — jobs queue while it's down
+ci-vm-down      # when done; refuses while a job is running
+```
+
+`ci-vm-destroy` deregisters the runner and deletes the VM. Full detail,
+configuration and troubleshooting in
+[docs/ci-runner-vm.md](docs/ci-runner-vm.md).
+
 ## Per-Platform Reference
 
 | | macOS | Linux / WSL | Windows |
@@ -257,6 +279,7 @@ Highly sensitive secrets (API keys, passwords) belong in Bitwarden, not here.
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — development workflow and code style
 - [docs/TESTING.md](docs/TESTING.md) — CI pipeline and validation scripts
+- [docs/ci-runner-vm.md](docs/ci-runner-vm.md) — self-hosted Actions runner in a Tart VM
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common issues and fixes
 
 ## License

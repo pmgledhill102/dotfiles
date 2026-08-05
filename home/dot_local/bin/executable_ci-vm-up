@@ -1,0 +1,127 @@
+#!/bin/sh
+# ci-vm-up — start the CI runner VM and wait for its runner to report online.
+#
+# Boots the VM headless and detached, waits for it to take an IP, then polls the
+# GitHub API until the runner shows online. Exits non-zero if either step times
+# out, so it is safe to chain: `ci-vm-up && gh pr create ...`.
+#
+# The runner is a LaunchAgent inside the VM, so nothing has to be started by
+# hand — booting the VM is the whole story.
+
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage: ci-vm-up [--no-runner] [--timeout SECONDS]
+
+  --no-runner        return once the VM has an IP, without waiting for the
+                     runner (used by ci-vm-build, before one is registered)
+  --timeout SECONDS  how long to wait for the runner to come online (default 300)
+
+Configuration is read from ~/.config/ci-vm.conf and the environment; see the
+CI_VM_* defaults at the top of this script.
+EOF
+}
+
+# --- Configuration ------------------------------------------------------
+
+# shellcheck source=/dev/null
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/ci-vm.conf" ] &&
+  . "${XDG_CONFIG_HOME:-$HOME/.config}/ci-vm.conf"
+
+: "${CI_VM_NAME:=ci-runner}"
+: "${CI_VM_REPO:=pmgledhill102/lifeos}"
+: "${CI_VM_RUNNER_NAME:=$CI_VM_NAME}"
+: "${CI_VM_LOG_DIR:=${XDG_STATE_HOME:-$HOME/.local/state}/ci-vm}"
+
+# --- Helpers ------------------------------------------------------------
+
+log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+die() {
+  printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
+  exit 1
+}
+
+vm_state() {
+  tart list --source local 2>/dev/null |
+    awk -v n="$CI_VM_NAME" '$2 == n { print $NF }'
+}
+
+runner_field() {
+  gh api "repos/$CI_VM_REPO/actions/runners" \
+    --jq ".runners[] | select(.name == \"$CI_VM_RUNNER_NAME\") | $1" \
+    2>/dev/null || true
+}
+
+WAIT_RUNNER=1
+TIMEOUT=300
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-runner) WAIT_RUNNER=0 ;;
+    --timeout)
+      shift
+      TIMEOUT="${1:-}"
+      [ -n "$TIMEOUT" ] || die "--timeout needs a value"
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      die "unknown option: $1"
+    ;;
+  esac
+  shift
+done
+
+command -v tart >/dev/null 2>&1 || die "tart is not installed"
+[ -n "$(vm_state)" ] || die "VM '$CI_VM_NAME' does not exist — run ci-vm-build first"
+
+# --- Boot ---------------------------------------------------------------
+
+if [ "$(vm_state)" = "running" ]; then
+  log "VM '$CI_VM_NAME' is already running"
+else
+  mkdir -p "$CI_VM_LOG_DIR"
+  VM_LOG="$CI_VM_LOG_DIR/$CI_VM_NAME.log"
+  log "Booting '$CI_VM_NAME' headless (log: $VM_LOG)"
+  # Detached: `tart run` stays in the foreground for the VM's lifetime, so it
+  # has to outlive this shell.
+  nohup tart run --no-graphics "$CI_VM_NAME" >>"$VM_LOG" 2>&1 &
+fi
+
+log "Waiting for an IP address"
+IP=""
+i=0
+while [ "$i" -lt 60 ]; do
+  IP="$(tart ip "$CI_VM_NAME" 2>/dev/null || true)"
+  [ -n "$IP" ] && break
+  i=$((i + 1))
+  sleep 2
+done
+[ -n "$IP" ] || die "VM did not take an IP address within two minutes.
+     Check $CI_VM_LOG_DIR/$CI_VM_NAME.log"
+log "VM is at $IP"
+
+[ "$WAIT_RUNNER" -eq 1 ] || exit 0
+
+# --- Wait for the runner ------------------------------------------------
+
+command -v gh >/dev/null 2>&1 || die "gh is not installed — cannot check runner status"
+
+log "Waiting for runner '$CI_VM_RUNNER_NAME' to report online"
+status=""
+elapsed=0
+while [ "$elapsed" -lt "$TIMEOUT" ]; do
+  status="$(runner_field .status)"
+  [ "$status" = "online" ] && break
+  elapsed=$((elapsed + 5))
+  sleep 5
+done
+
+[ "$status" = "online" ] || die "runner did not come online within ${TIMEOUT}s (last status: ${status:-not registered}).
+     The VM is up; the LaunchAgent inside it is the thing to look at."
+
+log "Runner '$CI_VM_RUNNER_NAME' is online — jobs on [self-hosted, macOS] will pick up"
