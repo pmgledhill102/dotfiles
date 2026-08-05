@@ -31,6 +31,12 @@ jobs:
           # Scan the repo root: the action's own find picks up *.sh and *.zsh
           # and excludes .git; .tmpl files never match, so templates are skipped.
           scandir: '.'
+          # chezmoi's executable_ scripts have no extension, and the action's
+          # extensionless pass also requires the source file to carry the +x bit
+          # — which chezmoi sources don't. Without this they were silently never
+          # linted. Everything under this prefix is currently POSIX sh; an
+          # executable_*.ps1 would need excluding here.
+          additional_files: 'executable_*'
 
   markdown-lint:
     name: Markdown Lint

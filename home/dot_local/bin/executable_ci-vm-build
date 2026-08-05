@@ -1,0 +1,308 @@
+#!/bin/sh
+# ci-vm-build — provision the self-hosted GitHub Actions runner VM.
+#
+# Clones a Cirrus Labs Xcode image with Tart, sizes it, boots it, pushes an SSH
+# key, installs the build tooling, then registers a GitHub Actions runner inside
+# the VM as a launchd LaunchAgent so it comes online whenever the VM boots.
+#
+# The VM is persistent by design: DerivedData stays warm between jobs, which is
+# what keeps incremental builds fast. Run-to-run isolation is deliberately
+# traded away — see docs/ci-runner-vm.md.
+#
+# Idempotent: re-running skips anything already done and reports what it
+# skipped, so a re-run doubles as a health check.
+
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage: ci-vm-build [--recreate] [--yes]
+
+  --recreate   destroy an existing VM (deregistering its runner) and start over
+  --yes, -y    skip the confirmation prompt that --recreate would otherwise ask
+
+Configuration is read from ~/.config/ci-vm.conf and the environment; see the
+CI_VM_* defaults at the top of this script.
+EOF
+}
+
+# --- Configuration ------------------------------------------------------
+# Override any of these in ~/.config/ci-vm.conf or via the environment.
+
+# shellcheck source=/dev/null
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/ci-vm.conf" ] &&
+  . "${XDG_CONFIG_HOME:-$HOME/.config}/ci-vm.conf"
+
+# The image tag pins the Xcode version. A mismatch with what the workflows
+# expect surfaces as an opaque build failure, so CI_VM_XCODE is asserted against
+# the running VM below. List available tags with:
+#   crane ls ghcr.io/cirruslabs/macos-sequoia-xcode
+: "${CI_VM_IMAGE:=ghcr.io/cirruslabs/macos-sequoia-xcode:26.6}"
+: "${CI_VM_XCODE:=26.6}"
+: "${CI_VM_NAME:=ci-runner}"
+: "${CI_VM_CPU:=6}"
+: "${CI_VM_MEMORY:=12288}"
+: "${CI_VM_DISK:=250}"
+: "${CI_VM_REPO:=pmgledhill102/lifeos}"
+: "${CI_VM_RUNNER_NAME:=$CI_VM_NAME}"
+: "${CI_VM_RUNNER_DIR:=actions-runner}"
+: "${CI_VM_USER:=admin}"
+: "${CI_VM_PASSWORD:=admin}"
+: "${CI_VM_KEY:=$HOME/.ssh/ci-vm_ed25519}"
+# PATH baked into the runner's .path file. The LaunchAgent gets no login shell,
+# so Homebrew has to be on this list or `brew install xcodegen` fails mid-job.
+: "${CI_VM_PATH:=/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin}"
+# Preinstalled formulae. The workflows install these themselves, but
+# preinstalling turns a two-minute step into a no-op.
+: "${CI_VM_BREW_PACKAGES:=xcodegen fastlane}"
+
+# --- Helpers ------------------------------------------------------------
+
+log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+skip() { printf '\033[1;33m --\033[0m %s\n' "$*"; }
+die() {
+  printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
+  exit 1
+}
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || die "$1 is not installed${2:+ — $2}"
+}
+
+# Empty when the VM does not exist, otherwise "running" / "stopped" / "suspended".
+vm_state() {
+  tart list --source local 2>/dev/null |
+    awk -v n="$CI_VM_NAME" '$2 == n { print $NF }'
+}
+
+# One field of the runner as GitHub sees it — the VM's own view of itself lags.
+runner_field() {
+  gh api "repos/$CI_VM_REPO/actions/runners" \
+    --jq ".runners[] | select(.name == \"$CI_VM_RUNNER_NAME\") | $1" \
+    2>/dev/null || true
+}
+
+ssh_vm() {
+  ssh -i "$CI_VM_KEY" \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o LogLevel=ERROR \
+    -o BatchMode=yes \
+    -o ConnectTimeout=10 \
+    "$CI_VM_USER@$IP" "$@"
+}
+
+RECREATE=0
+ASSUME_YES=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --recreate) RECREATE=1 ;;
+    --yes | -y) ASSUME_YES=1 ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      die "unknown option: $1"
+      ;;
+  esac
+  shift
+done
+
+# --- Preflight ----------------------------------------------------------
+
+[ "$(uname -s)" = "Darwin" ] || die "Tart requires macOS on Apple silicon"
+
+need tart "brew install cirruslabs/cli/tart"
+need gh "brew install gh"
+need expect
+need ssh-copy-id
+
+gh auth status >/dev/null 2>&1 || die "gh is not authenticated — run: gh auth login"
+gh api "repos/$CI_VM_REPO" --jq .full_name >/dev/null 2>&1 ||
+  die "cannot read repos/$CI_VM_REPO — check the repo name and the gh token scopes"
+
+log "VM '$CI_VM_NAME' from $CI_VM_IMAGE"
+log "Runner '$CI_VM_RUNNER_NAME' on $CI_VM_REPO"
+
+# --- 1. Clone -----------------------------------------------------------
+
+if [ "$RECREATE" -eq 1 ] && [ -n "$(vm_state)" ]; then
+  if [ "$ASSUME_YES" -eq 0 ]; then
+    printf 'Destroy VM "%s" and deregister its runner? [y/N] ' "$CI_VM_NAME"
+    read -r reply
+    case "$reply" in
+      y | Y | yes | YES) ;;
+      *) die "aborted" ;;
+    esac
+  fi
+  log "Recreating — handing off to ci-vm-destroy"
+  ci-vm-destroy --yes
+fi
+
+if [ -n "$(vm_state)" ]; then
+  skip "VM '$CI_VM_NAME' already exists (use --recreate to start over)"
+else
+  log "Cloning $CI_VM_IMAGE — 66GB on a cold cache, so this takes a while"
+  tart clone "$CI_VM_IMAGE" "$CI_VM_NAME"
+  log "Sizing: ${CI_VM_CPU} CPU, ${CI_VM_MEMORY}MB RAM, ${CI_VM_DISK}GB disk"
+  tart set "$CI_VM_NAME" \
+    --cpu "$CI_VM_CPU" \
+    --memory "$CI_VM_MEMORY" \
+    --disk-size "$CI_VM_DISK"
+fi
+
+# --- 2. Boot ------------------------------------------------------------
+
+if [ "$(vm_state)" = "running" ]; then
+  skip "VM is already running"
+else
+  log "Booting headless"
+  # --no-runner: the runner does not exist yet on a first build.
+  ci-vm-up --no-runner
+fi
+
+IP="$(tart ip "$CI_VM_NAME" 2>/dev/null || true)"
+[ -n "$IP" ] || die "VM has no IP address yet — give it longer to boot, then re-run"
+log "VM is at $IP"
+
+# --- 3. SSH key ---------------------------------------------------------
+
+if [ ! -f "$CI_VM_KEY" ]; then
+  log "Generating SSH key $CI_VM_KEY"
+  ssh-keygen -t ed25519 -N '' -C "ci-vm@$(hostname -s)" -f "$CI_VM_KEY" >/dev/null
+fi
+
+if ssh_vm true 2>/dev/null; then
+  skip "SSH key already authorized"
+else
+  log "Pushing the SSH key (password auth, once)"
+  # ssh-copy-id has no non-interactive password mode, so expect drives it. The
+  # password reaches expect through the environment, never the script text.
+  CI_VM_PASSWORD="$CI_VM_PASSWORD" expect -c "
+    set timeout 120
+    spawn ssh-copy-id -i ${CI_VM_KEY}.pub \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      ${CI_VM_USER}@${IP}
+    expect {
+      -re {[Pp]assword:} { send \"\$env(CI_VM_PASSWORD)\r\"; exp_continue }
+      timeout { exit 1 }
+      eof
+    }
+    catch wait result
+    exit [lindex \$result 3]
+  " >/dev/null || die "could not push the SSH key to $CI_VM_USER@$IP"
+  ssh_vm true || die "key was copied but key-based auth still fails"
+fi
+
+# --- 4. Assert the Xcode version ---------------------------------------
+
+ACTUAL_XCODE="$(ssh_vm 'xcodebuild -version 2>/dev/null | head -1' | awk '{print $2}')"
+[ "$ACTUAL_XCODE" = "$CI_VM_XCODE" ] || die "VM has Xcode '$ACTUAL_XCODE', expected '$CI_VM_XCODE'.
+     Pin a matching CI_VM_IMAGE tag or update CI_VM_XCODE. Left alone, this
+     mismatch resurfaces later as an unexplained build failure."
+log "Xcode $ACTUAL_XCODE confirmed"
+
+# --- 5. Grow the APFS container ----------------------------------------
+
+# tart set --disk-size grows the disk image; macOS only sees the extra space
+# once the APFS container is resized. Harmless no-op when already at maximum.
+FREE_GB="$(ssh_vm "df -g / | awk 'NR==2 {print \$4}'")"
+if [ "${FREE_GB:-0}" -lt 100 ]; then
+  log "Growing the APFS container into the ${CI_VM_DISK}GB disk (${FREE_GB}GB free)"
+  # shellcheck disable=SC2016  # $store and $NF are expanded in the guest, not here
+  ssh_vm 'store=$(diskutil list | awk "/Apple_APFS/ {print \$NF; exit}") &&
+          sudo diskutil apfs resizeContainer "$store" 0' >/dev/null ||
+    skip "APFS resize failed — continuing, but watch for disk-full build errors"
+  FREE_GB="$(ssh_vm "df -g / | awk 'NR==2 {print \$4}'")"
+fi
+log "Free space in VM: ${FREE_GB}GB"
+
+# --- 6. Build tooling ---------------------------------------------------
+
+for pkg in $CI_VM_BREW_PACKAGES; do
+  if ssh_vm "PATH=$CI_VM_PATH command -v $pkg" >/dev/null 2>&1; then
+    skip "$pkg already installed"
+  else
+    log "Installing $pkg"
+    ssh_vm "PATH=$CI_VM_PATH HOMEBREW_NO_AUTO_UPDATE=1 brew install $pkg" >/dev/null ||
+      die "brew install $pkg failed"
+  fi
+done
+
+# --- 7. Register the runner --------------------------------------------
+
+if ssh_vm "[ -f '$CI_VM_RUNNER_DIR/.runner' ]"; then
+  skip "runner already configured in ~/$CI_VM_RUNNER_DIR"
+else
+  RUNNER_VERSION="$(gh api repos/actions/runner/releases/latest --jq .tag_name | sed 's/^v//')"
+  [ -n "$RUNNER_VERSION" ] || die "could not determine the latest runner version"
+  TARBALL="actions-runner-osx-arm64-${RUNNER_VERSION}.tar.gz"
+
+  log "Installing runner $RUNNER_VERSION"
+  ssh_vm "set -e
+    mkdir -p '$CI_VM_RUNNER_DIR' && cd '$CI_VM_RUNNER_DIR'
+    curl -fsSL -o '$TARBALL' \
+      'https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/${TARBALL}'
+    tar xzf '$TARBALL' && rm -f '$TARBALL'" ||
+    die "could not download and unpack the runner"
+
+  # Registration tokens expire after an hour, so fetch one as late as possible,
+  # and pass it over stdin so it never lands in the guest's process table.
+  log "Registering with $CI_VM_REPO"
+  REG_TOKEN="$(gh api -X POST \
+    "repos/$CI_VM_REPO/actions/runners/registration-token" --jq .token)"
+  [ -n "$REG_TOKEN" ] || die "could not obtain a runner registration token"
+  printf '%s\n' "$REG_TOKEN" | ssh_vm "set -e
+    cd '$CI_VM_RUNNER_DIR'
+    read -r token
+    ./config.sh --unattended --replace \
+      --url 'https://github.com/$CI_VM_REPO' \
+      --token \"\$token\" \
+      --name '$CI_VM_RUNNER_NAME' \
+      --work _work" ||
+    die "runner configuration failed"
+fi
+
+# config.sh records whatever PATH it saw. Over SSH that can miss Homebrew, and
+# the workflows call `brew install xcodegen` — so pin it explicitly.
+log "Pinning the service PATH"
+ssh_vm "printf '%s' '$CI_VM_PATH' > '$CI_VM_RUNNER_DIR/.path'"
+
+# --- 8. Install the LaunchAgent ----------------------------------------
+
+if ssh_vm "[ -f '$CI_VM_RUNNER_DIR/.service' ]"; then
+  skip "launchd service already installed"
+else
+  log "Installing the launchd service"
+  ssh_vm "cd '$CI_VM_RUNNER_DIR' && ./svc.sh install" >/dev/null ||
+    die "svc.sh install failed"
+fi
+
+# svc.sh start would load the agent into the SSH session's launchd domain, where
+# it dies with the connection. `launchctl asuser` targets the auto-logged-in GUI
+# session instead — the same domain it lands in on every subsequent boot.
+log "Loading the agent into the GUI session"
+ssh_vm "plist=\$(cat '$CI_VM_RUNNER_DIR/.service')
+  sudo launchctl asuser \"\$(id -u)\" launchctl load -w \"\$plist\" 2>/dev/null || true"
+
+# --- 9. Wait for the runner to report online ---------------------------
+
+log "Waiting for the runner to report online"
+status=""
+i=0
+while [ "$i" -lt 60 ]; do
+  status="$(runner_field .status)"
+  [ "$status" = "online" ] && break
+  i=$((i + 1))
+  sleep 5
+done
+[ "$status" = "online" ] || die "runner did not come online within five minutes.
+     Inspect the guest log:
+       ssh -i $CI_VM_KEY $CI_VM_USER@$IP 'tail -50 ~/Library/Logs/actions.runner.*/stderr.log'"
+
+log "Runner online with labels: $(runner_field '[.labels[].name] | join(",")')"
+log "Done. ci-vm-up and ci-vm-down take it from here."
