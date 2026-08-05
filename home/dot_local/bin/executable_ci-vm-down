@@ -30,7 +30,9 @@ EOF
   . "${XDG_CONFIG_HOME:-$HOME/.config}/ci-vm.conf"
 
 : "${CI_VM_NAME:=ci-runner}"
-: "${CI_VM_REPO:=pmgledhill102/lifeos}"
+# No default on purpose: this repo is public, so which repo the runner
+# attaches to is machine configuration. Set it in ~/.config/ci-vm.conf.
+: "${CI_VM_REPO:=}"
 : "${CI_VM_RUNNER_NAME:=$CI_VM_NAME}"
 
 # --- Helpers ------------------------------------------------------------
@@ -39,6 +41,14 @@ log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 die() {
   printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
   exit 1
+}
+
+# CI_VM_REPO has no built-in default (see above), so fail with an instruction
+# rather than letting an empty repo reach the API as a confusing 404.
+require_repo() {
+  [ -n "$CI_VM_REPO" ] || die "CI_VM_REPO is not set.
+     Add it to ${XDG_CONFIG_HOME:-$HOME/.config}/ci-vm.conf:
+       CI_VM_REPO=owner/repo"
 }
 
 vm_state() {
@@ -91,6 +101,7 @@ if [ "$FORCE" -eq 1 ]; then
 elif ! command -v gh >/dev/null 2>&1; then
   die "gh is not installed, so the busy check cannot run — pass --force to stop anyway"
 else
+  require_repo
   busy="$(runner_field .busy)"
   if [ "$busy" = "true" ]; then
     die "runner '$CI_VM_RUNNER_NAME' is mid-job.

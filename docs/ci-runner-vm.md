@@ -1,8 +1,9 @@
 # Self-hosted CI runner in a Tart VM
 
-The GitHub Actions runner for [`lifeos`](https://github.com/pmgledhill102/lifeos)
-runs inside a [Tart](https://tart.run) macOS VM rather than on the host user
-account. Four scripts build, start, stop and destroy it:
+A self-hosted GitHub Actions runner for macOS builds, running inside a
+[Tart](https://tart.run) VM rather than on the host user account. Four scripts
+build, start, stop and destroy it. Which repo it registers against is machine
+configuration, not something this repo records — see [Configuration](#configuration).
 
 | Script | Does |
 | --- | --- |
@@ -16,11 +17,10 @@ They live in `home/dot_local/bin/` and land on `PATH` at `~/.local/bin/` after a
 
 ## Why a VM
 
-The runner previously executed as `paul`, directly on the laptop, out of
-`~/dev/actions-runner-arm64`. Every workflow therefore ran as the daily-use user
-with that user's keychain and login session — LifeOS #968, #969 and #970 are all
-downstream of that single fact. Moving the runner into a VM fixes the class of
-problem rather than each instance.
+The runner previously executed as `paul`, directly on the laptop. Every workflow
+therefore ran as the daily-use user, with that user's keychain and login session
+in reach. Moving the runner into a VM fixes that class of problem once, rather
+than case by case.
 
 ## Why one persistent VM, not ephemeral per-job VMs
 
@@ -56,10 +56,10 @@ ci-vm-down      # when done
 
 `ci-vm-up` is the one to remember. With the VM down, jobs on
 `[self-hosted, macOS]` **queue rather than fail**, and GitHub gives up on them
-after about 24 hours. `ios-app-ci` and `macos-app-ci` are PR gates on those same
-labels, so a PR cannot go green with the VM off — "start the VM when I need a
-runner" means starting it to *open* a PR, not only to ship. Adding
-`timeout-minutes` to those jobs is worth doing alongside (LifeOS #942).
+after about 24 hours. If any such job is a required PR check, a PR cannot go
+green with the VM off — "start the VM when I need a runner" means starting it to
+*open* a PR, not only to ship. Giving those jobs a `timeout-minutes` is worth
+doing alongside, so a forgotten VM fails fast instead of hanging for a day.
 
 Other useful states:
 
@@ -67,17 +67,23 @@ Other useful states:
 tart list                                  # is it running?
 tart ip ci-runner                          # address for ad-hoc SSH
 ssh -i ~/.ssh/ci-vm_ed25519 admin@$(tart ip ci-runner)
-gh api repos/pmgledhill102/lifeos/actions/runners --jq '.runners[].name'
+gh api "repos/$CI_VM_REPO/actions/runners" --jq '.runners[].name'
 ```
 
 ## Configuration
 
 Every setting is a `CI_VM_*` variable with a default at the top of each script.
 Override per-machine in `~/.config/ci-vm.conf`, which all four scripts source if
-it exists, or via the environment for a one-off:
+it exists, or via the environment for a one-off.
+
+`CI_VM_REPO` has no default and must be set — this repo is public, so which
+repo the runner attaches to is deliberately machine configuration rather than
+something recorded here. `~/.config/ci-vm.conf` is not chezmoi-managed, so it
+stays local:
 
 ```sh
 # ~/.config/ci-vm.conf
+CI_VM_REPO=owner/repo
 CI_VM_CPU=8
 CI_VM_MEMORY=16384
 ```
@@ -90,7 +96,7 @@ CI_VM_MEMORY=16384
 | `CI_VM_CPU` | `6` | Of 10 on an M5 Air |
 | `CI_VM_MEMORY` | `12288` | MB |
 | `CI_VM_DISK` | `250` | GB, sparse |
-| `CI_VM_REPO` | `pmgledhill102/lifeos` | Repo the runner registers against |
+| `CI_VM_REPO` | *(none — required)* | Repo the runner registers against |
 | `CI_VM_RUNNER_NAME` | `$CI_VM_NAME` | Name shown in GitHub's runner list |
 | `CI_VM_USER` / `CI_VM_PASSWORD` | `admin` / `admin` | Cirrus image defaults |
 | `CI_VM_KEY` | `~/.ssh/ci-vm_ed25519` | Generated on first build |
@@ -152,16 +158,16 @@ provisioning takes closer to 75.
 
 ## Labels
 
-GitHub adds `self-hosted`, `macOS` and `ARM64` automatically. That's exactly
-what `runs-on: [self-hosted, macOS]` already asks for, so the lifeos workflows
-needed no changes.
+GitHub adds `self-hosted`, `macOS` and `ARM64` automatically, which is what a
+`runs-on: [self-hosted, macOS]` job already asks for — so workflows written
+against the old host runner need no changes.
 
 ## Signing and secrets
 
-Nothing sensitive is baked into the VM. `ios-testflight` and `mac-testflight`
-import the distribution certificate and profiles from repo secrets into a
-throwaway keychain at job time (LifeOS #973), so the VM needs no preinstalled
-signing material and destroying it loses nothing that isn't recoverable.
+Nothing sensitive is baked into the VM, and nothing should be. Jobs that need
+signing material are expected to bring it themselves at run time and dispose of
+it afterwards, so the VM holds no credentials, needs no manual keychain setup,
+and can be destroyed and rebuilt without losing anything irrecoverable.
 
 ## Troubleshooting
 

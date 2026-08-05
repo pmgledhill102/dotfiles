@@ -151,10 +151,11 @@ Linux uses the host kernel directly — no `podman machine` step needed.
 
 ### Self-hosted CI runner VM (macOS only)
 
-The GitHub Actions runner for `lifeos` lives in a [Tart](https://tart.run) VM
-rather than on your own user account, so CI never runs as you with your
-keychain and session. `tart` comes from the Brewfile; the VM itself is a
-one-time build:
+Self-hosted GitHub Actions runners for macOS builds live in a
+[Tart](https://tart.run) VM rather than on your own user account, so CI never
+runs as you with your keychain and session. `tart` comes from the Brewfile. Set
+`CI_VM_REPO` in `~/.config/ci-vm.conf` (untracked — this repo is public), then
+build the VM once:
 
 ```bash
 ci-vm-build     # ~66 GB image pull, then registers the runner. Idempotent.
