@@ -4,11 +4,10 @@ This document captures the reasoning behind the `/end-session` slash command's s
 
 - Command spec: [`home/dot_claude/commands/end-session.md`](../home/dot_claude/commands/end-session.md)
 - Scripts: [`home/dot_claude/bin/`](../home/dot_claude/bin/)
-- Beads issue: `dotfiles-7rw` (Parallelize /end-session gather via dotfiles scripts)
 
 ## What `/end-session` does
 
-Single-invocation tidy-up to leave a repo at a verifiable "clean walk-away" point: fetch + prune, rebase `main`, prune dead branches (merged and squash-merged), surface outstanding PRs / stashes / in-progress beads issues / worktrees, optionally push beads to Dolt, then offer the retrospective.
+Single-invocation tidy-up to leave a repo at a verifiable "clean walk-away" point: fetch + prune, rebase `main`, prune dead branches (merged and squash-merged), surface outstanding PRs / stashes / assigned issues / stale Claude files / worktrees, then offer the retrospective.
 
 Every step is classified by how much human judgment it needs:
 
@@ -72,8 +71,8 @@ Extract two scripts, land one allow rule, rewrite Phase 1 to consume sectioned o
     │                        ├── merged_brs
     │                        ├── main_ci       (gh run list)
     │                        ├── open_prs      (gh pr list)
-    │                        ├── bd_progress   (if .beads/)
-    │                        └── bd_preflight  (if .beads/)
+    │                        ├── gh_assigned   (gh issue list)
+    │                        └── stale_claude_files (~/.claude drift scan)
     │
     ├── Steps 2, 3, 6A, 8–12  → read sections from gather output (no tool call)
     ├── Step 4          → prompt on dirty/unpushed (reads local_state)
@@ -81,8 +80,7 @@ Extract two scripts, land one allow rule, rewrite Phase 1 to consume sectioned o
     ├── Step 6 Batch B  → ~/.claude/bin/end-session-squash-merged
     ├── Step 7          → git log origin/main..HEAD (conditional push)
     ├── Step 13         → background process housekeeping
-    ├── Step 14         → bd dolt push
-    └── Step 15         → agent-authored summary
+    └── Step 14         → agent-authored summary
 ```
 
 ## Output protocol — gather script
@@ -92,7 +90,7 @@ Extract two scripts, land one allow rule, rewrite Phase 1 to consume sectioned o
 <section stdout+stderr>
 ```
 
-Sections, in emission order: `fetch`, `local_state`, `stashes`, `worktrees`, `merged_brs`, `main_ci`, `open_prs`, `bd_progress`, `bd_preflight`. The two `bd_*` sections are absent entirely when `.beads/metadata.json` is missing.
+Sections, in emission order: `fetch`, `local_state`, `stashes`, `worktrees`, `merged_brs`, `main_ci`, `open_prs`, `gh_assigned`, `stale_claude_files`.
 
 Progress pings go to stderr (`[gather] …`) so a human watching sees something move without polluting the parseable stream on stdout.
 

@@ -23,8 +23,9 @@ The current state of the repo blends two approaches:
   `chezmoi init --apply`.
 - The `personal` Brewfile already installs `bitwarden-cli` and the
   Bitwarden cask. The `claudeup` helper reads the Google Developer
-  Knowledge API key from Bitwarden at MCP setup time. Beads
-  `dotfiles-7r3` was closed with "Superseded by Bitwarden approach".
+  Knowledge API key from Bitwarden at MCP setup time. The earlier
+  age-based plan for this key was dropped as superseded by the Bitwarden
+  approach.
 
 So in practice, Bitwarden is doing real work for the Claude MCP setup,
 while age remains the documented path for repo-shipped secrets — and the

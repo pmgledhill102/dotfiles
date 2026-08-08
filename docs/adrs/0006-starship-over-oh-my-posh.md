@@ -26,8 +26,7 @@ Adopt [Starship](https://starship.rs/) as the prompt for every shell.
   to a single character on Enter — keeps scrollback clean (see
   `docs/TRANSIENT-PROMPT.md`).
 - `command_timeout = 2000` raised from the 500 ms default to accommodate
-  slower language version checks on busy work machines (beads
-  `dotfiles-pvt`).
+  slower language version checks on busy work machines.
 - Installed via brew (macOS), Starship's installer (Linux), or winget
   (Windows) — present in all tiers that have an interactive shell.
 

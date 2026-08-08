@@ -1,8 +1,18 @@
 # ADR-0011: Beads with embedded Dolt for task tracking
 
-- **Status**: Accepted
-- **Date**: 2026-04-26
+- **Status**: Superseded
+- **Date**: 2026-04-26 (superseded 2026-07-18)
+- **Superseded by**: GitHub Issues. Beads was retired as the task tracker;
+  open issues were migrated to GitHub Issues (label `beads-import`) and the
+  `.beads/` directory was removed from the repo. No replacement ADR has been
+  written for the GitHub Issues decision.
 - **Tags**: workflow, tooling
+
+> **Retired 2026-07-18.** This ADR records why beads was adopted; it no
+> longer describes how work is tracked here. The "two issue trackers"
+> trade-off below is what eventually settled it — the split was more cost
+> than the local-first benefit was worth. `beads` remains in the personal
+> Brewfile as an installed tool, but nothing in this repo depends on it.
 
 ## Context
 

@@ -41,7 +41,7 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0008](0008-podman-replaces-docker.md) | Podman replaces Docker | Accepted (with caveats) |
 | [0009](0009-helper-shell-functions.md) | Helper shell functions for daily dotfiles workflow | Accepted |
 | [0010](0010-secrets-management.md) | Secrets management strategy | Proposed |
-| [0011](0011-beads-task-tracking.md) | Beads with embedded Dolt for task tracking | Accepted |
+| [0011](0011-beads-task-tracking.md) | Beads with embedded Dolt for task tracking | Superseded |
 | [0012](0012-claude-code-config-via-dotfiles.md) | Claude Code configuration shipped via the dotfiles repo | Accepted |
 | [0013](0013-three-layer-enforcement.md) | Three-layer enforcement — CI, pre-commit, Claude Code hooks | Accepted |
 | [0014](0014-public-repo-no-private-references.md) | This repo is public by design; no private-repo references | Accepted |

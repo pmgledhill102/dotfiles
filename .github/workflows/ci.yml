@@ -293,7 +293,7 @@ jobs:
         set -x
         # Some ubuntu-latest runner images ship /usr/share/zsh as world-writable
         # (drwxrwxrwx+), which makes oh-my-zsh's compinit refuse to load
-        # completions. Tighten perms before measuring. See beads dotfiles-oz3.
+        # completions. Tighten perms before measuring.
         if [ "$RUNNER_OS" = "Linux" ] && [ -d /usr/share/zsh ]; then
           sudo chmod -R go-w /usr/share/zsh || true
         fi
