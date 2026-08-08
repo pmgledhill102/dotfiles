@@ -69,8 +69,7 @@ reloaded individually. `dotfuncs` is the entry point for discovery.
 
 ### Negative / trade-offs
 
-- Zsh-only — Windows PowerShell does not have equivalents yet
-  (beads `dotfiles-lpn` tracks the gap).
+- Zsh-only — Windows PowerShell does not have equivalents yet.
 - Discoverability still depends on running `dotfuncs`; no man pages.
 - Any addition is one more thing to keep working across `dotup` chains.
 
