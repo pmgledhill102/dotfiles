@@ -2,10 +2,10 @@
 
 - **Status**: Superseded
 - **Date**: 2026-04-26 (superseded 2026-07-18)
-- **Superseded by**: GitHub Issues. Beads was retired as the task tracker;
-  open issues were migrated to GitHub Issues (label `beads-import`) and the
-  `.beads/` directory was removed from the repo. No replacement ADR has been
-  written for the GitHub Issues decision.
+- **Superseded by**: [ADR-0015](0015-github-issues-task-tracking.md) —
+  GitHub Issues as the single task tracker. Beads was retired; 120 issues
+  were migrated to GitHub (label `beads-import`) and `.beads/` was removed
+  from the repo in [#339](https://github.com/pmgledhill102/dotfiles/pull/339).
 - **Tags**: workflow, tooling
 
 > **Retired 2026-07-18.** This ADR records why beads was adopted; it no
