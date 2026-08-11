@@ -1,95 +1,91 @@
 # ADR-0015: GitHub Issues as the single task tracker
 
 - **Status**: Accepted
-- **Date**: 2026-08-05 (records a decision taken and executed 2026-07-18)
+- **Date**: 2026-08-05 (records a decision taken 2026-07-14 and executed
+  here 2026-07-18)
 - **Supersedes**: [ADR-0011](0011-beads-task-tracking.md) — Beads with
   embedded Dolt for task tracking
 - **Tags**: workflow, tooling
 
 ## Context
 
-[ADR-0011](0011-beads-task-tracking.md) adopted [beads](https://github.com/steveyegge/beads)
-(`bd`) as the primary tracker, on the reasoning that a local-first CLI
-tracker survives Claude Code session compaction, costs no round-trips to a
-web UI, and keeps issues next to the code. GitHub Issues was explicitly
-reserved for "things that need external visibility".
+[ADR-0011](0011-beads-task-tracking.md) adopted
+[beads](https://github.com/steveyegge/beads) (`bd`) as the primary tracker
+here, keeping GitHub Issues for "things that need external visibility".
 
-That reasoning had a cost the same ADR named in its own trade-offs: **two
-issue trackers**, and no rule that reliably told you which to use. In
-practice the split did not hold. Work that started as a local `bd` task
-routinely acquired a PR, and the PR is on GitHub — so the discussion, the
-review, and the closing reference all ended up on GitHub anyway, with the
-`bd` issue as a second record that had to be closed by hand.
+The decision to replace it was estate-wide rather than local to this repo,
+and the full rationale — including the research comparing GitHub Issues,
+Backlog.md, Linear, beads_rust and git-bug — lives upstream in
+[agentic-coding-config ADR-0013](https://github.com/pmgledhill102/agentic-coding-config/blob/main/adrs/0013-github-issues-for-work-tracking.md).
+This ADR records the consequence for this repo and closes out ADR-0011; it
+does not restate that reasoning, so that the two records cannot drift.
 
-Three things shifted the balance further:
+The short version of why: beads' weight was disproportionate for a solo
+project — a large binary, an embedded Dolt database per repo, schema
+migrations needing a designated migrator machine, git hooks that conflict
+with the pre-commit framework, and sync failures that block work. Beads'
+sweet spot is fleets of parallel agents; this estate is one human and one
+agent. Meanwhile GitHub had shipped the pieces it previously lacked —
+sub-issues, native blocked-by dependencies, and `gh` CLI support for both.
 
-- **Agents read and write GitHub Issues directly.** The premise that
-  reaching GitHub costs tokens and context switches assumed a web UI. With
-  the GitHub MCP server an agent queries, creates, and closes issues in a
-  tool call, which is the same shape as running `bd`. The local-first
-  advantage narrowed to roughly nothing.
-- **This repo is public by design** ([ADR-0014](0014-public-repo-no-private-references.md)).
-  Anything an outside contributor files arrives as a GitHub Issue. A
-  private local tracker cannot be the canonical list when the canonical
-  list has to be readable by people who are not on this machine.
-- **The decision was estate-wide, not per-repo.** Beads was being retired
-  across every repo (tracked in
-  [agentic-coding-config#95](https://github.com/pmgledhill102/agentic-coding-config/issues/95)).
-  Keeping one repo on a different tracker would have preserved the exact
-  split the migration existed to remove.
+ADR-0011's own trade-offs section had already named the local cost: **two
+issue trackers**, with no rule that reliably said which to use. In practice
+the split did not hold, because work that started as a `bd` task acquired a
+PR, and the PR is on GitHub regardless.
 
 ## Decision
 
 **GitHub Issues is the single task tracker for this repo.** There is no
 second tracker.
 
-- All work is tracked as a GitHub Issue, regardless of whether it
-  originated locally or from outside.
-- Issues carry a priority label (`P0`–`P4`) and a `type: *` label; the
-  taxonomy was bootstrapped during the migration.
-- Cross-repo work links by URL rather than being duplicated — an issue
-  lives in the repo whose code it changes.
-- Durable operational knowledge goes in the docs, not in a tracker's
-  memory primitive. `bd remember` had no GitHub equivalent, so the four
-  chezmoi-operational memories worth keeping were ported into
-  `docs/TROUBLESHOOTING.md`.
+Conventions are the estate-wide ones from
+[docs/github-issues-workflow.md](https://github.com/pmgledhill102/agentic-coding-config/blob/main/docs/github-issues-workflow.md):
+sub-issues for epic → feature → task, `P0`–`P4` priority labels,
+`type: *` labels, and native blocked-by relationships. Agents use
+`gh issue list` and direct reads rather than the eventually consistent
+search API for anything time-sensitive.
 
-Executed in [#339](https://github.com/pmgledhill102/dotfiles/pull/339)
+Executed here in [#339](https://github.com/pmgledhill102/dotfiles/pull/339)
 (2026-07-18): 120 beads issues migrated to `#187`–`#306`, all labelled
-`beads-import`, with blocked-by relationships preserved; `.beads/` and its
-hooks removed; `AGENTS.md` rewritten onto GitHub Issues conventions.
+`beads-import`, blocked-by relationships preserved; `.beads/` and its hooks
+removed; `AGENTS.md` rewritten onto GitHub Issues conventions.
+
+`bd remember` has no GitHub equivalent, so durable operational knowledge
+moved into the docs — four chezmoi memories were ported into
+[`docs/TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) as part of that PR, and
+that file is now where such knowledge belongs.
 
 ## Consequences
 
 ### Positive
 
-- One tracker, so no routing decision and no possibility of two records
-  for one piece of work.
-- `Closes #n` in a PR body closes the issue natively on merge — no commit
-  scanning, and it survives squash-merge.
-- Issues, PRs, reviews, and CI all sit in one place with one permission
-  model and one search.
-- Nothing to install, initialise, or migrate a schema for; no tracker
-  hooks in the git hook path.
-- Public by default, matching what the repo is.
+- One tracker, so no routing decision and no second record to close by hand.
+- `Closes #n` in a PR body closes the issue natively on merge, and survives
+  squash-merge — beads needed commit scanning for this.
+- Issues, PRs, reviews and CI share one place, one permission model, one
+  search.
+- No tracker binary, database, schema migration or git hook in the path.
+  The `bd-push-safe` shim that existed solely to work around beads' hooks
+  is gone.
 
 ### Negative / trade-offs
 
-- Network-dependent. No offline triage, and an outage blocks both reading
-  and updating.
-- No `bd remember` equivalent. Durable knowledge needs a deliberate home
-  in the docs and will decay if nobody writes it down.
-- No embedded audit trail beyond GitHub's own event log — the Dolt
-  history is gone.
-- Issue bodies here are public, which is a constraint to hold in mind
-  ([ADR-0014](0014-public-repo-no-private-references.md)).
+- Network-dependent; no offline triage. Accepted — offline operation was
+  never a requirement.
+- Ticket data is no longer cloned with the repo. The issue timeline is a
+  stronger history than beads kept, but it lives in GitHub.
+- No memory primitive. Durable knowledge needs a deliberate home in the
+  docs and will decay if nobody writes it down.
+- Issue bodies here are public, which is a constraint to hold in mind when
+  writing them ([ADR-0014](0014-public-repo-no-private-references.md)).
 
 ## Alternatives considered
 
-- **Stay on beads** — keeps local-first speed, but leaves the two-tracker
-  split that motivated the change, and diverges from every other repo.
-- **Beads locally, GitHub Issues as a mirror** — a sync layer to build and
-  maintain, with conflicts to resolve; the duplication is the problem, so
-  automating it does not remove it.
-- **Another external tracker (Linear / Jira)** — rejected in ADR-0011 and
-  still rejected: an extra service, away from the code and the PRs.
+Evaluated upstream rather than here — see
+[agentic-coding-config ADR-0013](https://github.com/pmgledhill102/agentic-coding-config/blob/main/adrs/0013-github-issues-for-work-tracking.md)
+for the comparison against Backlog.md, Linear, beads_rust and git-bug, and
+for why staying on beads was rejected.
+
+Note that `beads` remains installed via the personal Brewfile. It is no
+longer used for tracking in this estate, but it is deliberately kept
+available.
