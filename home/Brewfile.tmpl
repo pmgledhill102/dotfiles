@@ -2,12 +2,13 @@
 # To add/remove packages, edit this file directly
 
 {{- if eq .machine_type "personal" }}
-tap "aws/tap"
+tap "atlassian/acli"
 tap "cirruslabs/cli"
 tap "terraform-linters/tap"
 
 brew "actionlint"
 brew "aria2"
+brew "atlassian/acli/acli"
 brew "aws-sam-cli"
 brew "awscli"
 brew "azure-cli"
@@ -94,9 +95,11 @@ cask "visual-studio-code"
 cask "voiceink"
 cask "whatsapp"
 {{- else if eq .machine_type "work" }}
+tap "atlassian/acli"
 tap "terraform-linters/tap"
 
 brew "actionlint"
+brew "atlassian/acli/acli"
 brew "bat"
 brew "checkov"
 brew "cspell"
