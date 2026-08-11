@@ -12,8 +12,8 @@ updates to the chezmoi-init lifecycle: a fresh `chezmoi apply` was needed
 before `dotup` would pick up new packages, and the canonical source split
 across two files.
 
-A small bug (`dotfiles-5dn` — fzf appearing in apt's list when Homebrew
-was its real source) forced the question: where do macOS packages live?
+A small bug — fzf appearing in apt's list when Homebrew was its real
+source — forced the question: where do macOS packages live?
 
 ## Decision
 

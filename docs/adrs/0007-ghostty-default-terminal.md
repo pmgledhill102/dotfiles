@@ -24,9 +24,9 @@ Windows.
   `personal` and `work` tiers (skipped on `minimal`).
 - Configuration lives in `home/dot_config/ghostty/`. The config file is
   intentionally near-default — Ghostty's defaults are good enough that
-  custom theming and font tweaking are deferred until they hurt
-  (beads `dotfiles-eg1`: "stripped to clean placeholder — Ghostty
-  defaults are fine").
+  custom theming and font tweaking are deferred until they hurt — the
+  config was deliberately stripped to a clean placeholder on the grounds
+  that Ghostty's defaults are fine.
 - Custom terminfo committed at
   `home/dot_config/ghostty/xterm-ghostty.terminfo` for hosts that don't
   yet ship Ghostty's terminfo entry; a CI workflow opens a PR when
