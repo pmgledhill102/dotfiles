@@ -46,7 +46,7 @@ established the split above, and `dotclaude` → `claudeup` completes it.
 | Function | Purpose |
 | -------- | ------- |
 | `dotup` | Pull dotfiles, refresh Oh My Zsh + plugins, update Starship (Linux), reload aliases/functions in the current shell. |
-| `brewup` | `brew update` + `brew bundle install` against `~/Brewfile` + `brew upgrade` + `rustup update` (rust toolchain isn't in the Brewfile but is a package-manager update). |
+| `brewup` | `brew update` + `brew bundle install --no-upgrade` against `~/Brewfile` + `brew upgrade` + `rustup update` (rust toolchain isn't in the Brewfile but is a package-manager update). Casks that declare `auto_updates` are left to their own updaters: upgrading them tears down the Squirrel launchd service, which needs sudo and makes an unattended run block on a password prompt (dotfiles#393). `BREWUP_UPGRADE_SELF_UPDATING=1` overrides. |
 | `claudeup` | Interactive Claude Code MCP server setup (GitHub MCP from `gh` token, Google Developer Knowledge from Bitwarden). (Was `dotclaude`; renamed outright with no deprecation alias — it runs once per machine build, so there is no muscle memory to protect.) |
 | `xcodeup` | macOS only. Install/update the latest Xcode via `xcodes`, select the toolchain, and download the iOS platform (simulator runtime). Interactive — Apple ID sign-in cannot be automated. |
 | `dotstatus` | Print machine type, chezmoi source path, last applied time, and any pending diff. |
