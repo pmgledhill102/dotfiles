@@ -32,6 +32,11 @@ run_onchange_after_install-npm-globals.sh
 install-npm-globals.sh
 run_once_remove-claude-code-cask.sh
 remove-claude-code-cask.sh
+# Windows has no /bin/sh, so chezmoi cannot exec this. A Windows work machine
+# that applied the pre-gate external therefore keeps the config — same gap as
+# the retired-file pruner, tracked in #375.
+run_once_remove-claude-config-nonpersonal.sh
+remove-claude-config-nonpersonal.sh
 run_onchange_install-ubuntu-packages.sh
 install-ubuntu-packages.sh
 run_once_configure-wsl.sh
