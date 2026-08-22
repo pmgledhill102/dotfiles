@@ -198,6 +198,11 @@ are installed:
 | `work` | Core CLI + key runtimes | Font, Ghostty, Rectangle | Work essentials |
 | `minimal` | Core CLI only | None | Headless / CI server |
 
+The Claude Code config mounted at `~/.claude/` is **`personal` only** — it
+carries a personal GitHub workflow that doesn't belong on a work machine, and
+the Claude binaries are personal-tier anyway. A machine switched away from
+`personal` has that config removed on the next apply.
+
 To change later, edit `machine_type` in `~/.config/chezmoi/chezmoi.toml` and
 run `chezmoi apply`.
 
