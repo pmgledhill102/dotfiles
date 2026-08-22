@@ -22,12 +22,42 @@ Key paths relative to repo root:
 - `.chezmoi.toml` — config data (user info, package lists per platform)
 - `home/` — all managed dotfiles and scripts
 - `home/.chezmoiexternal.toml.tmpl` — declares the agentic-coding-config repo as a git-repo external mounted at `.claude/`
-- `home/.chezmoiignore` — target-side rules; includes `.claude/<file>` exclusions for repo-meta files inside the external
+- `home/.chezmoiignore` — target-side exclusions, gated by OS and by machine type. `.claude/` filtering is *not* done here — it moved to the external's `include` pattern (see the comment at the top of the file)
 - `home/Brewfile.tmpl` — installs `claude` and `claude-code@latest` casks (the binaries; their config lives in agentic-coding-config)
 - `home/run_onchange_setup-claude.sh` — configures MCP servers per machine; reads keys from `~/.secrets`. Stays here because it's machine-bootstrap, not content
 - `scripts/` — validation scripts for CI
 - `specs/REQUIREMENTS.md` — consolidated project requirements and key decisions
 - `docs/` — documentation (testing, troubleshooting)
+
+### Adding a shell script under `home/`
+
+A new `run_*.sh` or `run_*.sh.tmpl` must **also** be listed in
+`home/.chezmoiignore` inside the `{{- if eq .chezmoi.os "windows" }}` block,
+under **both** its source spelling and its target spelling:
+
+```text
+run_once_my-script.sh
+my-script.sh
+```
+
+Windows has no `/bin/sh`, so a script that is not ignored there makes chezmoi
+try to execute it, and the whole apply exits 1 with:
+
+```text
+fork/exec ...: %1 is not a valid Win32 application
+```
+
+Every existing `.sh` in `home/` already carries both spellings. Nothing
+prompts for this — it is discoverable only by noticing the pattern — so it is
+usually CI that catches a miss.
+
+### Testing template changes
+
+Two traps make a local test appear to pass while proving nothing. Both are
+written up in [docs/TESTING.md](docs/TESTING.md#testing-chezmoi-template-changes):
+`chezmoi apply --dry-run` exercises the *installed* source copy rather than
+your working tree, and `--promptString machine_type=work` does not populate
+`.machine_type`.
 
 ## CI/CD and Linting
 

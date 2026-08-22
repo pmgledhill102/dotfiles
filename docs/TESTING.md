@@ -197,6 +197,50 @@ The most reliable way to test is on a fresh system:
    - If modifying Linux-specific code, test on Ubuntu/Debian
    - If modifying Windows-specific code, test on Windows
 
+### Testing chezmoi template changes
+
+Two traps here produce a test that looks like it passed while proving nothing
+about your change. Both have cost real debugging time.
+
+#### Dry-run the working tree, not the installed copy
+
+`chezmoi source-path` is `~/.local/share/chezmoi/home` — a **separate clone**
+from wherever you are editing. A bare dry-run, even from inside your working
+tree, silently exercises that installed copy:
+
+```sh
+# WRONG — tests the installed source, not your edits
+chezmoi apply --dry-run --verbose
+```
+
+Point `--source` at the working tree instead:
+
+```sh
+chezmoi --source ~/dev/dotfiles/home apply --dry-run --verbose
+```
+
+#### Render per-tier templates with `[data]`, not `--promptString`
+
+Prompt values and `[data]` values are different things. `--promptString` does
+**not** populate `.machine_type`, so a template gated on it renders
+identically for every tier — which reads as "the gate doesn't work" when in
+fact the gate was never exercised:
+
+```sh
+# WRONG — .machine_type is still unset
+chezmoi --promptString machine_type=work execute-template < home/.chezmoiexternal.toml.tmpl
+```
+
+Use a throwaway config file carrying a real `[data]` block:
+
+```sh
+printf '[data]\n    machine_type = "work"\n' > /tmp/cfg-work.toml
+chezmoi --config /tmp/cfg-work.toml execute-template < home/.chezmoiexternal.toml.tmpl
+```
+
+Repeat for `personal`, `work` and `minimal`, and check the key-absent case
+too — templates here fall back to `personal` when `machine_type` is missing.
+
 ### PR Testing
 
 When you open a PR:
