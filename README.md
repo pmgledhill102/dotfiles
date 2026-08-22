@@ -60,7 +60,10 @@ You don't need to remember chezmoi or brew incantations:
   nano syntax, update Starship (Linux), then reload aliases/functions in
   the current shell
 - **`brewup`** — `brew update` + install everything in your Brewfile +
-  `brew upgrade` + `rustup update`, in one step
+  `brew upgrade` + `rustup update`, in one step. Casks that update
+  themselves (`auto_updates`, e.g. Discord, VS Code, Chrome) are left
+  alone, so the run never stops on a sudo prompt — set
+  `BREWUP_UPGRADE_SELF_UPDATING=1` to upgrade them anyway
 - **`claudeup`** — interactive Claude Code MCP server setup (GitHub MCP
   wired to your `gh` auth token, Google Developer Knowledge keyed from
   Bitwarden)
