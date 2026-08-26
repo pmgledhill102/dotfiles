@@ -61,6 +61,21 @@ jobs:
         with:
           globs: '**/*.md'
 
+  markdown-links:
+    name: Markdown Link Check
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is not needed — the check reads the working tree, not
+      # history — but the default shallow checkout must still populate every
+      # tracked .md file, which it does.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check relative markdown links resolve
+        # markdownlint above validates link syntax, never link targets. This
+        # catches the other half: a [text](path.md) whose path.md is gone.
+        # Relative links only — no network, so no third-party flakiness.
+        run: ./scripts/check-markdown-links.sh
+
   actionlint:
     name: Action Lint
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

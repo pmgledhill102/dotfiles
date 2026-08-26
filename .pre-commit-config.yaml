@@ -16,3 +16,16 @@ repos:
         language: script
         pass_filenames: false
         always_run: true
+
+  # Layer 2 of ADR-0013 for markdown link targets: markdownlint above checks
+  # link syntax, never whether the target exists. Scans every tracked *.md
+  # rather than the staged ones, so deleting a file also catches links to it
+  # in documents this commit does not touch. See #402.
+  - repo: local
+    hooks:
+      - id: check-markdown-links
+        name: Markdown relative links resolve
+        entry: scripts/check-markdown-links.sh
+        language: script
+        pass_filenames: false
+        always_run: true
