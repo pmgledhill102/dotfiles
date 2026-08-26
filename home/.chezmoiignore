@@ -17,6 +17,8 @@ run_once_setup-windows-environment.ps1
 setup-windows-environment.ps1
 run_once_install-vscode-extensions.ps1
 install-vscode-extensions.ps1
+run_after_prune-retired-claude-files.ps1
+prune-retired-claude-files.ps1
 AppData/
 {{- end }}
 
@@ -32,9 +34,13 @@ run_onchange_after_install-npm-globals.sh
 install-npm-globals.sh
 run_once_remove-claude-code-cask.sh
 remove-claude-code-cask.sh
-# Windows has no /bin/sh, so chezmoi cannot exec this. A Windows work machine
-# that applied the pre-gate external therefore keeps the config — same gap as
-# the retired-file pruner, tracked in #375.
+# Windows has no /bin/sh, so chezmoi cannot exec this. A native-Windows work
+# machine that applied the pre-gate external would therefore keep the config.
+# Accepted gap, not an oversight: there are no native-Windows work machines in
+# the estate, so there is nothing for it to clean up. The retired-file pruner
+# it used to be grouped with *is* covered on Windows now, by
+# run_after_prune-retired-claude-files.ps1 (#375) — the two gaps had opposite
+# triggers (personal vs work machines) and only one of them was real.
 run_once_remove-claude-config-nonpersonal.sh
 remove-claude-config-nonpersonal.sh
 run_onchange_install-ubuntu-packages.sh
