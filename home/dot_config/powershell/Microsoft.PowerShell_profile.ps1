@@ -73,6 +73,23 @@ function cma { chezmoi apply }
 function cms { chezmoi status }
 function cmd { chezmoi diff }
 
+# Load custom functions from ~/.config/powershell/functions/
+#
+# Mirrors the zsh side, which sources ~/.config/zsh/functions/*.zsh. Keeping
+# each function in its own file (rather than inline below) is what lets dotup
+# reload them by dot-sourcing this profile after an update, and keeps the
+# update commands discoverable as files.
+$functionsDir = Join-Path $HOME ".config/powershell/functions"
+if (Test-Path $functionsDir) {
+    foreach ($fn in Get-ChildItem -Path $functionsDir -Filter '*.ps1' -File) {
+        try {
+            . $fn.FullName
+        } catch {
+            Write-Host "Failed to load $($fn.Name): $_" -ForegroundColor Red
+        }
+    }
+}
+
 # Set environment variables for better Windows development experience
 if ($IsWindows) {
     # Enable UTF-8 encoding
