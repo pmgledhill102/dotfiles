@@ -59,10 +59,7 @@
 {{- if eq $machineType "personal" }}
             packages = [
                 "7zip.7zip",
-                "9N2D0P16C80H",
-                "9NTV2DZ11KD9",
                 "9P6RC76MSMMJ",
-                "9P8DVF1XW02V",
                 "Adobe.Acrobat.Reader.64-bit",
                 "Amazon.AWSCLI",
                 "Amazon.SAM-CLI",
@@ -71,11 +68,13 @@
                 "Audacity.Audacity",
                 "Azul.Zulu.21.JDK",
                 "Bitwarden.Bitwarden",
+                "Canva.Affinity",
                 "CPUID.CPU-Z",
                 "CrystalDewWorld.CrystalDiskInfo",
                 "CrystalDewWorld.CrystalDiskMark",
                 "dandavison.delta",
                 "DEVCOM.JetBrainsMonoNerdFont",
+                "Devolutions.UniGetUI",
                 "FiloSottile.age",
                 "Git.Git",
                 "GitHub.cli",
@@ -88,20 +87,18 @@
                 "ImageMagick.ImageMagick",
                 "JesseDuffield.lazygit",
                 "koalaman.shellcheck",
-                "MartiCliment.UniGetUI",
-                "Microsoft.365",
+                "Microsoft.Azure.FunctionsCoreTools",
                 "Microsoft.AzureCLI",
-                "Microsoft.AzureFunctionsCoreTools",
                 "Microsoft.Bicep",
                 "Microsoft.Coreutils",
                 "Microsoft.DotNet.SDK.9",
+                "Microsoft.Office",
                 "Microsoft.PowerShell",
                 "Microsoft.PowerToys",
                 "Microsoft.VisualStudio.2022.BuildTools",
                 "Microsoft.VisualStudioCode",
                 "Microsoft.WindowsTerminal",
                 "MoonlightGameStreamingProject.Moonlight",
-                "Nvidia.GeForceExperience",
                 "OliverBetz.ExifTool",
                 "OO-Software.ShutUp10",
                 "OpenJS.NodeJS",
@@ -110,7 +107,7 @@
                 "PrivateInternetAccess.PrivateInternetAccess",
                 "Python.Python.3.14",
                 "REALiX.HWiNFO",
-                "RubyInstallerTeam.RubyWithDevKit.3.2",
+                "RubyInstallerTeam.RubyWithDevKit.3.4",
                 "Rustlang.Rustup",
                 "Starship.Starship",
                 "TechPowerUp.GPU-Z",
@@ -128,16 +125,55 @@
                 "Valve.Steam",
             ]
             # Windows Store app IDs:
-            #   9N2D0P16C80H = Affinity Designer 2
-            #   9NTV2DZ11KD9 = Affinity Publisher 2
             #   9P6RC76MSMMJ = Amazon Prime Video
-            #   9P8DVF1XW02V = Affinity Photo 2
             # Manual installs (winget unreliable for Store apps):
             #   Microsoft.SysinternalsSuite (Store ID: 9p7knl5rwt25)
-            # Note: Microsoft.365 installs the full suite via winget.
-            #   Previously used Office Deployment Tool + office-config.xml
-            #   to exclude Groove and Teams. Winget doesn't support that
-            #   granularity — uninstall unwanted apps post-install if needed.
+            #
+            # Retired IDs, verified against the live catalogue 2026-09-08
+            # (dotfiles#269, dotfiles#270). All had been failing every apply
+            # since at least 2026-04; each error was "No package found matching
+            # input criteria", which winget also emits for an ID that once
+            # existed, so the failures read as transient when they were not.
+            #
+            #   MartiCliment.UniGetUI  -> Devolutions.UniGetUI
+            #       Publisher changed. MartiCliment.UniGetUI.Pre-Release still
+            #       resolves, which is why a loose search looks like a hit.
+            #   Microsoft.365          -> Microsoft.Office
+            #       "Microsoft 365 Apps for enterprise". Same caveat as before:
+            #       winget installs the full suite with no component selection,
+            #       so uninstall what you don't want post-install. The Office
+            #       Deployment Tool + office-config.xml route was dropped
+            #       earlier for the same reason.
+            #   Microsoft.AzureFunctionsCoreTools
+            #                          -> Microsoft.Azure.FunctionsCoreTools
+            #       Extra dot. Sorts before Microsoft.AzureCLI ('.' < 'C').
+            #   9N2D0P16C80H, 9NTV2DZ11KD9, 9P8DVF1XW02V
+            #                          -> Canva.Affinity
+            #       Affinity Designer 2 / Publisher 2 / Photo 2 were delisted
+            #       after the Canva acquisition and replaced by one unified
+            #       "Affinity" app. Three IDs collapse to one. The winget-source
+            #       ID is used rather than the msstore ID (9NW9CX6H2JGL) —
+            #       msstore entries report Version "Unknown", so winget cannot
+            #       tell installed from outdated and reinstalls on every apply.
+            #   Nvidia.GeForceExperience -> removed, no replacement
+            #       Discontinued by NVIDIA in favour of the NVIDIA App, which
+            #       is not published to winget under any ID (Nvidia.NvidiaApp
+            #       does not resolve). Nvidia.GeForceNow is cloud gaming, a
+            #       different product, and is not a substitute. Install the
+            #       NVIDIA App by hand if it is wanted.
+            #   RubyInstallerTeam.RubyWithDevKit.3.2 -> ...3.4
+            #       3.2 still resolves but is end-of-life, and its installer
+            #       failed with exit code 4 on the last attempt. 3.4 is the
+            #       current stable line; 4.0 exists but is a major bump and was
+            #       not taken here. NOTE: the exit-code-4 failure has not been
+            #       reproduced against 3.4 — the version bump is a fix for the
+            #       EOL, not a confirmed fix for the installer error.
+            #
+            # Two IDs from those issues needed no change: 9P6RC76MSMMJ resolves
+            # and is installed, and OpenVPNTechnologies.OpenVPNConnect now
+            # resolves at 3.9.0 and is installed. The latter's April failure was
+            # a 403 fetching the v3.8.0 MSI from the vendor CDN — transient, and
+            # the kind of thing dotfiles#273 is about.
 {{- else if eq $machineType "work" }}
             packages = [
                 "astral-sh.uv",
