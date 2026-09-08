@@ -105,6 +105,32 @@ Test-Validation "PowerShell profile uses Starship" {
     }
 }
 
+Test-Validation "PowerShell functions directory deployed" {
+    Test-Path "$HOME\.config\powershell\functions\dotup.ps1"
+}
+
+# Both halves of the wiring, checked separately. Windows is the one surface
+# with no local test between a push and the real machine, so assert that the
+# profile loads the directory and that what it finds there parses — not merely
+# that a file exists.
+Test-Validation "Profile loads the functions directory" {
+    $profilePath = "$HOME\.config\powershell\Microsoft.PowerShell_profile.ps1"
+    if (Test-Path $profilePath) {
+        (Get-Content $profilePath -Raw) -match 'powershell/functions'
+    } else {
+        $false
+    }
+}
+
+Test-Validation "dotup.ps1 parses and defines dotup" {
+    $fn = "$HOME\.config\powershell\functions\dotup.ps1"
+    if (-not (Test-Path $fn)) { return $false }
+    $errs = $null
+    [System.Management.Automation.Language.Parser]::ParseFile($fn, [ref]$null, [ref]$errs) | Out-Null
+    if ($errs -and $errs.Count -gt 0) { return $false }
+    (Get-Content $fn -Raw) -match 'function\s+dotup'
+}
+
 # Validate Starship Prompt
 Write-Host ""
 Write-Host "Validating Starship prompt..."

@@ -54,14 +54,80 @@ $successCount = 0
 $failureCount = 0
 $skippedCount = 0
 
+# Build one snapshot of what is already installed, instead of asking winget
+# once per package (#268). `winget list --id <x> --exact` costs ~0.8s, so on a
+# 60-package list the already-installed case — which is every run after the
+# first — spent the better part of a minute confirming there was nothing to do.
+# A single `winget list` costs ~2s regardless of list size.
+#
+# The output is a fixed-width table, so columns are sliced at the offsets given
+# by the header row rather than split on whitespace: the Name column contains
+# arbitrary spaces and a naive split silently yields garbage.
+function Get-InstalledPackageIds {
+    $raw = winget list --accept-source-agreements 2>$null | Out-String
+    $lines = $raw -split "`r?`n"
+
+    $sep = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^-{5,}$') { $sep = $i; break }
+    }
+    if ($sep -lt 1) { return $null }   # unrecognised output -> caller falls back
+
+    $header = $lines[$sep - 1]
+    $idStart = $header.IndexOf('Id')
+    if ($idStart -lt 0) { return $null }
+
+    # Bound the slice at the next column header after Id.
+    $rest = $header.Substring($idStart + 2)
+    $m = [regex]::Match($rest, '\S')
+    $idEnd = if ($m.Success) { $idStart + 2 + $m.Index } else { $header.Length }
+
+    $ids = @{}
+    for ($i = $sep + 1; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($line.Length -le $idStart) { continue }
+        $slice = $line.Substring($idStart, [Math]::Min($idEnd - $idStart, $line.Length - $idStart)).Trim()
+        if (-not $slice) { continue }
+        # A narrow console truncates the Id column with an ellipsis. Such a row
+        # cannot be matched reliably, so drop it and let the per-package check
+        # decide — a false "not installed" costs one probe, a false "installed"
+        # would skip a package that was never installed.
+        if ($slice.Contains([char]0x2026)) { continue }
+        $ids[$slice] = $true
+    }
+    return $ids
+}
+
 {{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
 Write-Host "DOTFILES_SKIP_INSTALL=1 — skipping winget install loop (fast CI mode)"
 Write-Host "Registry tweaks and verification below will still run."
 {{- else }}
+Write-Host "Snapshotting installed packages..."
+$installedIds = Get-InstalledPackageIds
+if ($null -eq $installedIds) {
+    Write-Host "  Could not parse 'winget list' output — falling back to per-package checks." -ForegroundColor Yellow
+    $installedIds = @{}
+} else {
+    Write-Host "  $($installedIds.Count) packages already installed"
+}
+Write-Host ""
+
 foreach ($package in $packages) {
     Write-Host "Installing $package..." -ForegroundColor Cyan
 
-    # Check if already installed
+    # Fast path. The snapshot never reports a package as installed when it is
+    # not, so a hit here is safe to trust.
+    if ($installedIds.ContainsKey($package)) {
+        Write-Host "  Already installed, skipping" -ForegroundColor Yellow
+        $skippedCount++
+        continue
+    }
+
+    # Slow path, for misses only. The snapshot CAN miss a package that is in
+    # fact installed: an app installed outside winget, or one whose entry winget
+    # correlates to a catalogue ID only on an exact query, appears in the table
+    # under a synthetic "ARP\User\X64\{GUID}" id instead of its real one.
+    # UniGetUI is a live example. So confirm before concluding it is missing.
     $installed = winget list --id $package --exact --accept-source-agreements 2>$null
     if ($LASTEXITCODE -eq 0 -and $installed -match $package) {
         Write-Host "  Already installed, skipping" -ForegroundColor Yellow
