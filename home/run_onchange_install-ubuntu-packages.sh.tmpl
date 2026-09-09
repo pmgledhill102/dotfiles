@@ -42,6 +42,31 @@ case "$(uname -s)" in
     rm lazygit.tar.gz lazygit
     echo "lazygit installed successfully"
 
+    # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
+    # archive, so it comes from the GitHub release, same shape as lazygit above.
+    # The release publishes x86_64-unknown-linux-gnu only, so other
+    # architectures are skipped rather than handed a binary that will not run.
+    if [ "$(uname -m)" = "x86_64" ]; then
+      if ! command -v mdcat >/dev/null 2>&1; then
+        echo "Installing mdcat..."
+        MDCAT_VERSION=$(curl -s "https://api.github.com/repos/BIRSAx2/mdcat/releases/latest" | grep -Po '"tag_name": *"mdcat-\K[^"]*')
+        if [ -n "$MDCAT_VERSION" ]; then
+          echo "Downloading mdcat v${MDCAT_VERSION}..."
+          curl -Lo mdcat.tar.gz "https://github.com/BIRSAx2/mdcat/releases/download/mdcat-${MDCAT_VERSION}/mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar xf mdcat.tar.gz --strip-components=1 "mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu/mdcat"
+          sudo install mdcat -D -t /usr/local/bin/
+          rm -f mdcat.tar.gz mdcat
+          echo "mdcat installed successfully"
+        else
+          echo "Warning: could not resolve latest mdcat release, skipping"
+        fi
+      else
+        echo "mdcat already installed, skipping"
+      fi
+    else
+      echo "mdcat: no release binary for $(uname -m), skipping"
+    fi
+
 # {{ if ne .machine_type "minimal" }}
     # Install PowerShell from Microsoft repository
     echo "Installing/Updating PowerShell..."

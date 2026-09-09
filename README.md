@@ -17,7 +17,7 @@ decrypted, and a Claude Code setup that knows how to scaffold any new
 language project — all kept in sync across every machine you own with two
 short commands.
 
-### One install, three platforms
+### One install, four platforms
 
 Works on **macOS, Ubuntu/Debian Linux, WSL, and Windows** from the same
 source of truth. Pick a tier at install time (`personal` / `work` /
@@ -84,6 +84,23 @@ You don't need to remember chezmoi or brew incantations:
 - **`notes`** — list all note files across projects
 - **`notes grep <pattern>`** (or just `notes <pattern>`) —
   case-insensitive search across every project's notes
+
+### Rendered markdown in the terminal
+
+`bat` is a syntax highlighter, not a renderer — it prints markdown bytes as
+they arrive, so a table piped out of a CLI tool stays ragged. `mdcat` computes
+column widths at render time and aligns the table whatever the source looks
+like.
+
+- **`mytool | mdc`** — the main use: render whatever a tool just printed
+- **`mdc file.md`** — same function, with a filename
+- **`mdcp file.md`** — through a pager, for long documents (inline images
+  degrade to plain ANSI, since pagers swallow the graphics escapes)
+
+Wrapping follows the window when a terminal is attached, and is disabled
+entirely when redirected, so `mdc file.md > out.txt` doesn't bake the current
+width into the file. Static preferences live in `~/.config/mdcat/config.toml`;
+`bat` stays the default for source inspection and everything non-markdown.
 
 ### A centralised Claude Code setup that follows you everywhere
 
@@ -234,6 +251,15 @@ notes grep <pattern>          # Search across every project's notes
 notes <pattern>               # Shorthand for 'notes grep'
 ```
 
+### Rendered markdown
+
+```bash
+mytool | mdc                  # Render piped markdown, tables aligned to the window
+mdc file.md                   # Same, from a file
+mdc file.md > out.txt         # Redirected: wrapping disabled entirely
+mdcp file.md                  # Render through a pager (no inline images)
+```
+
 ### Direct chezmoi commands
 
 ```bash
@@ -285,10 +311,34 @@ Highly sensitive secrets (API keys, passwords) belong in Bitwarden, not here.
 
 ## Platform Support
 
-- macOS (Sonoma and later)
-- Ubuntu 22.04+ / Debian 11+
-- WSL (Windows Subsystem for Linux)
-- Windows 10/11 (PowerShell path)
+Every supported surface gets a tier, so "does this work on X" has an answer
+with a commitment attached rather than a yes/no. The matrix these tiers come
+from is under discussion in
+[agentic-coding-config#353](https://github.com/pmgledhill102/agentic-coding-config/issues/353);
+this table is the current state of play, and the link becomes an ADR reference
+once that lands.
+
+| Surface | Tier | What this repo delivers | Agent config |
+| --- | --- | --- | --- |
+| macOS (Sonoma+), personal | **primary** | everything — Brewfile, defaults, Ghostty, xcodeup | full |
+| macOS, work | supported | `work` tier | none |
+| Ubuntu 22.04+ / Debian 11+ / WSL | supported | packages and shell; no GUI applications | pending the OS/persistence split upstream |
+| Cloud sandbox (Ubuntu, ephemeral) | supported | `minimal`, scriptable without chezmoi | via agentic-coding-config's bootstrap |
+| Windows 10/11 (PowerShell) | **best-effort** | WinGet packages, PowerShell profile, Windows Terminal | pending an `env-windows` profile ([a-c-c#417](https://github.com/pmgledhill102/agentic-coding-config/issues/417)) |
+
+- **primary** — fixed now, from wherever the user is; every new capability
+  lands here first
+- **supported** — CI-tested; defects queued alongside primary work; narrower
+  scope by design
+- **best-effort** — install stays CI-tested so it does not rot; defects fixed
+  opportunistically at that machine, with no queue position. Issues carry
+  `surface: windows-desktop`
+
+Note on the Windows row: the machine currently receives the macOS agent
+profile, which is a composition gap upstream rather than a delivery bug here.
+Gating the external off Windows was considered and rejected — it would strip
+20 skills, 12 `bin/` scripts and the hook wiring from a machine that uses them
+daily.
 
 ## Documentation
 
