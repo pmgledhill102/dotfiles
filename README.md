@@ -85,6 +85,23 @@ You don't need to remember chezmoi or brew incantations:
 - **`notes grep <pattern>`** (or just `notes <pattern>`) —
   case-insensitive search across every project's notes
 
+### Rendered markdown in the terminal
+
+`bat` is a syntax highlighter, not a renderer — it prints markdown bytes as
+they arrive, so a table piped out of a CLI tool stays ragged. `mdcat` computes
+column widths at render time and aligns the table whatever the source looks
+like.
+
+- **`mytool | mdc`** — the main use: render whatever a tool just printed
+- **`mdc file.md`** — same function, with a filename
+- **`mdcp file.md`** — through a pager, for long documents (inline images
+  degrade to plain ANSI, since pagers swallow the graphics escapes)
+
+Wrapping follows the window when a terminal is attached, and is disabled
+entirely when redirected, so `mdc file.md > out.txt` doesn't bake the current
+width into the file. Static preferences live in `~/.config/mdcat/config.toml`;
+`bat` stays the default for source inspection and everything non-markdown.
+
 ### A centralised Claude Code setup that follows you everywhere
 
 Every machine gets the same `~/.claude/` config — sourced from a separate
@@ -232,6 +249,15 @@ note -e                       # Open the current project's notes in $EDITOR
 notes                         # List all note files
 notes grep <pattern>          # Search across every project's notes
 notes <pattern>               # Shorthand for 'notes grep'
+```
+
+### Rendered markdown
+
+```bash
+mytool | mdc                  # Render piped markdown, tables aligned to the window
+mdc file.md                   # Same, from a file
+mdc file.md > out.txt         # Redirected: wrapping disabled entirely
+mdcp file.md                  # Render through a pager (no inline images)
 ```
 
 ### Direct chezmoi commands
