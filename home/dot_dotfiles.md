@@ -7,6 +7,7 @@ Repo: <https://github.com/pmgledhill102/dotfiles>
 ```bash
 dotup                 # Update dotfiles, brew, OMZ, plugins, and starship
 dotstatus             # Show machine type, source path, pending changes
+mytool | mdc          # Render piped markdown with aligned tables
 chezmoi diff          # Preview what would change
 chezmoi apply -v      # Apply changes
 chezmoi edit ~/.zshrc # Edit a managed file

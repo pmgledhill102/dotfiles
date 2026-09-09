@@ -1,0 +1,26 @@
+# mdcat — markdown renderer for the terminal (see dotfiles#417)
+#
+# Static preferences live here rather than in the mdc/mdcp shell functions so
+# they apply however mdcat is invoked — directly, as mdless, or from an editor.
+# Only --columns stays in the function, because it depends on a TTY being
+# attached; see the comment in ~/.config/zsh/functions/mdc.zsh.
+
+[defaults]
+# Two-space left margin, and typographic quotes/dashes/ellipses.
+margin = true
+smart_punctuation = true
+
+# Use the whole window instead of capping at 80 columns. This only takes effect
+# when a terminal is attached; with output redirected mdcat falls back to 80,
+# which is what the --columns 0 branch in mdc() exists to handle.
+full_width = true
+
+# Forced rather than auto-detected: from inside tmux, auto-detection cannot see
+# the outer terminal, and Ghostty implements the kitty graphics protocol.
+image_protocol = "kitty"
+
+[theme]
+# Matches BAT_THEME="Dracula" from ~/.config/zsh/aliases.zsh. That variable
+# only themes code blocks (mdcat borrows bat syntax definitions); this themes
+# everything else, so the two together keep the rendering consistent.
+base = "dracula"
