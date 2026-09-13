@@ -3,6 +3,7 @@
 # Update dotfiles and plugins (does not install/upgrade packages)
 
 dotup() {
+  _dotup_banner
   echo "==> Updating dotfiles..."
   # --refresh-externals forces chezmoi externals (e.g. agentic-coding-config
   # mounted at ~/.claude/) to re-fetch, bypassing their refreshPeriod. Cheap
@@ -73,4 +74,35 @@ dotup() {
   # Remind the user what custom commands are available post-update.
   echo
   dotfuncs
+}
+
+# Helper: the opening banner, shaded top to bottom from cyan to magenta. Plain
+# when stdout isn't a terminal or NO_COLOR is set, same rule as dotfuncs.
+_dotup_banner() {
+  local line reset=""
+  local colour=1
+  set -- 51 45 39 63 99 135 171
+  [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && colour=0 && reset=$(printf '\033[0m')
+
+  echo
+  while IFS= read -r line; do
+    if [ "$colour" -eq 0 ]; then
+      printf '\033[1;38;5;%sm%s%s\n' "$1" "$line" "$reset"
+      shift
+    else
+      printf '%s\n' "$line"
+    fi
+  done <<'EOF'
+       _       _
+    __| | ___ | |_ _   _ _ __
+   / _` |/ _ \| __| | | | '_ \
+  | (_| | (_) | |_| |_| | |_) |
+   \__,_|\___/ \__|\__,_| .__/
+                        |_|
+EOF
+  if [ "$colour" -eq 0 ]; then
+    printf '\033[2m%s%s\n\n' "  dotfiles · plugins · shell" "$reset"
+  else
+    printf '%s\n\n' "  dotfiles · plugins · shell"
+  fi
 }
