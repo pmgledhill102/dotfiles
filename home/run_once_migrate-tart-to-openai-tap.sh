@@ -36,8 +36,12 @@ installed=$(brew list --formula --full-name |
 
 if [ -n "$installed" ]; then
   echo "==> Removing tart from the retired cirruslabs/cli tap (replaced by openai/tools/tart in Brewfile)..."
-  # shellcheck disable=SC2086  # one formula name per word, intentionally split
-  brew uninstall --ignore-dependencies $installed
+  # Uninstall by bare keg name, never 'cirruslabs/cli/tart': Formulary.to_rack
+  # evaluates the formula file for any name containing '/', which raises the
+  # very error this migration exists to get past. A bare name resolves straight
+  # to its Cellar rack without loading anything. See dotfiles#424.
+  # shellcheck disable=SC2046,SC2086  # one formula name per word, intentionally split
+  brew uninstall --ignore-dependencies $(printf '%s\n' "$installed" | sed 's|^cirruslabs/cli/||')
 fi
 
 if brew tap | grep -qx 'cirruslabs/cli' &&
