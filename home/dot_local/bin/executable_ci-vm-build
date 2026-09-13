@@ -125,7 +125,7 @@ done
 
 [ "$(uname -s)" = "Darwin" ] || die "Tart requires macOS on Apple silicon"
 
-need tart "brew install cirruslabs/cli/tart"
+need tart "brew install openai/tools/tart"
 need gh "brew install gh"
 need expect
 need ssh-copy-id
