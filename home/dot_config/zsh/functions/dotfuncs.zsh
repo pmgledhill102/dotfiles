@@ -11,9 +11,21 @@ dotfuncs() {
     return 1
   fi
 
-  echo "Update commands:"
+  # Colour only for a terminal, and never when NO_COLOR is set (no-color.org),
+  # so install.sh's call and anything piped stays plain. The helpers below
+  # see these locals through dynamic scoping.
+  local c_head="" c_up="" c_other="" c_script="" c_reset=""
+  if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    c_head=$(printf '\033[1;35m')
+    c_up=$(printf '\033[1;32m')
+    c_other=$(printf '\033[1;36m')
+    c_script=$(printf '\033[1;33m')
+    c_reset=$(printf '\033[0m')
+  fi
+
+  printf "%sUpdate commands:%s\n" "$c_head" "$c_reset"
   _dotfuncs_list "$dir" up
-  printf "\nOther commands:\n"
+  printf "\n%sOther commands:%s\n" "$c_head" "$c_reset"
   _dotfuncs_list "$dir" other
   _dotfuncs_scripts "$HOME/.local/bin"
 }
@@ -43,7 +55,12 @@ _dotfuncs_list() {
         exit
       }
     ' "$file")
-    printf "  %-11s %s\n" "$name" "$desc"
+    # Escape codes sit outside the width field so the columns still line up.
+    if [ "$mode" = "up" ]; then
+      printf "  %s%-11s%s %s\n" "$c_up" "$name" "$c_reset" "$desc"
+    else
+      printf "  %s%-11s%s %s\n" "$c_other" "$name" "$c_reset" "$desc"
+    fi
   done
 }
 
@@ -81,8 +98,8 @@ _dotfuncs_scripts() {
     ' "$file")
     [ -n "$desc" ] || continue
 
-    [ "$found" -eq 1 ] || printf "\nScripts:\n"
+    [ "$found" -eq 1 ] || printf "\n%sScripts:%s\n" "$c_head" "$c_reset"
     found=1
-    printf "  %-21s %s\n" "$name" "$desc"
+    printf "  %s%-21s%s %s\n" "$c_script" "$name" "$c_reset" "$desc"
   done
 }
