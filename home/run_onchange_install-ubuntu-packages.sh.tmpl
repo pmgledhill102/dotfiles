@@ -47,8 +47,9 @@ case "$(uname -s)" in
     done
     
 # {{ if ne .machine_type "cloud-agent" }}
-    # Install lazygit. Skipped on cloud-agent: it is a terminal UI, and there
-    # is nobody at this terminal.
+    # lazygit and mdcat are both skipped on cloud-agent: one is a terminal UI,
+    # the other renders markdown for someone to look at, and there is nobody
+    # at this terminal to look. Nothing non-interactive calls either.
     echo "Installing/Updating lazygit..."
     LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*')
     echo "Downloading lazygit v${LAZYGIT_VERSION}..."
@@ -57,7 +58,6 @@ case "$(uname -s)" in
     asroot install lazygit -D -t /usr/local/bin/
     rm lazygit.tar.gz lazygit
     echo "lazygit installed successfully"
-# {{ end }}
 
     # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
     # archive, so it comes from the GitHub release, same shape as lazygit above.
@@ -83,6 +83,7 @@ case "$(uname -s)" in
     else
       echo "mdcat: no release binary for $(uname -m), skipping"
     fi
+# {{ end }}
 
 # {{ if and (ne .machine_type "minimal") (ne .machine_type "cloud-agent") }}
     # Install PowerShell from Microsoft repository
