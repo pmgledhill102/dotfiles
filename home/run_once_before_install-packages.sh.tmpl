@@ -11,6 +11,20 @@ echo "DOTFILES_SKIP_INSTALL=1 — skipping package install (fast CI mode)"
 exit 0
 {{- end }}
 
+{{- if eq .machine_type "cloud-agent" }}
+# Everything this script provisions exists for a human sitting at a terminal:
+# zsh, Oh My Zsh and its plugins, the default-shell change, a Rust toolchain,
+# nano syntax highlighting, Ghostty terminfo. An agent sandbox drives /bin/sh
+# non-interactively and is thrown away, so all of it is cost with no user.
+#
+# It is also the script that most assumes sudo and a real login user (usermod,
+# chsh, getent passwd "$USER"), none of which hold in a rootful sandbox.
+# Package installation proper is run_onchange_install-ubuntu-packages.sh,
+# which is machine-type aware and still runs. See dotfiles#426.
+echo "cloud-agent — skipping interactive-shell provisioning"
+exit 0
+{{- end }}
+
 case "$(uname -s)" in
   Linux*)
     echo "Linux detected"

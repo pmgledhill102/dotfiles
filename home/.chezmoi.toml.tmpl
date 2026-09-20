@@ -1,5 +1,5 @@
 {{- /* Machine type selection — presented once during chezmoi init */ -}}
-{{- $machineType := promptChoiceOnce . "machine_type" "Machine type (personal = full dev setup, work = essentials only, minimal = headless server)" (list "personal" "work" "minimal") -}}
+{{- $machineType := promptChoiceOnce . "machine_type" "Machine type (personal = full dev setup, work = essentials only, minimal = headless server, cloud-agent = ephemeral agent sandbox)" (list "personal" "work" "minimal" "cloud-agent") -}}
 
 # chezmoi configuration file
 # Machine type: {{ $machineType }}
@@ -40,6 +40,21 @@
                 "unzip",
                 "wget",
                 "zsh",
+            ]
+{{- else if eq $machineType "cloud-agent" }}
+            # Headless like minimal, but nothing here is ever typed at a
+            # prompt — the agent drives /bin/sh non-interactively. zsh and
+            # tmux are dropped for that reason; unzip/zip stay because
+            # unpacking downloaded archives is routine agent work.
+            packages = [
+                "bat",
+                "curl",
+                "git",
+                "git-delta",
+                "jq",
+                "unzip",
+                "wget",
+                "zip",
             ]
 {{- else }}
             packages = [
@@ -191,6 +206,10 @@
             ]
             packages_pinned = []
 {{- else }}
+            # minimal and cloud-agent share this arm. There are no Windows
+            # agent sandboxes — the value is reachable only if someone seeds
+            # cloud-agent on Windows by hand — so the lean list is the right
+            # fallback rather than a fourth copy.
             packages = [
                 "astral-sh.uv",
                 "dandavison.delta",

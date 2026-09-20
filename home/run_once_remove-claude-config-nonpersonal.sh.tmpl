@@ -6,12 +6,16 @@
 # One-time cleanup: remove the agentic-coding-config payload from ~/.claude/ on
 # machines that are no longer entitled to it.
 #
-# The .claude external is gated to personal machines (see
-# .chezmoiexternal.toml.tmpl and dotfiles#389), but chezmoi only adds and
-# updates targets — it never removes a target whose source went away. So every
-# work or minimal machine that applied a pre-gate version keeps the full
-# personal agent config indefinitely. Gating the external is only half the
+# The .claude external is gated to personal and cloud-agent machines (see
+# .chezmoiexternal.toml.tmpl, dotfiles#389 and dotfiles#426), but chezmoi only
+# adds and updates targets — it never removes a target whose source went away.
+# So every work or minimal machine that applied a pre-gate version keeps the
+# full personal agent config indefinitely. Gating the external is only half the
 # change; this script is the other half.
+#
+# The entitled set here MUST track the external's gate exactly. If it does not,
+# an entitled machine applies the external and then deletes what it just
+# received, on every machine where the two disagree.
 #
 # Runs once per machine via chezmoi's run_once_ prefix. Idempotent: every
 # removal is guarded on existence, so a machine that never had the external —
@@ -21,10 +25,10 @@ set -eu
 
 MACHINE_TYPE="{{ $machineType }}"
 
-# The external still applies on personal machines. Nothing to remove.
-if [ "$MACHINE_TYPE" = "personal" ]; then
-  exit 0
-fi
+# The external still applies on these machines. Nothing to remove.
+case "$MACHINE_TYPE" in
+  personal|cloud-agent) exit 0 ;;
+esac
 
 CLAUDE_DIR="$HOME/.claude"
 [ -d "$CLAUDE_DIR" ] || exit 0

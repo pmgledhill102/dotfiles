@@ -162,6 +162,83 @@ jobs:
       run: |
         & scripts/validate-installation-windows.ps1
 
+  # Proves the non-interactive cloud-agent path end to end (dotfiles#426).
+  # The container is the point: a GitHub runner has sudo, a login user and a
+  # tty-ish environment, so it cannot demonstrate that an ephemeral agent
+  # sandbox — root, no sudo binary, nothing able to answer a prompt — installs.
+  cloud-agent-install:
+    name: Cloud Agent Non-Interactive Install
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [shellcheck, markdown-lint, actionlint, private-repo-refs]
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+
+    steps:
+    # Deliberately does NOT install curl or sudo. git is here only because
+    # actions/checkout needs it; curl is left for install.sh to bring in
+    # itself, as root, with no sudo present.
+    - name: Minimal container prerequisites
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends ca-certificates git
+
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Confirm the sandbox shape this job exists to test
+      run: |
+        if [ "$(id -u)" -ne 0 ]; then
+          echo "Expected to be root in this container"
+          exit 1
+        fi
+        if command -v sudo >/dev/null 2>&1; then
+          echo "Expected no sudo binary — this job tests the sudo-less path"
+          exit 1
+        fi
+        echo "root, no sudo: OK"
+
+    - name: Bootstrap with install.sh (stops before the remote apply)
+      # DOTFILES_BOOTSTRAP_DRY_RUN stops short of `chezmoi init` against the
+      # remote default branch — this job applies THIS checkout instead, two
+      # steps down. Everything before that point is the real script: the
+      # sudo-less prerequisite install and the machine_type pre-seed.
+      # </dev/null makes any prompt an error rather than a hang.
+      run: |
+        DOTFILES_BOOTSTRAP_DRY_RUN=1 DOTFILES_MACHINE_TYPE=cloud-agent \
+          sh ./install.sh < /dev/null
+
+    - name: Assert install.sh pre-seeded instead of wiping
+      run: |
+        cat "$HOME/.config/chezmoi/chezmoi.toml"
+        grep -q 'machine_type = "cloud-agent"' "$HOME/.config/chezmoi/chezmoi.toml"
+        command -v curl >/dev/null 2>&1
+
+    - name: Install chezmoi
+      run: |
+        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+
+    - name: Apply this checkout with no tty and no prompt
+      run: |
+        export PATH="$HOME/.local/bin:$PATH"
+        chezmoi init --apply --source "$PWD" --verbose < /dev/null
+
+    - name: Assert the agent config was delivered
+      # The whole reason cloud-agent exists. If the external's gate regresses,
+      # this is what catches it.
+      run: |
+        test -f "$HOME/.claude/CLAUDE.md"
+        test -d "$HOME/.claude/skills"
+
+    - name: Assert the cloud-agent package arm
+      run: |
+        cat "$HOME/.config/ubuntu_pkglist"
+        grep -qx 'git' "$HOME/.config/ubuntu_pkglist"
+        if grep -qx 'zsh' "$HOME/.config/ubuntu_pkglist"; then
+          echo "zsh should not be in the cloud-agent package arm"
+          exit 1
+        fi
+
   test-install:
     name: Test Install on ${{ matrix.os }}
     if: github.event_name != 'pull_request'

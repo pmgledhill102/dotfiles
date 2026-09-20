@@ -11,6 +11,20 @@ echo "DOTFILES_SKIP_INSTALL=1 — skipping apt package install (fast CI mode)"
 exit 0
 # {{ end }}
 
+# Run a command with escalation only where escalation is actually needed. An
+# ephemeral agent sandbox usually runs as root with no sudo binary installed at
+# all, so escalation is resolved rather than assumed (dotfiles#426).
+asroot() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    echo "Error: need root or sudo to run: $*" >&2
+    return 1
+  fi
+}
+
 case "$(uname -s)" in
   Linux*)
     echo "Linux detected - installing packages from ubuntu_pkglist..."
@@ -23,24 +37,27 @@ case "$(uname -s)" in
     fi
     
     export DEBIAN_FRONTEND=noninteractive
-    sudo apt-get update
+    asroot apt-get update
     
     echo "Installing packages from ubuntu_pkglist..."
     # Read package list and install (skip empty lines and comments)
     grep -v '^#' "$PKGLIST_FILE" | grep -v '^$' | while read -r package; do
       echo "Installing $package..."
-      sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
+      asroot apt-get install -y "$package" || echo "Warning: Failed to install $package"
     done
     
-    # Install lazygit
+# {{ if ne .machine_type "cloud-agent" }}
+    # Install lazygit. Skipped on cloud-agent: it is a terminal UI, and there
+    # is nobody at this terminal.
     echo "Installing/Updating lazygit..."
     LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*')
     echo "Downloading lazygit v${LAZYGIT_VERSION}..."
     curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
     tar xf lazygit.tar.gz lazygit
-    sudo install lazygit -D -t /usr/local/bin/
+    asroot install lazygit -D -t /usr/local/bin/
     rm lazygit.tar.gz lazygit
     echo "lazygit installed successfully"
+# {{ end }}
 
     # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
     # archive, so it comes from the GitHub release, same shape as lazygit above.
@@ -54,7 +71,7 @@ case "$(uname -s)" in
           echo "Downloading mdcat v${MDCAT_VERSION}..."
           curl -Lo mdcat.tar.gz "https://github.com/BIRSAx2/mdcat/releases/download/mdcat-${MDCAT_VERSION}/mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
           tar xf mdcat.tar.gz --strip-components=1 "mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu/mdcat"
-          sudo install mdcat -D -t /usr/local/bin/
+          asroot install mdcat -D -t /usr/local/bin/
           rm -f mdcat.tar.gz mdcat
           echo "mdcat installed successfully"
         else
@@ -67,18 +84,18 @@ case "$(uname -s)" in
       echo "mdcat: no release binary for $(uname -m), skipping"
     fi
 
-# {{ if ne .machine_type "minimal" }}
+# {{ if and (ne .machine_type "minimal") (ne .machine_type "cloud-agent") }}
     # Install PowerShell from Microsoft repository
     echo "Installing/Updating PowerShell..."
     if ! command -v pwsh >/dev/null 2>&1; then
-      sudo apt-get install -y wget apt-transport-https software-properties-common
+      asroot apt-get install -y wget apt-transport-https software-properties-common
       # shellcheck disable=SC1091
       . /etc/os-release
       wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb"
-      sudo dpkg -i packages-microsoft-prod.deb
+      asroot dpkg -i packages-microsoft-prod.deb
       rm packages-microsoft-prod.deb
-      sudo apt-get update
-      sudo apt-get install -y powershell
+      asroot apt-get update
+      asroot apt-get install -y powershell
       echo "PowerShell installed successfully"
     else
       echo "PowerShell already installed, skipping"

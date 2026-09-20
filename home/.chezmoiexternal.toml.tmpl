@@ -15,15 +15,21 @@
 # auto-generated archive root) and "home/" so paths land directly under
 # ~/.claude/. include filters out everything outside home/.
 #
-# personal-only: the agent config carries the personal-org GitHub workflow
-# and personal-context-repo references, and the Claude binaries themselves
-# are already gated to personal in Brewfile.tmpl. See dotfiles#389.
+# Gated to personal and cloud-agent: the agent config carries the personal-org
+# GitHub workflow and personal-context-repo references, and the Claude binaries
+# themselves are already gated to personal in Brewfile.tmpl. See dotfiles#389.
+#
+# cloud-agent was added to that set in dotfiles#426, and does not reopen #389.
+# An ephemeral agent sandbox *is* personal-org work — it is where the agent
+# config is most needed, not least — so widening here extends the gate to
+# exactly the machines that should always have had it. work and minimal stay
+# excluded, unchanged.
 
 {{- $machineType := "personal" -}}
 {{- if hasKey . "machine_type" -}}
 {{-   $machineType = .machine_type -}}
 {{- end -}}
-{{- if eq $machineType "personal" }}
+{{- if or (eq $machineType "personal") (eq $machineType "cloud-agent") }}
 [".claude"]
 type = "archive"
 url = "https://github.com/pmgledhill102/agentic-coding-config/archive/refs/heads/main.tar.gz"

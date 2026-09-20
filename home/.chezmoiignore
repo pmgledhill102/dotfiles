@@ -105,8 +105,8 @@ install-cship.sh
 .gitconfig
 {{- end }}
 
-# Skip GUI app configs on minimal/server machines
-{{- if eq $machineType "minimal" }}
+# Skip GUI app configs on minimal/server and cloud-agent machines
+{{- if or (eq $machineType "minimal") (eq $machineType "cloud-agent") }}
 .config/Code/
 .config/ghostty/
 .config/vscode-extensions
@@ -114,4 +114,10 @@ run_once_install-vscode-extensions.sh
 install-vscode-extensions.sh
 run_once_install-vscode-extensions.ps1
 install-vscode-extensions.ps1
+{{- end }}
+
+# An ephemeral agent sandbox has no human at a terminal: no terminal
+# multiplexer, and tmux is not in its package arm either (dotfiles#426).
+{{- if eq $machineType "cloud-agent" }}
+.tmux.conf
 {{- end }}
