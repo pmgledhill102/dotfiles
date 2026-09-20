@@ -6,6 +6,30 @@
 
 set -e
 
+# Print the latest release tag for a GitHub repo ("jesseduffield/lazygit"),
+# or nothing at all if it cannot be resolved.
+#
+# The obvious route — api.github.com/.../releases/latest — is rate limited to
+# 60 requests an hour PER IP for unauthenticated callers, and GitHub-hosted
+# runners share an IP pool, so it intermittently answers with a rate-limit body
+# carrying no tag_name. That made the grep below exit 1, which under 'set -e'
+# killed the whole apply mid-provision rather than one optional tool
+# (dotfiles#429). The /releases/latest web URL redirects to /releases/tag/<tag>
+# and is not rate limited, so ask that first and keep the API as a fallback.
+latest_release_tag() {
+  tag_url=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+    "https://github.com/$1/releases/latest" 2>/dev/null || true)
+  case "$tag_url" in
+    */releases/tag/*)
+      printf '%s\n' "${tag_url##*/}"
+      return 0
+      ;;
+  esac
+
+  curl -s "https://api.github.com/repos/$1/releases/latest" |
+    grep -Po '"tag_name": *"\K[^"]*' || true
+}
+
 # {{ if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
 echo "DOTFILES_SKIP_INSTALL=1 — skipping apt package install (fast CI mode)"
 exit 0
@@ -34,13 +58,21 @@ case "$(uname -s)" in
     
     # Install lazygit
     echo "Installing/Updating lazygit..."
-    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*')
-    echo "Downloading lazygit v${LAZYGIT_VERSION}..."
-    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-    tar xf lazygit.tar.gz lazygit
-    sudo install lazygit -D -t /usr/local/bin/
-    rm lazygit.tar.gz lazygit
-    echo "lazygit installed successfully"
+    LAZYGIT_TAG=$(latest_release_tag jesseduffield/lazygit)
+    LAZYGIT_VERSION=${LAZYGIT_TAG#v}
+    if [ -n "$LAZYGIT_VERSION" ]; then
+      echo "Downloading lazygit v${LAZYGIT_VERSION}..."
+      if curl -fsSLo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" &&
+        tar xf lazygit.tar.gz lazygit; then
+        sudo install lazygit -D -t /usr/local/bin/
+        echo "lazygit installed successfully"
+      else
+        echo "Warning: could not download lazygit v${LAZYGIT_VERSION}, skipping"
+      fi
+      rm -f lazygit.tar.gz lazygit
+    else
+      echo "Warning: could not resolve latest lazygit release, skipping"
+    fi
 
     # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
     # archive, so it comes from the GitHub release, same shape as lazygit above.
@@ -49,7 +81,8 @@ case "$(uname -s)" in
     if [ "$(uname -m)" = "x86_64" ]; then
       if ! command -v mdcat >/dev/null 2>&1; then
         echo "Installing mdcat..."
-        MDCAT_VERSION=$(curl -s "https://api.github.com/repos/BIRSAx2/mdcat/releases/latest" | grep -Po '"tag_name": *"mdcat-\K[^"]*')
+        MDCAT_TAG=$(latest_release_tag BIRSAx2/mdcat)
+        MDCAT_VERSION=${MDCAT_TAG#mdcat-}
         if [ -n "$MDCAT_VERSION" ]; then
           echo "Downloading mdcat v${MDCAT_VERSION}..."
           curl -Lo mdcat.tar.gz "https://github.com/BIRSAx2/mdcat/releases/download/mdcat-${MDCAT_VERSION}/mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
