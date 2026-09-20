@@ -21,8 +21,8 @@ short commands.
 
 Works on **macOS, Ubuntu/Debian Linux, WSL, and Windows** from the same
 source of truth. Pick a tier at install time (`personal` / `work` /
-`minimal`) so a work laptop doesn't get Steam and a minimal VM doesn't get
-the full kitchen sink.
+`minimal` / `cloud-agent`) so a work laptop doesn't get Steam and a minimal
+VM doesn't get the full kitchen sink.
 
 ### A polished terminal
 
@@ -145,6 +145,26 @@ install.
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/install.sh)"
 ```
 
+### macOS / Linux / WSL, non-interactively
+
+Anywhere nothing can answer the machine-type prompt — an ephemeral agent
+sandbox, a provisioning script, a container build — name the tier up front:
+
+```sh
+DOTFILES_MACHINE_TYPE=cloud-agent \
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/install.sh)"
+```
+
+`--machine-type cloud-agent` after `--` does the same thing, and still leaves
+the positional branch argument free (`-- feature-branch --machine-type work`).
+
+Given a tier, `install.sh` writes it into `~/.config/chezmoi/chezmoi.toml`
+before running `chezmoi init`, and skips the config wipe it would otherwise do
+to force a re-prompt. **That pre-seed is the only thing that answers the
+prompt**: chezmoi's `--promptChoice` flag does *not* work with the
+`promptChoiceOnce` the config template uses — it is accepted, ignored, and
+init then blocks on the prompt anyway.
+
 ### Windows (PowerShell as Administrator)
 
 ```powershell
@@ -217,11 +237,20 @@ are installed:
 | `personal` | Full (cloud CLIs, runtimes, build tools) | All GUI apps | Full dev workstation |
 | `work` | Core CLI + key runtimes | Font, Ghostty, Rectangle | Work essentials |
 | `minimal` | Core CLI only | None | Headless / CI server |
+| `cloud-agent` | Core CLI only | None | Ephemeral agent sandbox |
 
-The Claude Code config mounted at `~/.claude/` is **`personal` only** — it
-carries a personal GitHub workflow that doesn't belong on a work machine, and
-the Claude binaries are personal-tier anyway. A machine switched away from
-`personal` has that config removed on the next apply.
+`cloud-agent` is `minimal`'s headless cousin for a machine with no human at
+the terminal: no zsh, tmux, Oh My Zsh, shell change, Rust toolchain, lazygit
+or PowerShell, because nothing there is ever typed at. It is the one tier
+installed without a prompt — see [Quick Start](#quick-start) — and, unlike
+`minimal`, it *does* get the agent config below.
+
+The Claude Code config mounted at `~/.claude/` is **`personal` and
+`cloud-agent` only** — it carries a personal GitHub workflow that doesn't
+belong on a work machine, and the Claude binaries are personal-tier anyway.
+An agent sandbox is exactly where that config is needed, so it is in the
+entitled set; `work` and `minimal` are not. A machine switched to one of
+those has the config removed on the next apply.
 
 To change later, edit `machine_type` in `~/.config/chezmoi/chezmoi.toml` and
 run `chezmoi apply`.

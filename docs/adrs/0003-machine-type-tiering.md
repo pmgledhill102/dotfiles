@@ -3,6 +3,9 @@
 - **Status**: Accepted
 - **Date**: 2026-04-26
 - **Tags**: layering, packages
+- **Amended by**: [ADR-0017](0017-cloud-agent-machine-type.md), which adds a
+  fourth tier, `cloud-agent`, for ephemeral agent sandboxes. The mechanism
+  here is unchanged; the tier count is not.
 
 ## Context
 

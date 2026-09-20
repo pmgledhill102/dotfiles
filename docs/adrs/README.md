@@ -47,3 +47,4 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0014](0014-public-repo-no-private-references.md) | This repo is public by design; no private-repo references | Accepted |
 | [0015](0015-github-issues-task-tracking.md) | GitHub Issues as the single task tracker | Accepted |
 | [0016](0016-agent-tooling-is-personal-tier.md) | Agent tooling and its configuration are personal-tier | Accepted |
+| [0017](0017-cloud-agent-machine-type.md) | `cloud-agent` machine type for ephemeral agent sandboxes | Accepted |

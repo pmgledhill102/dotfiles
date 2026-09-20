@@ -10,6 +10,10 @@
 - **Tags**: layering, agents, chezmoi
 - **Implements**: [#389](https://github.com/pmgledhill102/dotfiles/issues/389),
   [#395](https://github.com/pmgledhill102/dotfiles/pull/395)
+- **Amended by**: [ADR-0017](0017-cloud-agent-machine-type.md), which adds
+  `cloud-agent` to the entitled set. The tiering argument below is
+  unchanged — an ephemeral agent sandbox is personal-org work, and `work`
+  and `minimal` stay excluded.
 
 ## Context
 

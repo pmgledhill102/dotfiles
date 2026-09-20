@@ -238,8 +238,35 @@ printf '[data]\n    machine_type = "work"\n' > /tmp/cfg-work.toml
 chezmoi --config /tmp/cfg-work.toml execute-template < home/.chezmoiexternal.toml.tmpl
 ```
 
-Repeat for `personal`, `work` and `minimal`, and check the key-absent case
-too — templates here fall back to `personal` when `machine_type` is missing.
+Repeat for `personal`, `work`, `minimal` and `cloud-agent`, and check the
+key-absent case too — templates here fall back to `personal` when
+`machine_type` is missing.
+
+#### Testing the non-interactive install path
+
+`cloud-agent` is installed with nothing able to answer the prompt, so test it
+the way it actually runs — no tty, and (to be faithful to a sandbox) as root
+with no `sudo`:
+
+```sh
+DOTFILES_BOOTSTRAP_DRY_RUN=1 DOTFILES_MACHINE_TYPE=cloud-agent \
+  sh ./install.sh < /dev/null
+grep machine_type "$HOME/.config/chezmoi/chezmoi.toml"
+```
+
+`DOTFILES_BOOTSTRAP_DRY_RUN=1` stops the script before it fetches chezmoi and
+applies from the *remote* default branch, which is what makes the pre-seed
+assertable from a working tree. Apply the checkout separately, still with
+stdin closed, so an unanswered prompt fails instead of hanging:
+
+```sh
+chezmoi init --apply --source "$PWD" --verbose < /dev/null
+```
+
+The same caveat as above is the whole reason the pre-seed exists:
+`--promptChoice machine_type=...` on that init line is accepted, ignored, and
+init blocks on the prompt anyway. CI does this end to end in a bare
+`ubuntu:24.04` container — see the `cloud-agent-install` job.
 
 ### PR Testing
 

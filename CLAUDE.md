@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **chezmoi-managed dotfiles repository**. It provisions a development environment across macOS, Linux (Ubuntu/Debian), WSL, and Windows.
 
-Claude Code's user-level configuration (slash commands, hooks, settings, MCP) lives in a separate repo, [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — mounted into `~/.claude/` via a chezmoi external on `personal` machines only (see `home/.chezmoiexternal.toml.tmpl`). When working in this repo, agentic edits go in *that* repo; this repo handles machine config (shell, brew/winget, OS bootstrap).
+Claude Code's user-level configuration (slash commands, hooks, settings, MCP) lives in a separate repo, [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — mounted into `~/.claude/` via a chezmoi external on `personal` and `cloud-agent` machines (see `home/.chezmoiexternal.toml.tmpl`). When working in this repo, agentic edits go in *that* repo; this repo handles machine config (shell, brew/winget, OS bootstrap).
 
 ## Repository Architecture
 
@@ -21,8 +21,8 @@ Key paths relative to repo root:
 
 - `.chezmoi.toml` — config data (user info, package lists per platform)
 - `home/` — all managed dotfiles and scripts
-- `home/.chezmoiexternal.toml.tmpl` — declares the agentic-coding-config repo as an `archive` external mounted at `.claude/`, gated to `personal` machines (#389)
-- `home/run_once_remove-claude-config-nonpersonal.sh.tmpl` — removes that payload from work/minimal machines that applied a pre-gate version; chezmoi never deletes a target whose source went away
+- `home/.chezmoiexternal.toml.tmpl` — declares the agentic-coding-config repo as an `archive` external mounted at `.claude/`, gated to `personal` and `cloud-agent` machines (#389, #426). The gate here and the exemption in `home/run_once_remove-claude-config-nonpersonal.sh.tmpl` must name the same set — if they drift, an entitled machine deletes what it just received
+- `home/run_once_remove-claude-config-nonpersonal.sh.tmpl` — removes that payload from `work`/`minimal` machines that applied a pre-gate version; chezmoi never deletes a target whose source went away
 - `home/.chezmoiignore` — target-side exclusions, gated by OS and by machine type. `.claude/` filtering is *not* done here — it moved to the archive external's `include` pattern (see the comment at the top of the file)
 - `home/Brewfile.tmpl` — installs `claude` and `claude-code@latest` casks (the binaries; their config lives in agentic-coding-config)
 - `home/run_onchange_setup-claude.sh` — configures MCP servers per machine; reads keys from `~/.secrets`. Stays here because it's machine-bootstrap, not content
@@ -105,6 +105,6 @@ the allowlist in `scripts/public-repos.txt`. Reasoning: ADR-0014.
 
 ## Related repos
 
-- [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — Claude Code commands/hooks/settings/MCP. Mounted at `~/.claude/` from this repo, on `personal` machines only.
+- [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config) — Claude Code commands/hooks/settings/MCP. Mounted at `~/.claude/` from this repo, on `personal` and `cloud-agent` machines.
 - A separate **private** repo holds personal context: principles, decisions, repo
   registry, direction. Not named here, per the section above.
