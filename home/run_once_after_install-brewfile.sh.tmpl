@@ -52,11 +52,14 @@ case "$(uname -s)" in
       # HOMEBREW_BUNDLE_NO_UPGRADE=1: install missing formulae only, leave
       # already-present-but-outdated packages alone — 'brewup' owns upgrades
       # (ADR-0005), so even the fresh-install path must not upgrade.
-      # HOMEBREW_BUNDLE_JOBS=1: Homebrew 6's parallel installer (default
-      # 'auto') has lock races on shared dependencies (Homebrew/brew#23328);
-      # sequential is the pre-brew-6 behavior. Revisit: dotfiles#368.
-      HOMEBREW_BUNDLE_NO_LOCK=1 HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_NO_UPGRADE=1 \
-        HOMEBREW_BUNDLE_JOBS=1 \
+      # No HOMEBREW_BUNDLE_JOBS here: Homebrew removed the parallel bundle
+      # installer in Homebrew/brew#23659 (6.0.18–6.0.22). 'brew bundle install'
+      # now batches plain formula entries into a single 'brew install', so the
+      # lock races that forced the sequential pin (dotfiles#368) can't happen;
+      # the variable is ignored and download parallelism is now governed by
+      # HOMEBREW_DOWNLOAD_CONCURRENCY. HOMEBREW_BUNDLE_NO_LOCK is gone from
+      # Homebrew entirely, so it went with it.
+      HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_NO_UPGRADE=1 \
         brew bundle install --file "$BREWFILE"
     fi
     ;;

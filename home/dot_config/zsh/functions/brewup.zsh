@@ -89,12 +89,13 @@ brewup() {
     printf "\n==> Installing packages from Brewfile...\n"
     # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts;
     # brewup's whole point is unattended install/upgrade.
-    # HOMEBREW_BUNDLE_JOBS=1: Homebrew 6's parallel installer (default 'auto')
-    # has lock races on shared dependencies (Homebrew/brew#23328); sequential
-    # is the pre-brew-6 behavior. Revisit: dotfiles#368.
+    # No HOMEBREW_BUNDLE_JOBS here: Homebrew removed the parallel bundle
+    # installer in Homebrew/brew#23659 (6.0.18–6.0.22), so the lock races that
+    # forced the sequential pin (dotfiles#368) can't happen; the variable is
+    # ignored and download parallelism is now HOMEBREW_DOWNLOAD_CONCURRENCY.
     # --no-upgrade: this pass installs what's missing, nothing more. Upgrades
     # all happen below, where casks can be filtered — see dotfiles#393.
-    HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_JOBS=1 brew bundle install --no-upgrade --file "$brewfile" 2> >(_brewup_filter_noise >&2)
+    HOMEBREW_NO_ASK=1 brew bundle install --no-upgrade --file "$brewfile" 2> >(_brewup_filter_noise >&2)
   else
     echo "Warning: Brewfile not found at $brewfile"
   fi
