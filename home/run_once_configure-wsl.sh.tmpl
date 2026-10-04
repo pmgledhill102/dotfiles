@@ -3,6 +3,9 @@
 # Configure WSL settings — only runs inside WSL
 # Sets appendWindowsPath=false to keep Windows directories out of Linux PATH
 # Enables systemd for modern service management
+#
+# Merges into /etc/wsl.conf rather than replacing it: the distro installer
+# writes its own sections (e.g. [user] default=<name>), and those must survive.
 
 set -e
 
@@ -12,15 +15,58 @@ if [ ! -f /proc/version ] || ! grep -qi 'microsoft\|wsl' /proc/version 2>/dev/nu
   exit 0
 fi
 
-echo "WSL detected — configuring /etc/wsl.conf..."
+CONF=/etc/wsl.conf
+TMP=$(mktemp)
+trap 'rm -f "$TMP" "$TMP.new"' EXIT
 
-sudo tee /etc/wsl.conf > /dev/null << 'CONF'
-[interop]
-appendWindowsPath = false
+# set_key SECTION KEY VALUE — set KEY in [SECTION] of $TMP, leaving every
+# other line alone. Replaces an existing KEY, appends it to an existing
+# section, or appends the section if it is missing.
+set_key() {
+  awk -v sec="$1" -v key="$2" -v val="$3" '
+    function emit()  { print key " = " val; done = 1 }
+    function flush() { while (blanks > 0) { print ""; blanks-- } }
+    /^[[:space:]]*$/ { blanks++; next }
+    /^[[:space:]]*\[/ {
+      if (insec && !done) emit()
+      flush()
+      insec = ($0 ~ ("^[[:space:]]*\\[" sec "\\][[:space:]]*$"))
+      if (insec) seen = 1
+      print
+      next
+    }
+    insec && $0 ~ ("^[[:space:]]*" key "[[:space:]]*=") {
+      flush()
+      if (!done) emit()
+      next
+    }
+    { flush(); print }
+    END {
+      if (insec && !done) emit()
+      else if (!seen) {
+        if (NR > 0) print ""
+        print "[" sec "]"
+        emit()
+      }
+    }
+  ' "$TMP" > "$TMP.new"
+  mv "$TMP.new" "$TMP"
+}
 
-[boot]
-systemd = true
-CONF
+if [ -f "$CONF" ]; then
+  cat "$CONF" > "$TMP"
+fi
+
+set_key interop appendWindowsPath false
+set_key boot systemd true
+
+if [ -f "$CONF" ] && cmp -s "$TMP" "$CONF"; then
+  echo "WSL detected — /etc/wsl.conf already configured"
+  exit 0
+fi
+
+echo "WSL detected — updating /etc/wsl.conf..."
+sudo install -m 644 "$TMP" "$CONF"
 
 echo "wsl.conf configured. Restart WSL for changes to take effect:"
 echo "  wsl --shutdown"
