@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+# The native installer's launcher lives here, and on a fresh machine the apply
+# runs from a shell that started before the directory existed (dotfiles#435)
+PATH="$HOME/.local/bin:$PATH"
+
 # Skip if Claude Code CLI is not installed
 if ! command -v claude >/dev/null 2>&1; then
     echo "Claude Code CLI not found, skipping MCP setup..."

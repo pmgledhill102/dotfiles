@@ -116,6 +116,32 @@ case "$(uname -s)" in
     else
       echo "PowerShell already installed, skipping"
     fi
+
+    # Install nvm (Linux counterpart of the Brewfile's brew "nvm"). The
+    # npm-globals after-script needs it, and fails the apply without it
+    # (dotfiles#435). PROFILE=/dev/null because chezmoi owns the rc files;
+    # NVM_DIR is explicit because nvm otherwise prefers $XDG_CONFIG_HOME/nvm,
+    # which neither that script nor .zshrc look in. Bumping the pin re-runs
+    # this script, but an existing install is left alone.
+    if [ ! -s "$HOME/.nvm/nvm.sh" ]; then
+      echo "Installing nvm..."
+      curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh |
+        NVM_DIR="$HOME/.nvm" PROFILE=/dev/null bash
+    else
+      echo "nvm already installed, skipping"
+    fi
+# {{ end }}
+
+# {{ if eq .machine_type "personal" }}
+    # Install Claude Code (Linux counterpart of the Brewfile's
+    # claude-code@latest cask). The native installer puts the launcher at
+    # ~/.local/bin/claude, self-updates, and defaults to the latest channel.
+    if [ ! -x "$HOME/.local/bin/claude" ] && ! command -v claude >/dev/null 2>&1; then
+      echo "Installing Claude Code..."
+      curl -fsSL https://claude.ai/install.sh | bash
+    else
+      echo "Claude Code already installed, skipping"
+    fi
 # {{ end }}
 
     # Install uv (Python package manager)

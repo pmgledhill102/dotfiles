@@ -141,10 +141,18 @@ fi
 
 # nvm (Node Version Manager)
 export NVM_DIR="$HOME/.nvm"
+{{- if eq .chezmoi.os "darwin" }}
 # shellcheck disable=SC1091
 [ -s "$(brew --prefix nvm)/nvm.sh" ] && \. "$(brew --prefix nvm)/nvm.sh"
 # shellcheck disable=SC1091
 [ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && \. "$(brew --prefix nvm)/etc/bash_completion.d/nvm"
+{{- else }}
+# Installed by the nvm install script, not brew (dotfiles#435)
+# shellcheck disable=SC1091
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+# shellcheck disable=SC1091
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+{{- end }}
 
 # jenv (Java Environment Manager)
 if command -v jenv >/dev/null 2>&1; then
