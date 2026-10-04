@@ -14,7 +14,7 @@ exit 0
 case "$(uname -s)" in
   Linux*)
     echo "Linux detected"
-    if grep -q Microsoft /proc/version; then
+    if grep -qi microsoft /proc/version; then
       echo "WSL detected"
     fi
     echo "Updating apt-get..."
@@ -73,6 +73,11 @@ case "$(uname -s)" in
     fi
     
 {{- if ne .machine_type "minimal" }}
+    # C toolchain (gcc, make, libc headers): rustup links with the system cc,
+    # as do native npm modules. macOS gets this from the Xcode CLT; installed
+    # before rustup so it finds a linker (dotfiles#438).
+    sudo apt-get install -y build-essential
+
     # Install Rust toolchain via rustup
     if ! command -v rustup >/dev/null 2>&1; then
       echo "Installing Rust toolchain via rustup..."
