@@ -14,7 +14,7 @@ exit 0
 case "$(uname -s)" in
   Linux*)
     echo "Linux detected"
-    if grep -q Microsoft /proc/version; then
+    if grep -qi microsoft /proc/version; then
       echo "WSL detected"
     fi
     echo "Updating apt-get..."

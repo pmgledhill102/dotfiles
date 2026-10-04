@@ -5,6 +5,15 @@
 
 set -e
 
+# On WSL, VS Code runs on Windows and the Remote-WSL extension manages the
+# server and its extensions in ~/.vscode-server. Any 'code' found here is the
+# Windows launcher on /mnt/c, which would install desktop extensions into the
+# WSL server (dotfiles#437).
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  echo "WSL detected - skipping VS Code extension installation"
+  exit 0
+fi
+
 if ! command -v code >/dev/null 2>&1; then
   echo "VS Code not found — skipping extension installation"
   exit 0

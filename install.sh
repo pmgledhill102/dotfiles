@@ -73,6 +73,17 @@ case "$(uname -s)" in
       sudo apt-get install -y $MISSING
     fi
     echo "Prerequisites: OK"
+
+    # On WSL, appendWindowsPath=false (written by run_once_configure-wsl) only
+    # takes effect after 'wsl --shutdown', so a first apply would otherwise run
+    # with the whole Windows PATH. The Windows 'code' and npm on /mnt/c then
+    # leak into the Linux setup (dotfiles#437). Drop /mnt/* entries so this
+    # apply sees the same PATH every later shell will.
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+      echo "WSL detected - removing Windows (/mnt/*) entries from PATH"
+      PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: -)
+      export PATH
+    fi
     ;;
 esac
 
