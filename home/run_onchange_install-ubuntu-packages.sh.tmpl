@@ -117,6 +117,26 @@ case "$(uname -s)" in
       echo "PowerShell already installed, skipping"
     fi
 
+    # Install gh (Linux counterpart of the Brewfile's brew "gh"; dotfiles#440)
+    # from GitHub's own apt repo, per cli/cli docs/install_linux.md. The Ubuntu
+    # archive's gh trails upstream by many releases. Once the repo is
+    # registered, apt upgrade keeps it current.
+    if ! command -v gh >/dev/null 2>&1; then
+      echo "Installing gh..."
+      GH_KEYRING=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+      sudo mkdir -p -m 755 /etc/apt/keyrings
+      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg |
+        sudo tee "$GH_KEYRING" >/dev/null
+      sudo chmod go+r "$GH_KEYRING"
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=$GH_KEYRING] https://cli.github.com/packages stable main" |
+        sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+      sudo apt-get update
+      sudo apt-get install -y gh
+      echo "gh installed successfully"
+    else
+      echo "gh already installed, skipping"
+    fi
+
     # Install nvm (Linux counterpart of the Brewfile's brew "nvm"). The
     # npm-globals after-script needs it, and fails the apply without it
     # (dotfiles#435). PROFILE=/dev/null because chezmoi owns the rc files;
