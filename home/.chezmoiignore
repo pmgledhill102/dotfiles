@@ -80,6 +80,10 @@ migrate-tart-to-openai-tap.sh
 Brewfile
 run_onchange_after_install-cship.sh
 install-cship.sh
+# macOS-only commands: Homebrew/Brewfile, xcodes, and Tart VMs (dotfiles#439)
+.config/zsh/functions/brewup.zsh
+.config/zsh/functions/xcodeup.zsh
+.local/bin/ci-vm-*
 {{- end }}
 
 {{- if ne .chezmoi.os "linux" }}
