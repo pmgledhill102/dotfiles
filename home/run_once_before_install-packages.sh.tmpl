@@ -29,9 +29,11 @@ case "$(uname -s)" in
 
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
-      # Install to /usr/local/bin to ensure it is in PATH. Requires sudo.
-      # sh -s -- -y automatically tries to use sudo if destination is not writeable.
-      curl -sS https://starship.rs/install.sh | sh -s -- -y > /dev/null 2>&1 || echo "Starship install failed or required interactive sudo"
+      # Install to ~/.local/bin (on PATH via dot_zshrc) so neither this nor
+      # dotup's later updates need sudo. The installer's default is
+      # /usr/local/bin, which escalates (#446).
+      mkdir -p "$HOME/.local/bin"
+      curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin" > /dev/null 2>&1 || echo "Starship install failed"
     else
       echo "Starship already installed, skipping..."
     fi

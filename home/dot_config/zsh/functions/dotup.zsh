@@ -56,7 +56,18 @@ dotup() {
   if [ "$(uname -s)" = "Linux" ] && ! command -v brew >/dev/null 2>&1 \
      && command -v starship >/dev/null 2>&1; then
     printf "\n==> Updating Starship...\n"
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
+    # Always target ~/.local/bin: the installer's default /usr/local/bin
+    # needs sudo (#446). ~/.local/bin precedes /usr/local/bin on PATH, so
+    # this shadows a copy left by an older bootstrap. The sed stops at the
+    # installer's per-shell setup instructions, which dot_zshrc already covers.
+    mkdir -p "$HOME/.local/bin"
+    curl -sS https://starship.rs/install.sh \
+      | sh -s -- -y -b "$HOME/.local/bin" \
+      | sed '/Please follow the steps/,$d'
+    if [ -x /usr/local/bin/starship ]; then
+      echo "Note: stale /usr/local/bin/starship is shadowed by ~/.local/bin;"
+      echo "      remove it with: sudo rm /usr/local/bin/starship"
+    fi
   fi
 
   printf "\n==> Reloading shell aliases and functions...\n"

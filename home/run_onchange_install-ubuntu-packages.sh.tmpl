@@ -167,7 +167,11 @@ case "$(uname -s)" in
     # Install uv (Python package manager)
     echo "Installing/Updating uv..."
     if ! command -v uv >/dev/null 2>&1; then
-      curl -LsSf https://astral.sh/uv/install.sh | sh
+      # UV_NO_MODIFY_PATH: otherwise the installer appends
+      # `. "$HOME/.local/bin/env"` to ~/.zshrc (and .bashrc/.profile), because
+      # ~/.local/bin is never on PATH inside a chezmoi script. dot_zshrc already
+      # adds it, and the edit makes chezmoi flag ~/.zshrc as modified (#446).
+      curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh
       echo "uv installed successfully"
     else
       echo "uv already installed, skipping"
