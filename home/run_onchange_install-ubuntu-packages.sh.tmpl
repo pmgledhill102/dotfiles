@@ -56,6 +56,46 @@ case "$(uname -s)" in
       sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
     done
     
+    # Ubuntu ships bat and fd under other names (batcat, fdfind), so the
+    # `command -v bat` / `command -v fd` gates in aliases.zsh and dot_zshrc
+    # never fire. Link the expected names into ~/.local/bin, which dot_zshrc
+    # puts on PATH (dotfiles#448).
+    mkdir -p "$HOME/.local/bin"
+    for pair in bat:batcat fd:fdfind; do
+      name=${pair%%:*}
+      apt_name=${pair#*:}
+      if [ ! -e "$HOME/.local/bin/$name" ] && ! command -v "$name" >/dev/null 2>&1 \
+         && command -v "$apt_name" >/dev/null 2>&1; then
+        ln -s "$(command -v "$apt_name")" "$HOME/.local/bin/$name"
+        echo "Linked $name -> $apt_name"
+      fi
+    done
+
+    # Install fzf from the GitHub release. dot_zshrc runs `fzf --zsh`, which
+    # needs fzf 0.48+, newer than Ubuntu 24.04's archive, so apt is not an
+    # option. Goes to ~/.local/bin (no sudo), ahead of any system fzf on PATH.
+    if "$HOME/.local/bin/fzf" --zsh >/dev/null 2>&1; then
+      echo "fzf already installed, skipping"
+    else
+      case "$(uname -m)" in
+        x86_64) FZF_ARCH=amd64 ;;
+        aarch64 | arm64) FZF_ARCH=arm64 ;;
+        *) FZF_ARCH= ;;
+      esac
+      FZF_TAG=$(latest_release_tag junegunn/fzf)
+      FZF_VERSION=${FZF_TAG#v}
+      if [ -z "$FZF_ARCH" ]; then
+        echo "fzf: no release binary for $(uname -m), skipping"
+      elif [ -z "$FZF_VERSION" ]; then
+        echo "Warning: could not resolve latest fzf release, skipping"
+      elif curl -fsSL "https://github.com/junegunn/fzf/releases/download/${FZF_TAG}/fzf-${FZF_VERSION}-linux_${FZF_ARCH}.tar.gz" |
+          tar xzf - -C "$HOME/.local/bin" fzf; then
+        echo "fzf v${FZF_VERSION} installed successfully"
+      else
+        echo "Warning: could not download fzf v${FZF_VERSION}, skipping"
+      fi
+    fi
+
     # Install lazygit
     echo "Installing/Updating lazygit..."
     LAZYGIT_TAG=$(latest_release_tag jesseduffield/lazygit)

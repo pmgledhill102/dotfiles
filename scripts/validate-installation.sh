@@ -16,6 +16,10 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     fi
 fi
 
+# ~/.local/bin holds tools installed without sudo (starship, fzf, the bat/fd
+# links on Ubuntu). dot_zshrc puts it on PATH; mirror that here.
+export PATH="$HOME/.local/bin:$PATH"
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -205,8 +209,8 @@ validate_test "Tmux config exists" "[ -f \"\$HOME/.tmux.conf\" ]"
 # In fast CI mode (DOTFILES_SKIP_INSTALL=1), these binary presence checks
 # are skipped — the packages haven't been installed.
 if [ "$FAST_MODE" = "1" ]; then
-    echo -e "${YELLOW}⊘${NC} git-delta / lazygit / tmux / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
-    SKIPPED_TESTS=$((SKIPPED_TESTS + 5))
+    echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / tmux / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
+    SKIPPED_TESTS=$((SKIPPED_TESTS + 11))
 else
     if command -v delta >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} git-delta is installed"
@@ -225,6 +229,15 @@ else
         echo -e "${RED}✗${NC} lazygit is installed"
         ((FAILED_TESTS++))
     fi
+
+    # Tools that aliases.zsh / dot_zshrc gate on with `command -v`; a miss
+    # there is silent in the shell, so catch it here (dotfiles#448).
+    validate_test "eza is in PATH" "command -v eza"
+    validate_test "bat is in PATH" "command -v bat"
+    validate_test "fd is in PATH" "command -v fd"
+    validate_test "rg is in PATH" "command -v rg"
+    validate_test "zoxide is in PATH" "command -v zoxide"
+    validate_test "fzf supports --zsh (0.48+)" "fzf --zsh >/dev/null"
 
     if command -v tmux >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} tmux is installed"
