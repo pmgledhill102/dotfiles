@@ -1,6 +1,8 @@
 # ADR-0005: Brewfile.tmpl as canonical macOS package source
 
-- **Status**: Accepted
+- **Status**: Accepted. Since [ADR-0017](0017-homebrew-on-personal-linux.md)
+  the same Brewfile also drives `personal` Linux machines, with macOS-only
+  entries behind a darwin guard
 - **Date**: 2026-04-26
 - **Tags**: packages, macos
 

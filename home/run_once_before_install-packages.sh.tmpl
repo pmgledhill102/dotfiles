@@ -27,6 +27,8 @@ case "$(uname -s)" in
     # ncurses-bin provides 'tic' command needed to compile terminfo
     sudo apt-get install -y git zsh age ncurses-term ncurses-bin
 
+{{- if ne .machine_type "personal" }}
+    # Personal machines get Starship from the Brewfile (ADR-0017).
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
       # Install to ~/.local/bin (on PATH via dot_zshrc) so neither this nor
@@ -37,6 +39,7 @@ case "$(uname -s)" in
     else
       echo "Starship already installed, skipping..."
     fi
+{{- end }}
 
     if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
       echo "Installing Oh My Zsh..."
@@ -88,6 +91,22 @@ case "$(uname -s)" in
       . "$HOME/.cargo/env"
     else
       echo "Rustup already installed, skipping..."
+    fi
+{{- end }}
+{{- if eq .machine_type "personal" }}
+
+    # Homebrew on Linux, personal tier only (ADR-0017): the Brewfile is then
+    # installed by run_once_after_install-brewfile. Homebrew's Linux
+    # prerequisites are build-essential, procps, curl, file and git;
+    # build-essential is installed above. NONINTERACTIVE skips the "Press
+    # RETURN" prompt; the installer still uses sudo once to create
+    # /home/linuxbrew, which the apt-get calls above have already authorised.
+    if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+      echo "Installing Homebrew..."
+      sudo apt-get install -y procps curl file
+      NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    else
+      echo "Homebrew already installed, skipping..."
     fi
 {{- end }}
 

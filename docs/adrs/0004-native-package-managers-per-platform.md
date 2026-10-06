@@ -1,6 +1,7 @@
 # ADR-0004: Native package managers per platform; no abstraction layer
 
-- **Status**: Accepted
+- **Status**: Accepted; superseded for `personal` Linux machines by
+  [ADR-0017](0017-homebrew-on-personal-linux.md)
 - **Date**: 2026-04-26
 - **Tags**: packages, cross-platform
 

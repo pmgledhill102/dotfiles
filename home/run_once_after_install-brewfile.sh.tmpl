@@ -10,10 +10,22 @@ echo "DOTFILES_SKIP_INSTALL=1 — skipping brew bundle install (fast CI mode)"
 exit 0
 {{- end }}
 
+# macOS, plus personal Linux machines (ADR-0017). .chezmoiignore keeps this
+# script off work and minimal Linux, so reaching the Linux arm means personal.
 case "$(uname -s)" in
-  Darwin*)
+  Darwin*) BREW_BIN=/opt/homebrew/bin/brew ;;
+  Linux*) BREW_BIN=/home/linuxbrew/.linuxbrew/bin/brew ;;
+  *) BREW_BIN= ;;
+esac
+
+case "$BREW_BIN" in
+  ?*)
+    if [ ! -x "$BREW_BIN" ]; then
+      echo "Warning: Homebrew not found at $BREW_BIN, skipping brew bundle"
+      exit 0
+    fi
     # Ensure Homebrew is in PATH
-    eval "$(/opt/homebrew/bin/brew shellenv)"
+    eval "$("$BREW_BIN" shellenv)"
 
     BREWFILE="$HOME/Brewfile"
 
@@ -64,6 +76,6 @@ case "$(uname -s)" in
     fi
     ;;
   *)
-    echo "Not macOS — skipping Brewfile install"
+    echo "No Homebrew on this OS — skipping Brewfile install"
     ;;
 esac

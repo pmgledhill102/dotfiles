@@ -57,9 +57,9 @@ Zsh + Oh My Zsh with quality-of-life add-ons:
 You don't need to remember chezmoi or brew incantations:
 
 - **`dotup`** — pull latest dotfiles, update Oh My Zsh + plugins, refresh
-  nano syntax, update Starship (Linux), then reload aliases/functions in
+  nano syntax, update Starship (Linux without Homebrew), then reload aliases/functions in
   the current shell
-- **`brewup`** — `brew update` + install everything in your Brewfile +
+- **`brewup`** — macOS and personal Linux: `brew update` + install everything in your Brewfile +
   `brew upgrade` + `rustup update`, in one step. Casks that update
   themselves (`auto_updates`, e.g. Discord, VS Code, Chrome) are left
   alone, so the run never stops on a sudo prompt — set
@@ -322,7 +322,7 @@ once that lands.
 | --- | --- | --- | --- |
 | macOS (Sonoma+), personal | **primary** | everything — Brewfile, defaults, Ghostty, xcodeup | full |
 | macOS, work | supported | `work` tier | none |
-| Ubuntu 22.04+ / Debian 11+ / WSL | supported | packages and shell; no GUI applications | pending the OS/persistence split upstream |
+| Ubuntu 22.04+ / Debian 11+ / WSL | supported | packages and shell; no GUI applications. Personal tier runs Homebrew and the Brewfile ([ADR-0017](docs/adrs/0017-homebrew-on-personal-linux.md)); work and minimal use apt | pending the OS/persistence split upstream |
 | Cloud sandbox (Ubuntu, ephemeral) | supported | `minimal`, scriptable without chezmoi | via agentic-coding-config's bootstrap |
 | Windows 10/11 (PowerShell) | **best-effort** | WinGet packages, PowerShell profile, Windows Terminal | pending an `env-windows` profile ([a-c-c#417](https://github.com/pmgledhill102/agentic-coding-config/issues/417)) |
 

@@ -55,7 +55,12 @@ case "$(uname -s)" in
       echo "Installing $package..."
       sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
     done
-    
+
+# {{ if ne .machine_type "personal" }}
+    # Everything from here to the matching end comes from the Brewfile on
+    # personal machines, which run Homebrew on Linux (ADR-0017). One owner per
+    # tool: installing both copies would leave a stale one on disk.
+
     # Ubuntu ships bat and fd under other names (batcat, fdfind), so the
     # `command -v bat` / `command -v fd` gates in aliases.zsh and dot_zshrc
     # never fire. Link the expected names into ~/.local/bin, which dot_zshrc
@@ -139,6 +144,7 @@ case "$(uname -s)" in
     else
       echo "mdcat: no release binary for $(uname -m), skipping"
     fi
+# {{ end }}
 
 # {{ if ne .machine_type "minimal" }}
     # Install PowerShell from Microsoft repository
@@ -157,6 +163,7 @@ case "$(uname -s)" in
       echo "PowerShell already installed, skipping"
     fi
 
+# {{ if ne .machine_type "personal" }}
     # Install gh (Linux counterpart of the Brewfile's brew "gh"; dotfiles#440)
     # from GitHub's own apt repo, per cli/cli docs/install_linux.md. The Ubuntu
     # archive's gh trails upstream by many releases. Once the repo is
@@ -176,6 +183,7 @@ case "$(uname -s)" in
     else
       echo "gh already installed, skipping"
     fi
+# {{ end }}
 
     # Install nvm (Linux counterpart of the Brewfile's brew "nvm"). The
     # npm-globals after-script needs it, and fails the apply without it
@@ -204,7 +212,8 @@ case "$(uname -s)" in
     fi
 # {{ end }}
 
-    # Install uv (Python package manager)
+# {{ if ne .machine_type "personal" }}
+    # Install uv (Python package manager; from the Brewfile on personal)
     echo "Installing/Updating uv..."
     if ! command -v uv >/dev/null 2>&1; then
       # UV_NO_MODIFY_PATH: otherwise the installer appends
@@ -216,6 +225,7 @@ case "$(uname -s)" in
     else
       echo "uv already installed, skipping"
     fi
+# {{ end }}
 
     echo "Package installation complete"
     ;;
