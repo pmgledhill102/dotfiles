@@ -70,16 +70,20 @@ brew "zoxide"
 # macOS only. Personal Linux machines also run this Brewfile (ADR-0017), so
 # everything below is either macOS-only upstream (xcodes, xcodegen, tart,
 # fastlane's Xcode tooling, every cask) or has a different owner on Linux:
-# podman from apt, powershell from Microsoft's apt repo, nvm from its install
-# script (dotfiles#435).
+# Docker from Docker's apt repo (ADR-0018), powershell from Microsoft's apt
+# repo, nvm from its install script (dotfiles#435).
 tap "openai/tools"
 tap "terraform-linters/tap"
 
+# Docker without Docker Desktop (ADR-0018): Colima runs the engine in a
+# headless VM; the CLI plugins are wired up by ~/.docker/config.json.
+brew "colima"
+brew "docker"
+brew "docker-buildx"
+brew "docker-compose"
 brew "fastlane"
 brew "nvm"
 brew "openai/tools/tart"
-brew "podman"
-brew "podman-compose"
 brew "powershell"
 brew "xcodegen"
 brew "xcodes"
@@ -116,8 +120,12 @@ brew "actionlint"
 brew "atlassian/acli/acli"
 brew "bat"
 brew "checkov"
+brew "colima"
 brew "cspell"
 brew "dolt"
+brew "docker"
+brew "docker-buildx"
+brew "docker-compose"
 brew "dotnet"
 brew "eza"
 brew "fd"
@@ -139,8 +147,6 @@ brew "nano"
 brew "nvm"
 brew "openjdk"
 brew "openssl"
-brew "podman"
-brew "podman-compose"
 brew "pre-commit"
 brew "prettier"
 brew "ripgrep"

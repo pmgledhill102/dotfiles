@@ -48,7 +48,7 @@ Zsh + Oh My Zsh with quality-of-life add-ons:
 - **Git + dev** — `gh`, `lazygit`, `pre-commit`, `gitleaks`
 - **Languages** — Go, .NET, OpenJDK + `jenv`, `nvm`, `uv` (Python), Rust
 - **Cloud / infra** — `gcloud`, `awscli`, `azure-cli`, `tenv` + `tflint`,
-  `checkov`, `trivy`, `semgrep`, `podman`
+  `checkov`, `trivy`, `semgrep`, Docker (Colima on macOS)
 - **Personal-tier GUI apps** — VS Code, Ghostty, Bitwarden, Rectangle,
   Chrome, JetBrains Mono Nerd Font, Claude Desktop, and more
 
@@ -162,18 +162,24 @@ settings, JetBrains Mono Nerd Font, and platform-specific defaults.
 A few one-time bootstrap steps that aren't auto-run on first apply because
 they're heavy or workflow-specific.
 
-### Container runtime (macOS only)
+### Containers (Docker, no Docker Desktop)
 
-The Brewfile installs `podman` + `podman-compose`, but on macOS the podman
-machine VM still needs to be initialised once before the CLI is usable:
+The real `docker` CLI with Compose v2 and buildx, on personal and work
+machines; minimal gets none
+([ADR-0018](docs/adrs/0018-docker-via-colima-and-docker-engine.md)).
+
+- **macOS** — the Brewfile installs Colima, which runs the Docker engine in a
+  headless VM, and starts it at login (`brew services start colima`). Resize it
+  with `colima stop && colima start --cpu 4 --memory 8`; the setting persists.
+  On Apple Silicon, `--vm-type vz --vz-rosetta` runs x86 images fast.
+- **Ubuntu / WSL** — Docker Engine from Docker's apt repo, native, no VM. The
+  install adds you to the `docker` group; log out and back in to use `docker`
+  without sudo.
 
 ```bash
-podman machine init   # ~800 MB image download
-podman machine start
-podman info           # verify
+docker run --rm hello-world   # verify
+docker compose version
 ```
-
-Linux uses the host kernel directly — no `podman machine` step needed.
 
 ### Self-hosted CI runner VM (macOS only)
 

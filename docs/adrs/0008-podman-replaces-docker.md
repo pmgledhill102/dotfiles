@@ -1,6 +1,7 @@
 # ADR-0008: Podman replaces Docker
 
-- **Status**: Accepted (with caveats — monitor for compatibility gaps)
+- **Status**: Superseded by [ADR-0018](0018-docker-via-colima-and-docker-engine.md)
+  (was: Accepted with caveats — the caveats below are what ended it)
 - **Date**: 2026-04-26
 - **Tags**: containers, tooling
 
