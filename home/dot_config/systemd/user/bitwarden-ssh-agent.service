@@ -1,0 +1,23 @@
+# Relays ~/.bitwarden-ssh-agent.sock to the Bitwarden SSH agent running on the
+# Windows side of WSL, so ssh, ssh-add, git and scp in WSL get the vault's keys
+# (#451). Personal WSL only (see .chezmoiignore); enabled by
+# run_onchange_after_setup-wsl-ssh-agent.
+#
+# socat forks one npiperelay.exe per client connection, which keeps one pipe
+# connection per ssh session: Bitwarden's per-host approval and its
+# agent-forwarding warning depend on that. npiperelay is not given -p, so ssh
+# fails fast instead of hanging when Bitwarden is not running.
+# ~/.local/bin/npiperelay.exe is a symlink to winget's copy, made by the setup
+# script, because the WinGet package path carries a version-specific suffix.
+
+[Unit]
+Description=Relay ~/.bitwarden-ssh-agent.sock to the Windows Bitwarden SSH agent
+
+[Service]
+UMask=0077
+ExecStart=/usr/bin/socat UNIX-LISTEN:%h/.bitwarden-ssh-agent.sock,unlink-early,mode=600,fork 'EXEC:%h/.local/bin/npiperelay.exe -ei -s //./pipe/openssh-ssh-agent,nofork'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

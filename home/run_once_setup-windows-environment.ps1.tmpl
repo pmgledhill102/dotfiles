@@ -73,6 +73,26 @@ Set-UserEnvironmentVariable "XDG_CONFIG_HOME" $xdgConfigHome
 Set-UserEnvironmentVariable "XDG_DATA_HOME" $xdgDataHome
 Set-UserEnvironmentVariable "XDG_CACHE_HOME" $xdgCacheHome
 
+{{- if eq .machine_type "personal" }}
+
+# Bitwarden's SSH agent serves \\.\pipe\openssh-ssh-agent, the same pipe as the
+# Windows "OpenSSH Authentication Agent" service, so Bitwarden's docs require
+# that service disabled. WSL reaches Bitwarden's agent through that pipe (#451).
+# Needs elevation; without it, say what to run instead of failing the apply.
+$sshAgent = Get-Service -Name ssh-agent -ErrorAction SilentlyContinue
+if ($sshAgent -and $sshAgent.StartType -ne 'Disabled') {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if ($isAdmin) {
+        Stop-Service -Name ssh-agent -ErrorAction SilentlyContinue
+        Set-Service -Name ssh-agent -StartupType Disabled
+        Write-Host "[OK] Disabled the Windows OpenSSH Authentication Agent (Bitwarden serves the agent pipe)" -ForegroundColor Green
+    } else {
+        Write-Host "[ACTION] Bitwarden's SSH agent needs the Windows OpenSSH agent service disabled." -ForegroundColor Yellow
+        Write-Host "  From an elevated PowerShell: Stop-Service ssh-agent; Set-Service ssh-agent -StartupType Disabled"
+    }
+}
+{{- end }}
+
 Write-Host ""
 Write-Host "=================================="
 Write-Host "Configuration Complete!"
