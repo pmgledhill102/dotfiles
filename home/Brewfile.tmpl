@@ -3,8 +3,6 @@
 
 {{- if eq .machine_type "personal" }}
 tap "atlassian/acli"
-tap "openai/tools"
-tap "terraform-linters/tap"
 
 brew "actionlint"
 brew "aria2"
@@ -21,7 +19,6 @@ brew "cspell"
 brew "dolt"
 brew "dotnet"
 brew "eza"
-brew "fastlane"
 brew "fd"
 brew "fzf"
 brew "gh"
@@ -47,16 +44,11 @@ brew "markdownlint-cli2"
 brew "maven"
 brew "mdcat"
 brew "nano"
-brew "nvm"
 brew "ocrmypdf"
-brew "openai/tools/tart"
 brew "openjdk"
 brew "openssl"
 brew "pandoc"
-brew "podman"
-brew "podman-compose"
 brew "poppler"
-brew "powershell"
 brew "pre-commit"
 brew "prettier"
 brew "ripgrep"
@@ -70,10 +62,27 @@ brew "uv"
 brew "watch"
 brew "weasyprint"
 brew "wget"
-brew "xcodegen"
-brew "xcodes"
 brew "yq"
 brew "zoxide"
+
+{{- if eq .chezmoi.os "darwin" }}
+
+# macOS only. Personal Linux machines also run this Brewfile (ADR-0017), so
+# everything below is either macOS-only upstream (xcodes, xcodegen, tart,
+# fastlane's Xcode tooling, every cask) or has a different owner on Linux:
+# podman from apt, powershell from Microsoft's apt repo, nvm from its install
+# script (dotfiles#435).
+tap "openai/tools"
+tap "terraform-linters/tap"
+
+brew "fastlane"
+brew "nvm"
+brew "openai/tools/tart"
+brew "podman"
+brew "podman-compose"
+brew "powershell"
+brew "xcodegen"
+brew "xcodes"
 
 cask "bitwarden"
 cask "bruno"
@@ -98,6 +107,7 @@ cask "terraform-linters/tap/tflint"
 cask "visual-studio-code"
 cask "voiceink"
 cask "whatsapp"
+{{- end }}
 {{- else if eq .machine_type "work" }}
 tap "atlassian/acli"
 tap "terraform-linters/tap"

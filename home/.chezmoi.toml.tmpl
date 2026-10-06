@@ -15,20 +15,16 @@
         # Ubuntu - apt packages
         [data.packages.apt]
 {{- if eq $machineType "personal" }}
+            # Personal Linux machines also run Homebrew and the Brewfile
+            # (ADR-0017), which owns the CLI tools (bat, eza, fd, ripgrep,
+            # zoxide, delta, jq, tmux, ...). apt keeps only what the bootstrap
+            # needs before Homebrew exists, plus podman, which stays apt-owned.
             packages = [
-                "bat",
                 "curl",
-                "eza",
-                "fd-find",
                 "git",
-                "git-delta",
-                "jq",
-                "ripgrep",
                 "podman",
-                "tmux",
                 "unzip",
                 "wget",
-                "zoxide",
                 "zip",
                 "zsh",
             ]

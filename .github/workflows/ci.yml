@@ -200,6 +200,10 @@ jobs:
         echo "Removing packages that install scripts should install..."
         sudo apt-get remove -y git zsh || true
         sudo apt-get autoremove -y
+        # The runner image ships Linuxbrew at /home/linuxbrew. CI applies the
+        # personal tier, which installs Homebrew itself (ADR-0017), so remove
+        # it to exercise that bootstrap from scratch, as the macOS leg does.
+        sudo rm -rf /home/linuxbrew
         echo "Pre-installed tools stripped."
 
     # Windows: no stripping needed. winget install handles already-installed

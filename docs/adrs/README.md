@@ -34,7 +34,7 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0001](0001-use-chezmoi-for-dotfiles.md) | Use chezmoi for dotfiles management | Accepted |
 | [0002](0002-single-source-cross-platform.md) | Single source of truth for macOS, Linux, WSL, and Windows | Accepted |
 | [0003](0003-machine-type-tiering.md) | Machine-type tiering (personal / work / minimal) | Accepted |
-| [0004](0004-native-package-managers-per-platform.md) | Native package managers per platform; no abstraction layer | Accepted |
+| [0004](0004-native-package-managers-per-platform.md) | Native package managers per platform; no abstraction layer | Accepted; superseded for personal Linux by 0017 |
 | [0005](0005-brewfile-canonical-macos-packages.md) | Brewfile.tmpl as canonical macOS package source | Accepted |
 | [0006](0006-starship-over-oh-my-posh.md) | Starship over Oh My Posh | Accepted |
 | [0007](0007-ghostty-default-terminal.md) | Ghostty as the default terminal on macOS and Windows | Accepted |
@@ -47,3 +47,4 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0014](0014-public-repo-no-private-references.md) | This repo is public by design; no private-repo references | Accepted |
 | [0015](0015-github-issues-task-tracking.md) | GitHub Issues as the single task tracker | Accepted |
 | [0016](0016-agent-tooling-is-personal-tier.md) | Agent tooling and its configuration are personal-tier | Accepted |
+| [0017](0017-homebrew-on-personal-linux.md) | Homebrew and the Brewfile on personal Linux machines | Accepted |

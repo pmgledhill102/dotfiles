@@ -20,6 +20,12 @@ fi
 # links on Ubuntu). dot_zshrc puts it on PATH; mirror that here.
 export PATH="$HOME/.local/bin:$PATH"
 
+# Homebrew on Linux (personal machines, ADR-0017). Evaluated after the
+# ~/.local/bin line, as in dot_zshrc, so brew wins over it and the system dirs.
+if [[ "$(uname -s)" == "Linux" ]] && [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -298,6 +304,18 @@ echo "Validating age encryption..."
 echo "-----------------------------------"
 validate_test_pkg "Age is in PATH" "command -v age"
 validate_test_pkg "Age keygen is in PATH" "command -v age-keygen"
+
+# Personal Linux runs Homebrew and the Brewfile (ADR-0017)
+if [[ "$(uname -s)" == "Linux" ]] && \
+   [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" = "personal" ]; then
+    echo ""
+    echo "Validating Homebrew on Linux (personal)..."
+    echo "-----------------------------------"
+    validate_test_pkg "Homebrew is in PATH" "command -v brew"
+    validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
+    validate_test "brewup is deployed" "[ -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
+    validate_test_pkg "Brewfile is satisfied" "brew bundle check --no-upgrade --file \"\$HOME/Brewfile\""
+fi
 
 # macOS-specific validations
 if [[ "$(uname -s)" == "Darwin" ]]; then
