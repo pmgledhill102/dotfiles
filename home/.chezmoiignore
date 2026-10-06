@@ -2,6 +2,13 @@
 {{- if hasKey . "machine_type" -}}
 {{-   $machineType = .machine_type -}}
 {{- end -}}
+{{- /* WSL, per chezmoi's Windows/WSL guide. .chezmoi.kernel exists only on Linux. */ -}}
+{{- $isWSL := false -}}
+{{- if and (eq .chezmoi.os "linux") (hasKey .chezmoi "kernel") -}}
+{{-   if .chezmoi.kernel.osrelease | lower | contains "microsoft" -}}
+{{-     $isWSL = true -}}
+{{-   end -}}
+{{- end -}}
 .secrets
 
 # .claude/* filtering is now handled by the archive external's `include`
@@ -40,6 +47,8 @@ run_once_after_disable-colima-autostart.sh
 disable-colima-autostart.sh
 run_once_remove-beads-dolt.sh
 remove-beads-dolt.sh
+run_onchange_after_setup-wsl-ssh-agent.sh
+setup-wsl-ssh-agent.sh
 # Windows has no /bin/sh, so chezmoi cannot exec this. A native-Windows work
 # machine that applied the pre-gate external would therefore keep the config.
 # Accepted gap, not an oversight: there are no native-Windows work machines in
@@ -90,6 +99,14 @@ run_once_after_disable-colima-autostart.sh
 disable-colima-autostart.sh
 .docker
 .docker/**
+{{- end }}
+
+# Bitwarden SSH agent relay into WSL: personal WSL only (#451). Everywhere
+# else the agent's own socket (or no agent) applies, unchanged.
+{{- if not (and $isWSL (eq $machineType "personal")) }}
+run_onchange_after_setup-wsl-ssh-agent.sh
+setup-wsl-ssh-agent.sh
+.config/systemd/user/bitwarden-ssh-agent.service
 {{- end }}
 
 # Homebrew + Brewfile: macOS, and personal Linux machines (ADR-0017). Work and

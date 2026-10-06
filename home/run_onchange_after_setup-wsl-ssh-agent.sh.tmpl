@@ -1,0 +1,66 @@
+#!/bin/sh
+# Set up the relay from WSL to the Bitwarden SSH agent on Windows (#451).
+# Personal WSL only (see .chezmoiignore). Re-runs when the unit file changes:
+# unit sha256 {{ include "dot_config/systemd/user/bitwarden-ssh-agent.service" | sha256sum }}
+#
+# Prerequisites on the Windows side, from the winget list and
+# run_once_setup-windows-environment: albertony.npiperelay installed, the
+# Windows OpenSSH agent service disabled, and the SSH agent switched on in
+# Bitwarden's settings. Every step below warns and exits 0 rather than failing
+# the apply, because the Windows half may land after this runs.
+
+set -eu
+
+if ! grep -qi 'microsoft\|wsl' /proc/version 2>/dev/null; then
+  echo "Not WSL — skipping Bitwarden SSH agent relay"
+  exit 0
+fi
+
+# socat from apt, not Homebrew: the systemd unit needs a fixed /usr/bin path
+# that exists without brew's shellenv. A deliberate exception to ADR-0017.
+if ! [ -x /usr/bin/socat ]; then
+  echo "Installing socat..."
+  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y socat; then
+    echo "Warning: could not install socat; the Bitwarden SSH agent relay is not set up"
+    exit 0
+  fi
+fi
+
+# npiperelay.exe lives under winget's per-user package root. appendWindowsPath
+# is false (run_once_configure-wsl), so it is not on PATH; resolve it via
+# %LOCALAPPDATA%, which also copes with a Windows username that differs from
+# the Linux one. cmd.exe is started from /mnt/c so it does not warn about a
+# UNC working directory.
+win_lad=$(cd /mnt/c && /mnt/c/Windows/System32/cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | tr -d '\r') || win_lad=
+relay=
+if [ -n "$win_lad" ]; then
+  pkg_root="$(wslpath -u "$win_lad")/Microsoft/WinGet/Packages"
+  for candidate in "$pkg_root"/albertony.npiperelay_*/npiperelay.exe; do
+    if [ -f "$candidate" ]; then
+      relay=$candidate
+      break
+    fi
+  done
+fi
+if [ -z "$relay" ]; then
+  echo "Warning: npiperelay.exe not found. Install it on Windows with"
+  echo "  winget install albertony.npiperelay"
+  echo "then re-run 'chezmoi apply'."
+  exit 0
+fi
+mkdir -p "$HOME/.local/bin"
+ln -sf "$relay" "$HOME/.local/bin/npiperelay.exe"
+
+# systemd=true only takes effect after `wsl --shutdown`, so on a brand-new
+# machine the user manager may not be up yet on the first apply.
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo "Warning: systemd user services are not available yet. Run 'wsl --shutdown'"
+  echo "from Windows, reopen WSL, then re-run 'chezmoi apply'."
+  exit 0
+fi
+
+systemctl --user daemon-reload
+systemctl --user enable bitwarden-ssh-agent.service
+# restart, not start, so an edited unit takes effect on re-run
+systemctl --user restart bitwarden-ssh-agent.service
+echo "Bitwarden SSH agent relay running at ~/.bitwarden-ssh-agent.sock (open a new shell to pick it up)"

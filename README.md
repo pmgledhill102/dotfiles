@@ -38,7 +38,8 @@ Zsh + Oh My Zsh with quality-of-life add-ons:
 - **fzf** wired for `Ctrl-R` history search and fuzzy file pickers
 - **zoxide** so `z proj` jumps to your most-used folder without typing the
   path
-- Bitwarden SSH agent auto-wired, telemetry opted out, `~/.zshrc.local`
+- Bitwarden SSH agent auto-wired (on WSL via a relay to the Windows agent,
+  [#451](https://github.com/pmgledhill102/dotfiles/issues/451)), telemetry opted out, `~/.zshrc.local`
   escape hatch for per-machine tweaks
 
 ### A modern CLI toolkit installed for you
