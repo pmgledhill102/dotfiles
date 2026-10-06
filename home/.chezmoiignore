@@ -38,6 +38,8 @@ run_once_migrate-tart-to-openai-tap.sh
 migrate-tart-to-openai-tap.sh
 run_once_after_disable-colima-autostart.sh
 disable-colima-autostart.sh
+run_once_remove-beads-dolt.sh
+remove-beads-dolt.sh
 # Windows has no /bin/sh, so chezmoi cannot exec this. A native-Windows work
 # machine that applied the pre-gate external would therefore keep the config.
 # Accepted gap, not an oversight: there are no native-Windows work machines in

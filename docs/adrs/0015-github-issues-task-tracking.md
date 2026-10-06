@@ -86,6 +86,8 @@ Evaluated upstream rather than here — see
 for the comparison against Backlog.md, Linear, beads_rust and git-bug, and
 for why staying on beads was rejected.
 
-Note that `beads` remains installed via the personal Brewfile. It is no
-longer used for tracking in this estate, but it is deliberately kept
-available.
+Note that `beads` remained installed via the personal Brewfile at first,
+deliberately kept available. **Update 2026-10-06:** unused for over three
+months, `beads` and `dolt` are removed from the Brewfile, and
+`run_once_remove-beads-dolt.sh` uninstalls them from existing machines
+([#459](https://github.com/pmgledhill102/dotfiles/issues/459)).
