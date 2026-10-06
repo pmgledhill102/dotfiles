@@ -42,8 +42,9 @@ containers, with the engine supplied natively per platform:
   - `~/.docker/config.json` gets `cliPluginsExtraDirs` pointing at Homebrew's
     `lib/docker/cli-plugins`, via a chezmoi modify-template. Docker's own keys
     (`auths`, `currentContext`) are left alone.
-  - `run_once_after_start-colima.sh` runs `brew services start colima`, so the
-    VM comes up at login.
+  - Colima is **started on demand** (`colima start` / `colima stop`), not at
+    login, so the VM costs nothing between uses
+    ([#455](https://github.com/pmgledhill102/dotfiles/issues/455)).
   - `dot_zshrc` exports `DOCKER_HOST` at Colima's socket, for tools that ignore
     Docker contexts.
 - **Linux wiring.** The user joins the `docker` group, to run `docker` without
@@ -77,7 +78,10 @@ and Colima's runs the real Docker engine.
   This is the usual trade-off; rootless Docker is available if it matters.
 - **CI cannot start Colima.** GitHub's macOS runners have no nested
   virtualisation, so CI checks the Docker CLI and plugins, not a running
-  engine, and the Colima login service is skipped there.
+  engine.
+- **One extra step on macOS:** `colima start` before using Docker. A `docker`
+  command with Colima stopped fails with "Cannot connect to the Docker
+  daemon", which is the cue.
 - Existing machines keep their Podman install until it is removed by hand.
 
 ## Alternatives considered

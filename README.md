@@ -169,9 +169,18 @@ machines; minimal gets none
 ([ADR-0018](docs/adrs/0018-docker-via-colima-and-docker-engine.md)).
 
 - **macOS** — the Brewfile installs Colima, which runs the Docker engine in a
-  headless VM, and starts it at login (`brew services start colima`). Resize it
-  with `colima stop && colima start --cpu 4 --memory 8`; the setting persists.
-  On Apple Silicon, `--vm-type vz --vz-rosetta` runs x86 images fast.
+  headless VM. It is **off until you start it**, so it costs nothing while you
+  are not using Docker:
+
+  ```bash
+  colima start    # when you need docker (defaults: 2 CPU, 2 GiB RAM)
+  colima stop     # give the memory back
+  colima status
+  ```
+
+  For a bigger VM, `colima start --cpu 4 --memory 6`; the size persists for
+  later starts. On Apple Silicon, `--vm-type vz --vz-rosetta` runs x86 images
+  fast.
 - **Ubuntu / WSL** — Docker Engine from Docker's apt repo, native, no VM. The
   install adds you to the `docker` group; log out and back in to use `docker`
   without sudo.
