@@ -18,11 +18,11 @@
             # Personal Linux machines also run Homebrew and the Brewfile
             # (ADR-0017), which owns the CLI tools (bat, eza, fd, ripgrep,
             # zoxide, delta, jq, tmux, ...). apt keeps only what the bootstrap
-            # needs before Homebrew exists, plus podman, which stays apt-owned.
+            # needs before Homebrew exists. Docker comes from Docker's own apt
+            # repo in run_onchange_install-ubuntu-packages (ADR-0018).
             packages = [
                 "curl",
                 "git",
-                "podman",
                 "unzip",
                 "wget",
                 "zip",
@@ -38,7 +38,6 @@
                 "git-delta",
                 "jq",
                 "ripgrep",
-                "podman",
                 "tmux",
                 "unzip",
                 "wget",

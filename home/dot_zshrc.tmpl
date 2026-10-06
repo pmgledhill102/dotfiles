@@ -115,6 +115,13 @@ export VISUAL="nano"
 export HOMEBREW_NO_ANALYTICS=1
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
+# Docker on macOS runs inside Colima (ADR-0018). The docker CLI finds it via
+# the "colima" context, but tools that read the socket directly
+# (Testcontainers, act, some IDE plugins) only honour DOCKER_HOST.
+if [ "$(uname -s)" = "Darwin" ] && command -v colima >/dev/null 2>&1; then
+  export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+fi
+
 # Bitwarden SSH agent
 [ -S ~/.bitwarden-ssh-agent.sock ] && export SSH_AUTH_SOCK=~/.bitwarden-ssh-agent.sock
 

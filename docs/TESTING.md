@@ -105,7 +105,7 @@ The most reliable way to test is on a fresh system:
 2. **Using Containers** (Linux only)
 
    ```bash
-   podman run -it --rm ubuntu:latest bash
+   docker run -it --rm ubuntu:latest bash
    # Run installation commands
    ```
 

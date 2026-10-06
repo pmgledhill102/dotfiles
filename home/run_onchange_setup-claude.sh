@@ -20,6 +20,14 @@ fi
 
 echo "Configuring Claude Code MCP servers..."
 
+# This script re-runs whenever it changes, and `claude mcp add` refuses a name
+# that already exists, which under set -e would fail the whole apply. Remove
+# first so each run converges: it is also how an older podman-based terraform
+# entry becomes the docker one below.
+for server in google-dev-knowledge terraform; do
+    claude mcp remove --scope user "$server" >/dev/null 2>&1 || true
+done
+
 # Google Developer Knowledge — requires API key from ~/.secrets
 if [ -n "${GOOGLE_DEV_KNOWLEDGE_API_KEY:-}" ]; then
     claude mcp add --transport http --scope user \
@@ -31,13 +39,8 @@ else
     echo "  Skipped google-dev-knowledge (no API key in ~/.secrets)"
 fi
 
-# Terraform — provider docs, module search (requires Podman or Docker)
-if command -v podman >/dev/null 2>&1; then
-    claude mcp add --transport stdio --scope user \
-        terraform -- \
-        podman run -i --rm hashicorp/terraform-mcp-server
-    echo "  Added terraform (via podman)"
-elif command -v docker >/dev/null 2>&1; then
+# Terraform — provider docs, module search (requires Docker; ADR-0018)
+if command -v docker >/dev/null 2>&1; then
     claude mcp add --transport stdio --scope user \
         terraform -- \
         docker run -i --rm hashicorp/terraform-mcp-server

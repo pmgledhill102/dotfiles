@@ -38,7 +38,7 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0005](0005-brewfile-canonical-macos-packages.md) | Brewfile.tmpl as canonical macOS package source | Accepted |
 | [0006](0006-starship-over-oh-my-posh.md) | Starship over Oh My Posh | Accepted |
 | [0007](0007-ghostty-default-terminal.md) | Ghostty as the default terminal on macOS and Windows | Accepted |
-| [0008](0008-podman-replaces-docker.md) | Podman replaces Docker | Accepted (with caveats) |
+| [0008](0008-podman-replaces-docker.md) | Podman replaces Docker | Superseded by 0018 |
 | [0009](0009-helper-shell-functions.md) | Helper shell functions for daily dotfiles workflow | Accepted |
 | [0010](0010-secrets-management.md) | Secrets management strategy | Proposed |
 | [0011](0011-beads-task-tracking.md) | Beads with embedded Dolt for task tracking | Superseded |
@@ -48,3 +48,4 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0015](0015-github-issues-task-tracking.md) | GitHub Issues as the single task tracker | Accepted |
 | [0016](0016-agent-tooling-is-personal-tier.md) | Agent tooling and its configuration are personal-tier | Accepted |
 | [0017](0017-homebrew-on-personal-linux.md) | Homebrew and the Brewfile on personal Linux machines | Accepted |
+| [0018](0018-docker-via-colima-and-docker-engine.md) | Docker without Docker Desktop: Colima on macOS, Docker Engine on Linux | Accepted |

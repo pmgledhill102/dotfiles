@@ -147,6 +147,45 @@ case "$(uname -s)" in
 # {{ end }}
 
 # {{ if ne .machine_type "minimal" }}
+    # Install Docker Engine from Docker's apt repo (ADR-0018), per
+    # docs.docker.com/engine/install/ubuntu. Native on Linux and WSL: no
+    # Docker Desktop, no VM. WSL needs systemd for the service, which
+    # run_once_configure-wsl enables. Skipped when docker is already present,
+    # e.g. GitHub's runners, whose preinstalled packages conflict with
+    # docker-ce. Not on minimal: those machines get no container engine.
+    if ! command -v docker >/dev/null 2>&1; then
+      echo "Installing Docker Engine..."
+      # Each step is chained with && rather than relying on set -e, which is
+      # suspended inside an if condition. A distro Docker's repo does not
+      # cover (an Ubuntu derivative whose ID has no download.docker.com path)
+      # then warns instead of aborting the whole apply.
+      # shellcheck disable=SC1091
+      DOCKER_OS=$(. /etc/os-release && echo "$ID")
+      # shellcheck disable=SC1091
+      DOCKER_CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+      DOCKER_KEYRING=/etc/apt/keyrings/docker.asc
+      if sudo install -m 0755 -d /etc/apt/keyrings &&
+        sudo curl -fsSL "https://download.docker.com/linux/${DOCKER_OS}/gpg" -o "$DOCKER_KEYRING" &&
+        sudo chmod a+r "$DOCKER_KEYRING" &&
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=$DOCKER_KEYRING] https://download.docker.com/linux/${DOCKER_OS} ${DOCKER_CODENAME} stable" |
+          sudo tee /etc/apt/sources.list.d/docker.list >/dev/null &&
+        sudo apt-get update &&
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+        echo "Docker Engine installed successfully"
+      else
+        echo "Warning: Docker Engine install failed, skipping"
+        sudo rm -f /etc/apt/sources.list.d/docker.list
+      fi
+    else
+      echo "Docker already installed, skipping"
+    fi
+    # Run docker without sudo; takes effect at the next login. Membership of
+    # the docker group is root-equivalent, the usual trade-off for this.
+    if getent group docker >/dev/null 2>&1 && ! id -nG "$USER" | grep -qw docker; then
+      sudo usermod -aG docker "$USER"
+      echo "Added $USER to the docker group (log out and back in to use it)"
+    fi
+
     # Install PowerShell from Microsoft repository
     echo "Installing/Updating PowerShell..."
     if ! command -v pwsh >/dev/null 2>&1; then
