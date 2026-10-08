@@ -9,7 +9,9 @@ brew "aria2"
 brew "atlassian/acli/acli"
 brew "aws-sam-cli"
 brew "awscli"
-brew "azure-cli"
+# Homebrew moved azure-cli from a formula to a cask in October 2026 (#464).
+# The cask covers macOS and Linux, so it stays out of the darwin-only block.
+cask "azure-cli"
 brew "bat"
 brew "bitwarden-cli"
 brew "chafa"
