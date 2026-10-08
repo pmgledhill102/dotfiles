@@ -5,7 +5,8 @@
 #
 # Runs once per machine via chezmoi's run_once_ prefix. A no-op where Homebrew
 # is absent or neither formula is installed. beads depends on dolt, so it is
-# uninstalled first.
+# uninstalled first. --force removes every installed version: a plain uninstall
+# takes only the linked one, and a leftover older beads then blocks dolt (#461).
 
 set -eu
 
@@ -23,7 +24,7 @@ fi
 for formula in beads dolt; do
   if brew list --formula "$formula" >/dev/null 2>&1; then
     echo "==> Removing '$formula' (retired, see ADR-0015)..."
-    brew uninstall --formula "$formula" ||
+    brew uninstall --force --formula "$formula" ||
       echo "Warning: could not uninstall $formula; run 'brew uninstall $formula'"
   fi
 done

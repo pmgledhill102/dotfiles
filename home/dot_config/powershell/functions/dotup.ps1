@@ -27,28 +27,20 @@ function dotup {
         return
     }
 
+    # --init regenerates chezmoi.toml from .chezmoi.toml.tmpl before applying,
+    # so a pull that changes the config template applies once, with the fresh
+    # config. Non-interactive: promptChoiceOnce reuses the stored answers. It
+    # replaces a detect-the-warning-then-re-apply recovery that ran every
+    # changed script twice (#461).
+    #
     # --refresh-externals forces chezmoi externals (agentic-coding-config,
     # mounted at ~/.claude/) to re-fetch, bypassing their 168h refreshPeriod.
     # Without it a plain update re-applies the cached archive, so a merge
     # upstream can take up to a week to arrive. Cheap for a repo this small.
     #
     # No -v: verbose prints a full unified diff of every changed file, which
-    # buries the run. The "config file template has changed" warning below is a
-    # warning rather than verbose output, so it still surfaces either way.
-    $updateLog = chezmoi update --refresh-externals 2>&1 | Tee-Object -Variable captured
-    $captured | ForEach-Object { Write-Host $_ }
-
-    # Auto-recover when chezmoi warns the rendered chezmoi.toml is stale —
-    # typically a new [data.*] block was added to .chezmoi.toml.tmpl since the
-    # last init, so downstream templates referencing the new key fail with
-    # "map has no entry for key X". Re-init reuses stored promptChoiceOnce
-    # answers, so it is non-interactive.
-    if ($captured -match 'config file template has changed') {
-        Write-Host "`n==> Config template changed - regenerating with 'chezmoi init'..." -ForegroundColor Yellow
-        chezmoi init
-        Write-Host "`n==> Re-applying with refreshed config..." -ForegroundColor Yellow
-        chezmoi apply
-    }
+    # buries the run.
+    chezmoi update --init --refresh-externals
 
     Write-Host "`n==> Reloading PowerShell profile..." -ForegroundColor Cyan
     if (Test-Path $PROFILE) {

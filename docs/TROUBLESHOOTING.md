@@ -827,9 +827,12 @@ chezmoi init to regenerate config file" AND a template fails with
 "map has no entry for key X": a new `[data....]` block was added to
 `home/.chezmoi.toml.tmpl` after your local `~/.config/chezmoi/chezmoi.toml`
 was rendered. Fix: `chezmoi init` (no flags) — `promptChoiceOnce` reuses the
-existing `machine_type` answer. This repeats whenever a new `data.*` key
-lands; PRs touching `home/.chezmoi.toml.tmpl` should flag that existing
-users must re-init. (Confirmed with PR #207: `[data.packages.npm]`.)
+existing `machine_type` answer. (Confirmed with PR #207: `[data.packages.npm]`.)
+
+`dotup` no longer hits this: it runs `chezmoi update --init`, which
+regenerates the config before applying (#461). A bare `chezmoi update` or
+`chezmoi apply` still can, so after pulling a change to
+`home/.chezmoi.toml.tmpl` that way, run `chezmoi init` first.
 
 ### New `.sh.tmpl` scripts break Windows CI without a `.chezmoiignore` entry
 
