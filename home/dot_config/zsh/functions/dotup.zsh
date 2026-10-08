@@ -5,33 +5,22 @@
 dotup() {
   _dotup_banner
   echo "==> Updating dotfiles..."
+  # --init regenerates ~/.config/chezmoi/chezmoi.toml from .chezmoi.toml.tmpl
+  # before applying, so a pull that changes the config template (a new
+  # [data.*] key, a package-list edit) applies once, with the fresh config.
+  # It is non-interactive: promptChoiceOnce reuses the stored machine_type.
+  # This replaces a detect-the-warning-then-re-apply recovery, which ran every
+  # changed script twice and gave a failed run_once a second, surprising go
+  # (#461).
   # --refresh-externals forces chezmoi externals (e.g. agentic-coding-config
   # mounted at ~/.claude/) to re-fetch, bypassing their refreshPeriod. Cheap
   # for small repos and the user is always online during dotup, so the
   # always-latest semantics are worth the extra ~1s.
   # No -v: verbose mode prints the full unified diff of every changed file,
   # which buries the run in noise on each dotup. Without it, chezmoi applies
-  # quietly and git's own pull summary still reports what came in. The
-  # "config file template has changed" warning below is a warning, not verbose
-  # output, so it still surfaces and the recovery path keeps working.
-  local update_log
-  update_log=$(mktemp)
+  # quietly and git's own pull summary still reports what came in.
   # shellcheck disable=SC2209  # PAGER=cat is an env prefix, not an assignment
-  PAGER=cat chezmoi update --refresh-externals 2>&1 | tee "$update_log"
-
-  # Auto-recover when chezmoi warns the rendered ~/.config/chezmoi/chezmoi.toml
-  # is stale (typically: a new [data.*] block was added to .chezmoi.toml.tmpl
-  # since the user last ran init, so downstream templates referencing the new
-  # key fail with "map has no entry for key X"). Re-init re-uses stored
-  # promptChoiceOnce answers, so it's non-interactive.
-  if grep -q "config file template has changed" "$update_log"; then
-    printf "\n==> Config template changed — regenerating with 'chezmoi init'...\n"
-    chezmoi init
-    printf "\n==> Re-applying with refreshed config...\n"
-    # shellcheck disable=SC2209  # PAGER=cat is an env prefix, not an assignment
-    PAGER=cat chezmoi apply
-  fi
-  rm -f "$update_log"
+  PAGER=cat chezmoi update --init --refresh-externals
 
   if [ -d "$ZSH" ]; then
     printf "\n==> Updating Oh My Zsh...\n"
