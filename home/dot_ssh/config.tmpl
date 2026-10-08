@@ -1,6 +1,12 @@
 Host *.servers.pmgledhill.com
     User ubuntu
+{{- /* Bitwarden serves a Unix socket on macOS and Linux (relayed into WSL,
+       #451), but the named pipe \\.\pipe\openssh-ssh-agent on Windows, which
+       is Windows OpenSSH's default. Pointing IdentityAgent at the socket there
+       would bypass that pipe, so leave the line out on Windows (#463). */ -}}
+{{- if ne .chezmoi.os "windows" }}
     IdentityAgent ~/.bitwarden-ssh-agent.sock
+{{- end }}
     CheckHostIP no
     ServerAliveInterval 60
     ServerAliveCountMax 3
