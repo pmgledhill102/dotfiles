@@ -158,6 +158,14 @@ This installs chezmoi, packages (Homebrew/apt/winget), shell config (Zsh +
 Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, tmux, VS Code
 settings, JetBrains Mono Nerd Font, and platform-specific defaults.
 
+On Windows the PowerShell profile lives at
+`~\.config\powershell\Microsoft.PowerShell_profile.ps1`, as on macOS and
+Linux. Windows reads its profiles from `Documents`, so apply appends a short
+loader to both `$PROFILE` files: PowerShell 7 and Windows PowerShell 5.1.
+Open a new window afterwards to get `dotup` and the other functions. If 5.1
+reports that running scripts is disabled, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
 ## First-run extras (optional)
 
 A few one-time bootstrap steps that aren't auto-run on first apply because
