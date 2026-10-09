@@ -11,9 +11,15 @@ if (Get-Command starship -ErrorAction SilentlyContinue) {
 if (Get-Module -ListAvailable -Name PSReadLine) {
     Import-Module PSReadLine
     
-    # Enable predictive IntelliSense
-    Set-PSReadLineOption -PredictionSource History
-    Set-PSReadLineOption -PredictionViewStyle ListView
+    # Enable predictive IntelliSense. Windows PowerShell 5.1 ships PSReadLine
+    # 2.0, which has neither option, and they also throw when output is
+    # redirected rather than a real console (#469).
+    if ((Get-Command Set-PSReadLineOption).Parameters.ContainsKey('PredictionSource')) {
+        try {
+            Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
+            Set-PSReadLineOption -PredictionViewStyle ListView -ErrorAction Stop
+        } catch { }
+    }
     
     # Set up key handlers for navigation
     Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
