@@ -26,6 +26,8 @@ run_once_install-vscode-extensions.ps1
 install-vscode-extensions.ps1
 run_after_prune-retired-claude-files.ps1
 prune-retired-claude-files.ps1
+run_onchange_after_link-powershell-profile.ps1
+link-powershell-profile.ps1
 AppData/
 {{- end }}
 

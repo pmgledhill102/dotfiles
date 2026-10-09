@@ -131,6 +131,19 @@ Test-Validation "dotup.ps1 parses and defines dotup" {
     (Get-Content $fn -Raw) -match 'function\s+dotup'
 }
 
+# The checks above only prove the files are right. Windows reads its profiles
+# from <Documents>, not ~/.config, so also start each shell with its profile
+# and ask whether dotup exists (#467).
+foreach ($shell in 'pwsh', 'powershell') {
+    Test-Validation "$shell loads the profile and defines dotup" {
+        # throw, not return: Test-Validation passes a false result when
+        # $LASTEXITCODE is still 0 from an earlier command.
+        if (-not (Get-Command $shell -ErrorAction SilentlyContinue)) { throw "$shell not found" }
+        & $shell -NoLogo -NonInteractive -Command 'if (Get-Command dotup -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }' | Out-Null
+        $LASTEXITCODE -eq 0
+    }
+}
+
 # Validate Starship Prompt
 Write-Host ""
 Write-Host "Validating Starship prompt..."
