@@ -43,6 +43,13 @@ EOF
 : "${CI_VM_CPU:=6}"
 : "${CI_VM_MEMORY:=12288}"
 : "${CI_VM_DISK:=250}"
+# Guest display, in *pixels*. A "pt" size (Tart's default unit for macOS VMs) is
+# sized from the host's main screen when the VM starts, and falls back to a 1×,
+# 72 ppi display when there isn't a usable one — before login, lid closed, a 1×
+# external monitor. So the guest's pixel density, and every pixel-compared
+# snapshot test run in it, changed with whatever the laptop was doing at boot.
+# Pixels make it fixed.
+: "${CI_VM_DISPLAY:=1280x800px}"
 # No default on purpose: this repo is public, so which repo the runner
 # attaches to is machine configuration. Set it in ~/.config/ci-vm.conf.
 : "${CI_VM_REPO:=}"
@@ -163,6 +170,15 @@ else
     --cpu "$CI_VM_CPU" \
     --memory "$CI_VM_MEMORY" \
     --disk-size "$CI_VM_DISK"
+fi
+
+# Applied on every run, not only at clone, so an existing VM picks it up too.
+# Tart reads the display at boot, so it's only set while the VM is stopped.
+if [ "$(vm_state)" = "running" ]; then
+  skip "Display not re-pinned while running — ci-vm-down, then re-run to apply $CI_VM_DISPLAY"
+else
+  log "Pinning the display to $CI_VM_DISPLAY"
+  tart set "$CI_VM_NAME" --display "$CI_VM_DISPLAY"
 fi
 
 # --- 2. Boot ------------------------------------------------------------
