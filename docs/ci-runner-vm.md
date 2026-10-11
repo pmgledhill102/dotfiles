@@ -96,6 +96,7 @@ CI_VM_MEMORY=16384
 | `CI_VM_CPU` | `6` | Of 10 on an M5 Air |
 | `CI_VM_MEMORY` | `12288` | MB |
 | `CI_VM_DISK` | `250` | GB, sparse |
+| `CI_VM_DISPLAY` | `1280x800px` | Guest display in **pixels** — see [Display](#display) |
 | `CI_VM_REPO` | *(none — required)* | Repo the runner registers against |
 | `CI_VM_RUNNER_NAME` | `$CI_VM_NAME` | Name shown in GitHub's runner list |
 | `CI_VM_USER` / `CI_VM_PASSWORD` | `admin` / `admin` | Cirrus image defaults |
@@ -119,6 +120,20 @@ crane ls ghcr.io/cirruslabs/macos-tahoe-xcode
 
 `macos-runner:tahoe` bundles many Xcode versions at once and needs a 520 GB
 disk — too large for a laptop.
+
+## Display
+
+`ci-vm-build` pins the guest display in pixels (`CI_VM_DISPLAY`), and applies it on
+every run while the VM is stopped. Without it, Tart sizes a macOS VM's display in
+points from the host's main screen at boot. When there isn't a usable one — the
+VM started before login, the lid closed, only a 1× external monitor attached — it
+falls back to a 1×, 72 ppi display. The guest's pixel density then changes with
+what the laptop was doing when the VM started, and pixel-compared snapshot tests
+(AppKit renders text to the window's backing scale) fail for no code change.
+
+A pixel size is fixed whatever the host is doing. It's a 1× display; a 2× guest
+needs doubled pixel dimensions *and* the HiDPI mode chosen once in the guest's
+Displays settings — and any snapshot goldens re-recorded to match.
 
 ## How the runner survives reboots
 
