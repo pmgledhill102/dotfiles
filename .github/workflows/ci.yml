@@ -4,7 +4,6 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
   schedule:
     - cron: '0 6 * * 5'   # Weekly Friday 06:00 UTC
   workflow_dispatch: {}    # Manual trigger from Actions tab
