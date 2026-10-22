@@ -128,10 +128,8 @@ configure-wsl.sh
 .config/ubuntu_pkglist
 {{- end }}
 
-# Only deploy cloudcoop config on personal machines
 # cship install script is macOS personal only
 {{- if ne $machineType "personal" }}
-.config/cloudcoop/
 run_onchange_after_install-cship.sh
 install-cship.sh
 {{- end }}
