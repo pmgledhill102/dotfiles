@@ -34,16 +34,16 @@ trap 'rm -f "$violations"' EXIT
 # --- Owner-scoped references --------------------------------------------
 
 # grep -o prints one match per line; -H keeps the filename on each.
-git ls-files -z |
-  xargs -0 grep -aoHE "$OWNER/[A-Za-z0-9._-]+" 2>/dev/null |
-  while IFS= read -r hit; do
+git ls-files -z \
+  | xargs -0 grep -aoHE "$OWNER/[A-Za-z0-9._-]+" 2>/dev/null \
+  | while IFS= read -r hit; do
     file="${hit%%:*}"
     name="${hit#*:}"
     name="${name#"$OWNER"/}"
     name="${name%.git}"
     # The allowlist stores bare names, so it never matches this pattern itself.
-    grep -qxF "$name" "$ALLOWLIST" ||
-      printf '%s: names %s/%s, which is not on the public allowlist\n' \
+    grep -qxF "$name" "$ALLOWLIST" \
+      || printf '%s: names %s/%s, which is not on the public allowlist\n' \
         "$file" "$OWNER" "$name"
   done | sort -u >>"$violations"
 
@@ -52,9 +52,9 @@ git ls-files -z |
 if [ -f "$LOCAL_NAMES" ]; then
   while IFS= read -r name || [ -n "$name" ]; do
     case "$name" in '' | '#'*) continue ;; esac
-    git ls-files -z |
-      xargs -0 grep -ailF -- "$name" 2>/dev/null |
-      while IFS= read -r file; do
+    git ls-files -z \
+      | xargs -0 grep -ailF -- "$name" 2>/dev/null \
+      | while IFS= read -r file; do
         printf '%s: contains a name listed in %s\n' "$file" "$LOCAL_NAMES"
       done | sort -u >>"$violations"
   done <"$LOCAL_NAMES"

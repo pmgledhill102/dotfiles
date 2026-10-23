@@ -64,7 +64,7 @@ case "$(uname -s)" in
     echo "Linux detected"
     # Ensure minimum prerequisites are available
     MISSING=""
-    command -v git  >/dev/null 2>&1 || MISSING="$MISSING git"
+    command -v git >/dev/null 2>&1 || MISSING="$MISSING git"
     command -v curl >/dev/null 2>&1 || MISSING="$MISSING curl"
     if [ -n "$MISSING" ]; then
       echo "Installing missing prerequisites:$MISSING"
