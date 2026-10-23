@@ -29,3 +29,23 @@ repos:
         language: script
         pass_filenames: false
         always_run: true
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      # The v8.30.1 manifest lacks pass_filenames: false, and `gitleaks git`
+      # takes no file arguments, so pre-commit appended filenames fail every run.
+      - id: gitleaks-system
+        pass_filenames: false
+
+  # No semgrep hook yet: `semgrep --config auto --error` blocks on install.sh,
+  # whose bash.curl.security.curl-pipe-bash finding is the Homebrew installer
+  # bootstrap by design. Add the hook once that is dealt with or declared.
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.14.1-1
+    hooks:
+      - id: shfmt
+        # home/ holds the chezmoi source tree, whose scripts are deployed as-is;
+        # leave them to their owners rather than reformatting them here.
+        exclude: ^home/

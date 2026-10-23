@@ -30,6 +30,8 @@ updates:
     reviewers:
       - "pmgledhill102"
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
 
   # Homebrew packages (macOS)
   # Note: Dependabot doesn't natively support Brewfile, but we can track
