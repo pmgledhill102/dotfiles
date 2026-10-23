@@ -23,8 +23,8 @@ set -eu
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$root" ] || {
-	echo "check-markdown-links: not inside a git repository" >&2
-	exit 1
+  echo "check-markdown-links: not inside a git repository" >&2
+  exit 1
 }
 cd "$root"
 
@@ -45,7 +45,7 @@ trap 'rm -f "$findings"' EXIT HUP INT TERM
 # Stripping code spans is safe for the common [`code`](url) form: the closing
 # backtick precedes the "](", so the link target survives the strip.
 extract_links() {
-	awk '
+  awk '
 		{
 			body = $0
 			sub(/^[ ]*/, "", body)
@@ -73,62 +73,62 @@ extract_links() {
 }
 
 for file in $(git ls-files '*.md'); do
-	# git ls-files reads the index, so a file deleted from the working tree
-	# without `git rm` is still listed. Skip it rather than let awk fail.
-	[ -f "$file" ] || continue
+  # git ls-files reads the index, so a file deleted from the working tree
+  # without `git rm` is still listed. Skip it rather than let awk fail.
+  [ -f "$file" ] || continue
 
-	dir=${file%/*}
-	[ "$dir" != "$file" ] || dir="."
+  dir=${file%/*}
+  [ "$dir" != "$file" ] || dir="."
 
-	extract_links "$file" | while IFS= read -r record; do
-		lineno=${record%%:*}
-		target=${record#*:}
+  extract_links "$file" | while IFS= read -r record; do
+    lineno=${record%%:*}
+    target=${record#*:}
 
-		case "$target" in
-		"") continue ;;      # []() with an empty target
-		\#*) continue ;;     # same-document anchor: no file to check
-		*://*) continue ;;   # any scheme — http, https, ftp, ...
-		mailto:*) continue ;;
-		esac
+    case "$target" in
+      "") continue ;;    # []() with an empty target
+      \#*) continue ;;   # same-document anchor: no file to check
+      *://*) continue ;; # any scheme — http, https, ftp, ...
+      mailto:*) continue ;;
+    esac
 
-		# An angle-bracketed target may legitimately contain spaces;
-		# a bare one may carry a link title, which is not part of the path.
-		case "$target" in
-		\<*\>)
-			target=${target#<}
-			target=${target%>}
-			;;
-		*\ *)
-			target=${target%% *}
-			;;
-		esac
+    # An angle-bracketed target may legitimately contain spaces;
+    # a bare one may carry a link title, which is not part of the path.
+    case "$target" in
+      \<*\>)
+        target=${target#<}
+        target=${target%>}
+        ;;
+      *\ *)
+        target=${target%% *}
+        ;;
+    esac
 
-		# Resolve the file part; a #fragment is not ours to validate.
-		target=${target%%#*}
-		[ -n "$target" ] || continue
+    # Resolve the file part; a #fragment is not ours to validate.
+    target=${target%%#*}
+    [ -n "$target" ] || continue
 
-		# Relative to the containing file's directory, NOT the repo root
-		# and NOT "anywhere in the tree" — resolving any other way both
-		# accepts a link that happens to match elsewhere and mis-reports
-		# one that is correct in a sibling directory. A leading slash is
-		# GitHub's repo-root-relative form.
-		case "$target" in
-		/*) resolved=".$target" ;;
-		*) resolved="$dir/$target" ;;
-		esac
+    # Relative to the containing file's directory, NOT the repo root
+    # and NOT "anywhere in the tree" — resolving any other way both
+    # accepts a link that happens to match elsewhere and mis-reports
+    # one that is correct in a sibling directory. A leading slash is
+    # GitHub's repo-root-relative form.
+    case "$target" in
+      /*) resolved=".$target" ;;
+      *) resolved="$dir/$target" ;;
+    esac
 
-		# -e, not -f: a link to a directory is valid markdown.
-		[ -e "$resolved" ] ||
-			printf '%s:%s: dangling link -> %s\n' "$file" "$lineno" "$target" >>"$findings"
-	done
+    # -e, not -f: a link to a directory is valid markdown.
+    [ -e "$resolved" ] \
+      || printf '%s:%s: dangling link -> %s\n' "$file" "$lineno" "$target" >>"$findings"
+  done
 done
 
 if [ -s "$findings" ]; then
-	echo "Dangling relative markdown links:" >&2
-	cat "$findings" >&2
-	echo >&2
-	echo "Each link above resolves to no file. Fix the path, or remove the link." >&2
-	exit 1
+  echo "Dangling relative markdown links:" >&2
+  cat "$findings" >&2
+  echo >&2
+  echo "Each link above resolves to no file. Fix the path, or remove the link." >&2
+  exit 1
 fi
 
 echo "No dangling relative markdown links found."
