@@ -38,9 +38,12 @@ repos:
       - id: gitleaks-system
         pass_filenames: false
 
-  # No semgrep hook yet: `semgrep --config auto --error` blocks on install.sh,
-  # whose bash.curl.security.curl-pipe-bash finding is the Homebrew installer
-  # bootstrap by design. Add the hook once that is dealt with or declared.
+  - repo: https://github.com/semgrep/semgrep
+    rev: v1.182.0
+    hooks:
+      - id: semgrep
+        args: ["--config", "auto", "--error"]
+        pass_filenames: false
 
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
