@@ -42,7 +42,7 @@ case "$(uname -s)" in
     # Install Homebrew if not present (also validates CLT is working)
     if ! command -v brew >/dev/null 2>&1; then
       echo "Installing Homebrew..."
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" # nosemgrep: bash.curl.security.curl-pipe-bash.curl-pipe-bash -- Homebrew official installer, run from HEAD by design
       # Add Homebrew to PATH for the remainder of this script
       if [ -f /opt/homebrew/bin/brew ]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"

@@ -90,6 +90,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  semgrep:
+    name: Semgrep
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: semgrep scan --config auto --error
+
   actionlint:
     name: Action Lint
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
