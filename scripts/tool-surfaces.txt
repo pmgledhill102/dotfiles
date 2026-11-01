@@ -1,0 +1,37 @@
+# Which agent-toolchain tools belong on which dotfiles-installed surface.
+#
+# The tool list is declared once, in agentic-coding-config's
+# home/standards/tools.json (ADR-0020 section 2 there). That manifest records
+# only the cloud-sandbox arm, because that is the only installer it owns. This
+# file is the dotfiles arm: for every tool in the manifest, a decision for the
+# two surfaces dotfiles installs, checked by scripts/check-brewfile-manifest.sh.
+#
+# Surfaces (home/Brewfile.tmpl, personal machines):
+#   macos           the whole personal block, including its darwin-only part
+#   ubuntu-durable  the personal block outside the darwin-only part (Linux and
+#                   WSL run the same Brewfile, ADR-0017)
+#
+# Format, one tool per line, '|'-separated:
+#   tool | macos | ubuntu-durable | brew-name | reason
+# macos / ubuntu-durable are 'yes' or 'no'. brew-name is the Brewfile entry that
+# provides the tool (the last path segment of a brew/cask line), or '-'.
+# reason is required whenever either column is 'no', or brew-name differs from
+# the tool name.
+#
+# Versions are NOT compared. brew installs latest while the manifest pins exact
+# versions for the sandbox, so the rule is "tool present", never "version equal".
+# work and minimal machines are out of scope: the manifest describes the
+# personal agent toolchain.
+shellcheck|yes|yes|shellcheck|
+actionlint|yes|yes|actionlint|
+gitleaks|yes|yes|gitleaks|
+markdownlint-cli2|yes|yes|markdownlint-cli2|
+cspell|yes|yes|cspell|
+terraform|yes|yes|tenv|tenv is the terraform version manager and provides the terraform shim
+tflint|yes|no|tflint|Brewfile installs it in the darwin-only block only; no Linux route is wired yet
+tflint-ruleset-google|no|no|-|a tflint plugin fetched by 'tflint --init' from a repo's .tflint.hcl, not a package
+gh|yes|yes|gh|
+golangci-lint|yes|yes|golangci-lint|
+semgrep|yes|yes|semgrep|
+checkov|yes|yes|checkov|
+pre-commit|yes|yes|pre-commit|
