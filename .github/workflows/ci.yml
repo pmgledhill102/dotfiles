@@ -49,6 +49,27 @@ jobs:
         # thing it protects.
         run: ./scripts/check-no-private-repos.sh
 
+  tool-manifest:
+    name: Brewfile vs Tool Manifest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fetch the tool manifest
+        # Declared once in agentic-coding-config (its ADR-0020 section 2); this
+        # repo declares the Brewfile arm in scripts/tool-surfaces.txt. Fetching
+        # main means a tool added there fails here until a decision is recorded,
+        # which is the point of the check.
+        run: |
+          curl -fsSL --retry 3 \
+            https://raw.githubusercontent.com/pmgledhill102/agentic-coding-config/main/home/standards/tools.json \
+            -o "$RUNNER_TEMP/tools.json"
+          echo "TOOLS_MANIFEST=$RUNNER_TEMP/tools.json" >> "$GITHUB_ENV"
+      - name: Check the Brewfile against the manifest (tool present, not version equal)
+        run: ./scripts/check-brewfile-manifest.sh
+      - name: Control - the check fails on a planted gap
+        run: ./scripts/test-check-brewfile-manifest.sh
+
   markdown-lint:
     name: Markdown Lint
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
