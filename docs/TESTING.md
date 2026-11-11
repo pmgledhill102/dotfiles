@@ -270,7 +270,12 @@ When you open a PR:
 - Terminal emulator testing is limited (Ghostty on macOS, Windows Terminal on Windows)
 - Interactive features (e.g., zsh-autosuggestions behavior) are not fully tested
 - SSH and remote terminal scenarios require manual testing
-- WSL-specific features require manual testing on Windows with WSL installed
+- WSL-specific features have no CI runner. `scripts/validate-installation.sh`
+  has a WSL-only section (wsl.conf, systemd, interop, PATH, the Bitwarden
+  relay) to run by hand inside WSL after the second apply. It does not cover
+  GitHub SSH: the first `ssh -T git@github.com` on a new machine needs you to
+  check and accept the host key. A locked Bitwarden vault still serves public
+  keys, so `ssh-add -l` succeeding then is expected
 
 ## Performance Benchmarks
 

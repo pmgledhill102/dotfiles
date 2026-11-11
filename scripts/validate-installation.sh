@@ -359,6 +359,72 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   validate_test "Ubuntu package list exists" "[ -f \"\$HOME/.config/ubuntu_pkglist\" ]"
 fi
 
+# ~/.ssh permissions (#489): private_ prefixes in home/private_dot_ssh. GNU
+# stat first, then BSD.
+if [ -f "$HOME/.ssh/config" ]; then
+  echo ""
+  echo "Validating ~/.ssh permissions..."
+  echo "-----------------------------------"
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  file_mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1" 2>/dev/null; }
+  validate_test "\$HOME/.ssh is 700" "[ \"\$(file_mode \"\$HOME/.ssh\")\" = 700 ]"
+  validate_test "\$HOME/.ssh/config is 600" "[ \"\$(file_mode \"\$HOME/.ssh/config\")\" = 600 ]"
+fi
+
+# WSL-only behaviour (#491). CI has no WSL runner, so nothing else exercises
+# run_once_configure-wsl, the /mnt PATH strip or the Bitwarden relay (#451).
+if grep -qi 'microsoft\|wsl' /proc/version 2>/dev/null; then
+  echo ""
+  echo "Validating WSL integration..."
+  echo "-----------------------------------"
+
+  # wsl_conf_has SECTION KEY VALUE: KEY = VALUE inside [SECTION] of
+  # /etc/wsl.conf, whitespace-tolerant, as run_once_configure-wsl writes it.
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  wsl_conf_has() {
+    awk -v sec="$1" -v key="$2" -v val="$3" '
+      /^[[:space:]]*\[/ { insec = ($0 ~ ("^[[:space:]]*\\[" sec "\\]")); next }
+      insec {
+        line = $0; gsub(/[[:space:]]/, "", line)
+        if (line == key "=" val) found = 1
+      }
+      END { exit !found }
+    ' /etc/wsl.conf 2>/dev/null
+  }
+  validate_test "wsl.conf: [boot] systemd = true" "wsl_conf_has boot systemd true"
+  validate_test "wsl.conf: [interop] appendWindowsPath = false" "wsl_conf_has interop appendWindowsPath false"
+
+  validate_test "PID 1 is systemd (restart WSL after the first apply)" "[ \"\$(ps -p 1 -o comm=)\" = systemd ]"
+  SYSTEM_STATE=$(systemctl is-system-running 2>/dev/null)
+  if [ "$SYSTEM_STATE" = "running" ]; then
+    echo -e "${GREEN}✓${NC} systemd state is running"
+    ((PASSED_TESTS++))
+  elif [ "$SYSTEM_STATE" = "degraded" ]; then
+    echo -e "${YELLOW}⚠${NC} systemd state is degraded — see 'systemctl --failed'"
+    ((WARNED_TESTS++))
+  else
+    echo -e "${RED}✗${NC} systemd state is running (got: ${SYSTEM_STATE:-none})"
+    ((FAILED_TESTS++))
+  fi
+
+  validate_test "WSL interop is registered (binfmt_misc)" "[ -e /proc/sys/fs/binfmt_misc/WSLInterop ]"
+  # Same call the relay setup script makes; run from /mnt/c to avoid the UNC
+  # working-directory warning.
+  validate_test "Windows %LOCALAPPDATA% resolves via cmd.exe" "(cd /mnt/c && /mnt/c/Windows/System32/cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | grep -q '^[A-Za-z]:')"
+  # A fresh login zsh, not this script's PATH: appendWindowsPath=false is
+  # what keeps /mnt out of every later shell (#437).
+  validate_test_pkg "No Windows (/mnt/*) entries on a login zsh PATH" "! zsh -lic 'echo \$PATH' 2>/dev/null | tr : '\n' | grep -q '^/mnt/'"
+
+  # Bitwarden SSH agent relay (#451): only where chezmoi deployed the unit
+  # (personal WSL). A locked vault is not checked: Bitwarden still serves
+  # public keys then, so ssh-add -l proves nothing either way.
+  if [ -f "$HOME/.config/systemd/user/bitwarden-ssh-agent.service" ]; then
+    validate_test "npiperelay.exe symlink resolves" "[ -f \"\$HOME/.local/bin/npiperelay.exe\" ]"
+    validate_test "bitwarden-ssh-agent.service is active" "systemctl --user is-active bitwarden-ssh-agent"
+    validate_test "\$HOME/.bitwarden-ssh-agent.sock is a socket" "[ -S \"\$HOME/.bitwarden-ssh-agent.sock\" ]"
+  fi
+fi
+
 # VS Code configuration validation (cross-platform)
 echo ""
 echo "Validating VS Code configuration..."
