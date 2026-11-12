@@ -35,3 +35,5 @@ golangci-lint|yes|yes|golangci-lint|
 semgrep|yes|yes|semgrep|
 checkov|yes|yes|checkov|
 pre-commit|yes|yes|pre-commit|
+hadolint|yes|yes|hadolint|
+trivy|yes|yes|trivy|

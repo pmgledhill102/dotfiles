@@ -18,6 +18,9 @@ UMask=0077
 ExecStart=/usr/bin/socat UNIX-LISTEN:%h/.bitwarden-ssh-agent.sock,unlink-early,mode=600,fork 'EXEC:%h/.local/bin/npiperelay.exe -ei -s //./pipe/openssh-ssh-agent,nofork'
 Restart=on-failure
 RestartSec=2
+# SIGTERM at `wsl --shutdown` makes socat exit 143. Count that as a clean
+# stop, so every boot's journal doesn't carry a spurious failure (#490).
+SuccessExitStatus=143
 
 [Install]
 WantedBy=default.target

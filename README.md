@@ -284,6 +284,20 @@ mdc file.md > out.txt         # Redirected: wrapping disabled entirely
 mdcp file.md                  # Render through a pager (no inline images)
 ```
 
+### Machine-local overrides
+
+`~/.zshrc.local` is sourced last by `.zshrc` and isn't managed by chezmoi,
+so per-machine tweaks go there. For example, to put a red badge at the
+start of the prompt on a server:
+
+```sh
+export MACHINE_LABEL="BUILD SERVER"
+```
+
+With `MACHINE_LABEL` unset, the prompt is unchanged. PowerShell reads the
+same `starship.toml`, so `$env:MACHINE_LABEL = "BUILD SERVER"` in your
+profile does the same there.
+
 ### Direct chezmoi commands
 
 ```bash

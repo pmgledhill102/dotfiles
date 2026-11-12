@@ -7,11 +7,21 @@ command_timeout = 2000
 add_newline = true
 
 # Set the format of the prompt
-format = """$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$rust\
+format = """${env_var.MACHINE_LABEL}$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$rust\
 $line_break$character"""
 
 # Right Prompt Configuration
 right_format = """$cmd_duration$shell$battery$time"""
+
+# Optional machine badge, first in the prompt, so a remote server can't be
+# mistaken for a local tab. Renders nothing unless MACHINE_LABEL is set, which
+# is done per machine in ~/.zshrc.local (or $env:MACHINE_LABEL in PowerShell),
+# never committed here. Starship doesn't expand variables in `style`, so the
+# colour is fixed.
+[env_var.MACHINE_LABEL]
+variable = "MACHINE_LABEL"
+format = "[ $env_value ]($style) "
+style = "bold fg:#FFFFFF bg:#C62828"
 
 [os]
 format = "[$symbol]($style) "
