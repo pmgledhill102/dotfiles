@@ -210,7 +210,11 @@ validate_test_pkg "Git is installed" "command -v git"
 validate_test_pkg "Age is installed" "command -v age"
 
 # Phase 9 tools
-validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
+# Work machines keep their own git identity, so ~/.gitconfig is not applied
+# there (.chezmoiignore).
+if [ "$MACHINE_TYPE" != "work" ]; then
+  validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
+fi
 validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
 validate_test "Tmux config exists" "[ -f \"\$HOME/.tmux.conf\" ]"
 
@@ -224,7 +228,10 @@ else
   if command -v delta >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} git-delta is installed"
     ((PASSED_TESTS++))
-    validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+    # The delta pager is set in the managed ~/.gitconfig, not applied on work.
+    if [ "$MACHINE_TYPE" != "work" ]; then
+      validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+    fi
   else
     echo -e "${RED}✗${NC} git-delta is installed"
     ((FAILED_TESTS++))
@@ -451,8 +458,11 @@ fi
 echo ""
 echo "Validating VS Code configuration..."
 echo "-----------------------------------"
-validate_test "VS Code settings exist" "[ -f \"\$HOME/.config/Code/User/settings.json\" ]"
-validate_test "VS Code keybindings exist" "[ -f \"\$HOME/.config/Code/User/keybindings.json\" ]"
+# GUI app configs are not applied on minimal machines (.chezmoiignore).
+if [ "$MACHINE_TYPE" != "minimal" ]; then
+  validate_test "VS Code settings exist" "[ -f \"\$HOME/.config/Code/User/settings.json\" ]"
+  validate_test "VS Code keybindings exist" "[ -f \"\$HOME/.config/Code/User/keybindings.json\" ]"
+fi
 
 echo ""
 echo "================================"
