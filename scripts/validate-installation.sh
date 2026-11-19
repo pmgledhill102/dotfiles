@@ -360,7 +360,11 @@ elif [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "minimal" ]; then
   # Print what zsh wrote, so a failure says which guard is missing.
   # shellcheck disable=SC2329 # called through validate_test's eval
   zsh_check() {
-    zsh_err=$(zsh -i -c exit 2>&1 >/dev/null)
+    # ZSH_DISABLE_COMPFIX skips oh-my-zsh's compaudit: on a CI runner it finds
+    # group-writable completion dirs and, with no terminal to ask on, aborts
+    # compinit ("not interactive and can't open terminal"). That is the
+    # runner's permissions, not a missing guard; real errors still show.
+    zsh_err=$(ZSH_DISABLE_COMPFIX=true zsh -i -c exit 2>&1 >/dev/null </dev/null)
     [ -z "$zsh_err" ] && return 0
     printf '  zsh stderr: %s\n' "$zsh_err" | head -20
     return 1
