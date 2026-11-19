@@ -77,18 +77,42 @@ So for the personal Brewfile, ADR-0017 added **about 7–11 minutes and about
 9.5 GB** to a first apply in CI. Installing Homebrew itself is negligible
 (about 16 s); the cost is the Brewfile's contents.
 
-Still to measure, on a fresh `Ubuntu-24.04` WSL distro (procedure at the end):
+M1 on a fresh `Ubuntu-24.04` WSL distro, 2026-11-19 (x86_64, 32 CPUs,
+16 GB, systemd, ext4 home; Homebrew 7.0.15). Times are wall-clock seconds;
+disk is the change in used space on `/`:
 
 | Quantity | Value |
 | --- | --- |
-| Homebrew install time / disk, WSL | `TBD-MEASURE: M1 "Homebrew install"` |
-| Candidate tools (starship lazygit mdcat gh powershell nvm uv): time / disk | `TBD-MEASURE: M1 first install_set` |
-| apt-overlapping tools (bat git-delta jq fzf eza fd ripgrep zoxide tmux): time / disk | `TBD-MEASURE: M1 second install_set` |
-| Formulae built from source instead of poured | `TBD-MEASURE: M1 "built from source"` (expected: none) |
-| `brew doctor` on WSL | `TBD-MEASURE: M1 "brew doctor"` |
-| ARM64 Linux bottle gaps among Brewfile formulae | `TBD-MEASURE: M1 bottle table, NO-arm64 rows` |
+| apt prerequisites (build-essential procps curl file git jq) | 20 s, 599 MB |
+| Homebrew install, WSL | 17 s, 283 MB (prefix 222 MB) |
+| Candidate tools (starship lazygit mdcat gh powershell nvm uv) | 78 s, 1,776 MB |
+| apt-overlapping tools (bat git-delta jq fzf eza fd ripgrep zoxide tmux) | 26 s, 128 MB |
+| Formulae built from source instead of poured | none: every formula and dependency poured a bottle |
+| `brew doctor` on WSL | "Your system is ready to brew." |
+| Warm `brew update` | 1 s |
+| ARM64 Linux bottle gaps among Brewfile formulae | `TBD-MEASURE: M1 bottle table, re-run with the corrected check below` |
 | End-to-end first apply, `work` tier as today (status quo) | `TBD-MEASURE: M2 work time / disk` |
 | End-to-end first apply, `personal` tier (ADR-0017) | `TBD-MEASURE: M2 personal time / disk` |
+
+What the per-formula figures show:
+
+- **PowerShell is more than half of the candidate set's disk.** It pulls in
+  `dotnet` (795 MB) and `icu4c@79` (96 MB); the prefix grew by 951 MB for
+  that one formula. Every other candidate is under 50 MB of its own.
+- **mdcat brings 23 dependencies**, including Homebrew's own `curl`,
+  `openssl@4`, `krb5`, `ncurses` and `sqlite` (prefix +212 MB, 35 s). These
+  duplicate apt's copies; `curl` is the one that also lands on `PATH`.
+- **nvm via Homebrew is unsupported upstream.** Its caveat says so, and
+  warns that leaving `NVM_DIR` inside the Cellar destroys installed Node
+  versions on upgrade.
+- The first M1 bottle table was wrong in two ways, both artefacts of the
+  check rather than of Homebrew. `brew info --json` on an x86_64 Linux host
+  lists only that host's tag, so the `arm64_linux` column could never be
+  "yes". And formulae that ship a single architecture-independent `all`
+  bottle (nvm, prettier, cspell, markdownlint-cli2, bitwarden-cli, gradle,
+  maven, jenv, git-filter-repo) showed as missing on x86_64 too; nvm in fact
+  poured `nvm--0.41.0.all.bottle.tar.gz`. The script below now reads the
+  public formula API, which lists every tag.
 
 ## Options
 
@@ -157,10 +181,15 @@ apt's copy won.
   hugo, typst, weasyprint), so it should cost well under the personal figure.
   Expected, not measured: `TBD-MEASURE: render the work tier on Linux and
   run M2`. A compiler is already present (build-essential, #442) on personal
-  and work.
+  and work. M1 on WSL: Homebrew itself 17 s and 283 MB; the 16 candidate
+  and overlap formulae together 104 s and about 1.9 GB, of which PowerShell
+  (through `dotnet`) is 951 MB. Without PowerShell the same set is about
+  0.95 GB. Nothing was built from source.
 - **Linuxbrew-first:** strictly more than hybrid, for tools apt already
   serves in seconds.
-- **ARM64:** `TBD-MEASURE: M1 bottle table`. Any `NO-arm64` formula either
+- **ARM64:** `TBD-MEASURE: M1 bottle table` (the first run's table could
+  not answer this; see "Measured so far"). Any formula with neither an
+  `arm64_linux` nor an `all` bottle either
   builds from source on ARM64 Linux (slow, needs the toolchain) or goes
   behind a guard. mdcat is the case that matters today: its GitHub release
   is x86_64-only, so on ARM64 the status quo installs nothing.
@@ -215,8 +244,11 @@ apt's copy won.
   `run_once_configure-wsl` already enables it.
 - `install.sh` strips `/mnt/*` from `PATH` on a first apply (#437), so the
   Windows `PATH` cannot shadow brew during bootstrap.
-- `TBD-MEASURE: M1 "brew doctor"` on a fresh distro, to confirm nothing
-  WSL-specific is reported.
+- M1: `brew doctor` on a fresh distro reports "Your system is ready to
+  brew." The only WSL-specific output is a harmless warning on every fetch
+  that the kernel's Landlock ABI (7) is older than the 10 Homebrew's network
+  sandbox prefers; it applies the restrictions the kernel supports and
+  carries on.
 
 ### What would be deleted
 
@@ -240,6 +272,19 @@ apt's copy won.
 | minimal | 1, status quo, trimmed | apt only, plus the vendor installers for starship and uv. Drop the GitHub-release tarballs (fzf, lazygit, mdcat) and `latest_release_tag()`. |
 
 Option 3 is rejected on every tier.
+
+Two tools stay off Homebrew on every Linux tier, whatever else moves. On
+personal Linux both are already macOS-only in the Brewfile (#435); M1 now
+gives the reasons, and the work tier's Linux rendering must guard them the
+same way:
+
+- **PowerShell** stays on the packages.microsoft.com apt repo. Through
+  Homebrew it pulls a private `dotnet` and costs 951 MB on its own; the
+  Microsoft `.deb` bundles only the runtime it needs (its size is not
+  measured here).
+- **nvm** stays on its official installer (pinned, as today). Upstream does
+  not support the Homebrew formula, and its default layout loses installed
+  Node versions on upgrade.
 
 Work-tier thresholds, to be checked against M2 before acceptance: a first
 apply of the work tier with Homebrew adds no more than **5 minutes** and
@@ -275,7 +320,12 @@ work tier stays on option 1 and only the minimal trim goes ahead.
 
 ### Negative / trade-offs
 
-- Work Linux first applies get slower and larger (`TBD-MEASURE`).
+- Work Linux first applies get slower and larger (`TBD-MEASURE: M2`; M1
+  puts Homebrew plus the 16 tools measured at about 2 minutes and 1.9 GB,
+  or 0.95 GB with PowerShell kept on apt).
+- Formulae such as mdcat bring Homebrew copies of libraries apt already
+  has, `curl` among them, so a tool can be on `PATH` twice. The PATH
+  ordering rule above decides which one wins.
 - Two managers on work hosts: the PATH ordering above must hold there too.
 - Minimal machines lose fzf, lazygit and mdcat unless installed by hand.
 - Work tier on Linux becomes a third rendering of the Brewfile to keep
@@ -403,17 +453,23 @@ log "time_s: $(($(date +%s) - t0))"
 log "== brew doctor (WSL check; warnings are listed, not fatal)"
 brew doctor >>"$OUT" 2>&1 || log "brew doctor reported warnings (above)"
 
-log "== Linux bottle availability (formula: x86_64_linux arm64_linux)"
+# Read the public formula API, not `brew info`: on a Linux host `brew info`
+# lists only the host's own bottle tag, so it cannot answer for ARM64. An
+# `all` bottle is architecture-independent and covers both. The Linux tags
+# are printed verbatim, so a renamed tag shows up rather than reading as "no".
+log "== Linux bottle availability (formula: x86 arm64 | linux tags seen)"
+API=https://formulae.brew.sh/api/formula
 for f in $BOTTLE_CHECK; do
-  if json=$(brew info --json=v2 --formula "$f" 2>/dev/null); then
+  if json=$(curl -fsSL "$API/$f.json" 2>/dev/null); then
     printf '%s\n' "$json" |
-      jq -r '.formulae[0] | .name + ": " +
-        ((.bottle.stable.files // {}) |
-          (if has("x86_64_linux") then "x86 " else "NO-x86 " end) +
-          (if has("arm64_linux") then "arm64" else "NO-arm64" end))' |
+      jq -r '(.bottle.stable.files // {} | keys) as $k |
+        .name + ": " +
+        (if ($k | index("all")) or ($k | index("x86_64_linux")) then "x86 " else "NO-x86 " end) +
+        (if ($k | index("all")) or ($k | index("arm64_linux")) then "arm64" else "NO-arm64" end) +
+        " | " + ([$k[] | select(test("linux|^all$"))] | join(" "))' |
       tee -a "$OUT"
   else
-    log "$f: NOT-A-FORMULA"
+    log "$f: NOT-FOUND-IN-API"
   fi
 done
 
