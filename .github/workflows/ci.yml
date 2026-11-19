@@ -70,6 +70,21 @@ jobs:
       - name: Control - the check fails on a planted gap
         run: ./scripts/test-check-brewfile-manifest.sh
 
+  package-owners:
+    name: apt vs Brewfile Owners
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Check no tool has two owners on a Linux Homebrew tier (ADR-0019)
+        run: ./scripts/check-package-owners.sh
+      - name: Control - the check fails on a planted overlap
+        run: ./scripts/test-check-package-owners.sh
+
   markdown-lint:
     name: Markdown Lint
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
