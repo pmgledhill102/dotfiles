@@ -90,7 +90,7 @@ disk is the change in used space on `/`:
 | Formulae built from source instead of poured | none: every formula and dependency poured a bottle |
 | `brew doctor` on WSL | "Your system is ready to brew." |
 | Warm `brew update` | 1 s |
-| ARM64 Linux bottle gaps among Brewfile formulae | `TBD-MEASURE: M1 bottle table, re-run with the corrected check below` |
+| ARM64 Linux bottles, sampled from the formula API | 10 of 10 have `arm64_linux` and `x86_64_linux` bottles: bat, mdcat, lazygit, starship, uv, gh, fzf, eza, ripgrep, zoxide. The rest of the Brewfile is not yet checked (`TBD-MEASURE: corrected M1 bottle table`) |
 | End-to-end first apply, `work` tier as today (status quo) | `TBD-MEASURE: M2 work time / disk` |
 | End-to-end first apply, `personal` tier (ADR-0017) | `TBD-MEASURE: M2 personal time / disk` |
 
@@ -187,12 +187,14 @@ apt's copy won.
   0.95 GB. Nothing was built from source.
 - **Linuxbrew-first:** strictly more than hybrid, for tools apt already
   serves in seconds.
-- **ARM64:** `TBD-MEASURE: M1 bottle table` (the first run's table could
-  not answer this; see "Measured so far"). Any formula with neither an
-  `arm64_linux` nor an `all` bottle either
-  builds from source on ARM64 Linux (slow, needs the toolchain) or goes
-  behind a guard. mdcat is the case that matters today: its GitHub release
-  is x86_64-only, so on ARM64 the status quo installs nothing.
+- **ARM64:** every one of the 10 formulae sampled from the formula API,
+  covering each hand-written installer that has a formula, has an
+  `arm64_linux` bottle. The rest of the Brewfile is
+  `TBD-MEASURE: corrected M1 bottle table`. Any formula with neither an
+  `arm64_linux` nor an `all` bottle either builds from source on ARM64
+  Linux (slow, needs the toolchain) or goes behind a guard. mdcat shows the
+  gain: its GitHub release is x86_64-only, so on ARM64 the status quo
+  installs nothing, while Homebrew has a bottle.
 
 ### Install location
 
