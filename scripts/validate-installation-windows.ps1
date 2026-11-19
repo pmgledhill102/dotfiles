@@ -144,6 +144,26 @@ foreach ($shell in 'pwsh', 'powershell') {
     }
 }
 
+# Only when CI seeded a pre-existing profile (#475): the loader must sit at
+# the top exactly once, and the user's own content must survive, non-ASCII
+# included. throw, not return $false: see the note above.
+if ($env:DOTFILES_CI_SEEDED_PROFILE -eq "1") {
+    $marker = "# dotfiles: load the chezmoi-managed profile (#467)"
+    $docs = [Environment]::GetFolderPath('MyDocuments')
+    foreach ($d in 'PowerShell', 'WindowsPowerShell') {
+        $p = Join-Path (Join-Path $docs $d) 'Microsoft.PowerShell_profile.ps1'
+        Test-Validation "$d profile starts with the loader once and keeps user content" {
+            if (-not (Test-Path -LiteralPath $p)) { throw "$p not found" }
+            $text = [IO.File]::ReadAllText($p).TrimStart([char]0xFEFF)
+            $markers = @($text -split '\r?\n' | Where-Object { $_ -eq $marker }).Count
+            if (-not $text.StartsWith($marker)) { throw "loader is not at the top" }
+            if ($markers -ne 1) { throw "expected one loader marker, found $markers" }
+            if (-not $text.Contains("# pre-existing user content - caf$([char]0xE9)")) { throw "user content lost or mangled" }
+            $true
+        }
+    }
+}
+
 # Validate Starship Prompt
 Write-Host ""
 Write-Host "Validating Starship prompt..."
