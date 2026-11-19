@@ -111,9 +111,10 @@ setup-wsl-ssh-agent.sh
 .config/systemd/user/bitwarden-ssh-agent.service
 {{- end }}
 
-# Homebrew + Brewfile: macOS, and personal Linux machines (ADR-0017). Work and
-# minimal Linux machines stay apt-only, so brewup is not deployed there.
-{{- if not (or (eq .chezmoi.os "darwin") (and (eq .chezmoi.os "linux") (eq $machineType "personal"))) }}
+# Homebrew + Brewfile: macOS, and personal and work Linux machines (ADR-0017,
+# ADR-0019). Minimal Linux machines stay apt-only, so brewup is not deployed
+# there.
+{{- if not (or (eq .chezmoi.os "darwin") (and (eq .chezmoi.os "linux") (ne $machineType "minimal"))) }}
 run_once_after_install-brewfile.sh
 install-brewfile.sh
 Brewfile

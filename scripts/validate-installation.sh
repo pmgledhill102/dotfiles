@@ -322,15 +322,27 @@ echo "-----------------------------------"
 validate_test_pkg "Age is in PATH" "command -v age"
 validate_test_pkg "Age keygen is in PATH" "command -v age-keygen"
 
-# Personal Linux runs Homebrew and the Brewfile (ADR-0017)
-if [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "personal" ]; then
+# Personal and work Linux run Homebrew and the Brewfile (ADR-0017, ADR-0019);
+# minimal stays apt-only.
+if [[ "$(uname -s)" == "Linux" ]] && [ -n "$MACHINE_TYPE" ] && [ "$MACHINE_TYPE" != "minimal" ]; then
   echo ""
-  echo "Validating Homebrew on Linux (personal)..."
+  echo "Validating Homebrew on Linux ($MACHINE_TYPE)..."
   echo "-----------------------------------"
   validate_test_pkg "Homebrew is in PATH" "command -v brew"
   validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
   validate_test "brewup is deployed" "[ -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
   validate_test_pkg "Brewfile is satisfied" "brew bundle check --no-upgrade --file \"\$HOME/Brewfile\""
+  # One owner per tool: the Brewfile's copy must be the one on PATH, not a
+  # leftover from the apt-era installers.
+  for tool in starship lazygit mdcat gh fzf uv; do
+    validate_test_pkg "$tool comes from Homebrew" "command -v $tool | grep -q '^/home/linuxbrew/'"
+  done
+elif [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "minimal" ]; then
+  echo ""
+  echo "Validating apt-only install (minimal)..."
+  echo "-----------------------------------"
+  validate_test "Homebrew is not installed" "[ ! -e /home/linuxbrew/.linuxbrew/bin/brew ]"
+  validate_test "brewup is not deployed" "[ ! -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
 fi
 
 # macOS-specific validations
