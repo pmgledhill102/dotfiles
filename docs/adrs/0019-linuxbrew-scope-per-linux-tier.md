@@ -1,9 +1,9 @@
 # ADR-0019: How far Homebrew reaches on Linux, tier by tier
 
 - **Status**: Proposed. The M1 measurements on a fresh Ubuntu 24.04 WSL
-  distro are in. One question remains before acceptance (`TBD-CONFIRM`
-  below); the work-tier thresholds are checked in CI during implementation,
-  not before acceptance (see "Decision").
+  distro are in, and the work tier's sudo question is settled by an assumption
+  (see "Install location"). The work-tier thresholds are checked in CI during
+  implementation, not before acceptance (see "Decision").
 - **Scope**: Repo — this record binds `dotfiles` only. It decides which
   package manager this repo drives for which tools on each Linux machine tier,
   which would bind nothing if this repo were archived.
@@ -207,8 +207,13 @@ apt's copy won.
   Homebrew.
 - **Work tier specifically:** a corporate Linux machine without sudo, or one
   whose policy forbids Homebrew, cannot use hybrid. The work tier needs a
-  fallback, and the status quo is that fallback. `TBD-CONFIRM: does any work
-  Linux machine in use lack sudo or forbid Homebrew?`
+  fallback, and the status quo is that fallback. **Assumed, not confirmed:**
+  work Linux machines have sudo and allow Homebrew. No complete inventory
+  exists to check this against, so it is a working assumption. If a work
+  machine turns out to lack sudo or forbid Homebrew, the work tier needs a
+  non-Homebrew path again: the installers listed under "What would be
+  deleted" go ahead as planned on this assumption, and would have to be
+  restored, or replaced, for that machine.
 - **CI:** the runner image ships its own Linuxbrew; the full-install job
   deletes it before applying (already in place for ADR-0017).
 
