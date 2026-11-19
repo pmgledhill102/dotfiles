@@ -26,6 +26,11 @@ if [[ "$(uname -s)" == "Linux" ]] && [ -x /home/linuxbrew/.linuxbrew/bin/brew ];
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
 
+# The applied machine tier (personal, work or minimal). Some tools are not
+# installed on every tier, and CI runs each Ubuntu tier (#501). Empty if
+# chezmoi is not installed yet; the chezmoi checks below then fail anyway.
+MACHINE_TYPE=$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null || true)
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -247,9 +252,13 @@ else
   # Colima's VM, so there is no daemon to talk to there. On macOS the
   # plugin checks also prove ~/.docker/config.json points at Homebrew's
   # cli-plugins directory.
-  validate_test "docker CLI is in PATH" "command -v docker"
-  validate_test "docker compose plugin works" "docker compose version"
-  validate_test "docker buildx plugin works" "docker buildx version"
+  # Not on minimal machines: Docker and rustup are installed only off the
+  # minimal tier (run_onchange_install-ubuntu-packages, run_once_before).
+  if [ "$MACHINE_TYPE" != "minimal" ]; then
+    validate_test "docker CLI is in PATH" "command -v docker"
+    validate_test "docker compose plugin works" "docker compose version"
+    validate_test "docker buildx plugin works" "docker buildx version"
+  fi
 
   if command -v tmux >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} tmux is installed"
@@ -259,7 +268,9 @@ else
     ((FAILED_TESTS++))
   fi
 
-  if command -v rustup >/dev/null 2>&1; then
+  if [ "$MACHINE_TYPE" = "minimal" ]; then
+    : # no Rust toolchain on minimal machines
+  elif command -v rustup >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} rustup is installed"
     ((PASSED_TESTS++))
     validate_test "Cargo is installed" "command -v cargo"
@@ -312,8 +323,7 @@ validate_test_pkg "Age is in PATH" "command -v age"
 validate_test_pkg "Age keygen is in PATH" "command -v age-keygen"
 
 # Personal Linux runs Homebrew and the Brewfile (ADR-0017)
-if [[ "$(uname -s)" == "Linux" ]] \
-  && [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" = "personal" ]; then
+if [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "personal" ]; then
   echo ""
   echo "Validating Homebrew on Linux (personal)..."
   echo "-----------------------------------"
