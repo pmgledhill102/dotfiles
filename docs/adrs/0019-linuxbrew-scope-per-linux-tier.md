@@ -1,9 +1,8 @@
 # ADR-0019: How far Homebrew reaches on Linux, tier by tier
 
-- **Status**: Proposed. The M1 measurements on a fresh Ubuntu 24.04 WSL
-  distro are in, and the work tier's sudo question is settled by an assumption
-  (see "Install location"). The work-tier thresholds are checked in CI during
-  implementation, not before acceptance (see "Decision").
+- **Status**: Accepted. The work tier's move to Homebrew is conditional:
+  its thresholds are checked in CI during implementation (see "Decision"),
+  and it rests on the sudo assumption under "Install location".
 - **Scope**: Repo — this record binds `dotfiles` only. It decides which
   package manager this repo drives for which tools on each Linux machine tier,
   which would bind nothing if this repo were archived.
@@ -271,7 +270,7 @@ apt's copy won.
 - **Linuxbrew-first:** the above plus most of the apt list, for no further
   maintenance saving: apt entries are one word each.
 
-## Decision (proposed)
+## Decision
 
 | Tier | Option | In practice |
 | --- | --- | --- |
