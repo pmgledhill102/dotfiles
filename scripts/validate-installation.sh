@@ -246,7 +246,10 @@ else
   validate_test "fd is in PATH" "command -v fd"
   validate_test "rg is in PATH" "command -v rg"
   validate_test "zoxide is in PATH" "command -v zoxide"
-  validate_test "fzf supports --zsh (0.48+)" "fzf --zsh >/dev/null"
+  # Not on minimal: ADR-0019 dropped fzf's GitHub-release install there.
+  if [ "$MACHINE_TYPE" != "minimal" ]; then
+    validate_test "fzf supports --zsh (0.48+)" "fzf --zsh >/dev/null"
+  fi
 
   # Docker CLI and plugins (ADR-0018). CLI only: macOS runners cannot boot
   # Colima's VM, so there is no daemon to talk to there. On macOS the
@@ -343,6 +346,9 @@ elif [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "minimal" ]; then
   echo "-----------------------------------"
   validate_test "Homebrew is not installed" "[ ! -e /home/linuxbrew/.linuxbrew/bin/brew ]"
   validate_test "brewup is not deployed" "[ ! -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
+  # Minimal has fewer tools, so a missing guard in dot_zshrc or aliases.zsh
+  # shows up here first as an error on every new shell (#503).
+  validate_test_pkg "Interactive zsh starts without errors" "[ -z \"\$(zsh -i -c exit 2>&1 >/dev/null)\" ]"
 fi
 
 # macOS-specific validations
