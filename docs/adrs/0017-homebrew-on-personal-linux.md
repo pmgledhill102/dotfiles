@@ -1,6 +1,8 @@
 # ADR-0017: Homebrew and the Brewfile on personal Linux machines
 
-- **Status**: Accepted
+- **Status**: Accepted; its rejected alternative "Homebrew on every Linux
+  tier" is partly reversed (for `work` only) by
+  [ADR-0019](0019-linuxbrew-scope-per-linux-tier.md)
 - **Scope**: Repo — this record binds `dotfiles` only. It decides which
   package manager this repo drives on which machine tier, which would not
   bind anything if this repo were archived.
