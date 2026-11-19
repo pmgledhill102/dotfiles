@@ -49,3 +49,4 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0016](0016-agent-tooling-is-personal-tier.md) | Agent tooling and its configuration are personal-tier | Accepted |
 | [0017](0017-homebrew-on-personal-linux.md) | Homebrew and the Brewfile on personal Linux machines | Accepted |
 | [0018](0018-docker-via-colima-and-docker-engine.md) | Docker without Docker Desktop: Colima on macOS, Docker Engine on Linux | Accepted |
+| [0019](0019-linuxbrew-scope-per-linux-tier.md) | How far Homebrew reaches on Linux, tier by tier | Proposed |
