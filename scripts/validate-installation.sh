@@ -237,7 +237,9 @@ else
     ((FAILED_TESTS++))
   fi
 
-  if command -v lazygit >/dev/null 2>&1; then
+  if [ "$MACHINE_TYPE" = "minimal" ]; then
+    : # ADR-0019 dropped lazygit's GitHub-release install on minimal
+  elif command -v lazygit >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} lazygit is installed"
     ((PASSED_TESTS++))
     validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
@@ -355,7 +357,15 @@ elif [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "minimal" ]; then
   validate_test "brewup is not deployed" "[ ! -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
   # Minimal has fewer tools, so a missing guard in dot_zshrc or aliases.zsh
   # shows up here first as an error on every new shell (#503).
-  validate_test_pkg "Interactive zsh starts without errors" "[ -z \"\$(zsh -i -c exit 2>&1 >/dev/null)\" ]"
+  # Print what zsh wrote, so a failure says which guard is missing.
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  zsh_check() {
+    zsh_err=$(zsh -i -c exit 2>&1 >/dev/null)
+    [ -z "$zsh_err" ] && return 0
+    printf '  zsh stderr: %s\n' "$zsh_err" | head -20
+    return 1
+  }
+  validate_test_pkg "Interactive zsh starts without errors" "zsh_check"
 fi
 
 # macOS-specific validations
