@@ -18,16 +18,43 @@
 # personal-only: the agent config carries the personal-org GitHub workflow
 # and personal-context-repo references, and the Claude binaries themselves
 # are already gated to personal in Brewfile.tmpl. See dotfiles#389.
+#
+# On WSL, ~/.claude/CLAUDE.md comes from agentic-coding-config's WSL profile
+# (profiles/claude-wsl/CLAUDE.md) rather than from home/, whose CLAUDE.md is
+# the macOS profile. The archive's include is narrowed to skip home/CLAUDE.md
+# (home/[!C]*: an `exclude` would let unmatched paths outside home/ through
+# and collide), and an archive-file external delivers the profile. See #481.
 
 {{- $machineType := "personal" -}}
 {{- if hasKey . "machine_type" -}}
 {{-   $machineType = .machine_type -}}
 {{- end -}}
+{{- /* WSL, per chezmoi's Windows/WSL guide. .chezmoi.kernel exists only on Linux. */ -}}
+{{- $isWSL := false -}}
+{{- if and (eq .chezmoi.os "linux") (hasKey .chezmoi "kernel") -}}
+{{-   if .chezmoi.kernel.osrelease | lower | contains "microsoft" -}}
+{{-     $isWSL = true -}}
+{{-   end -}}
+{{- end -}}
+{{- $url := "https://github.com/pmgledhill102/agentic-coding-config/archive/refs/heads/main.tar.gz" -}}
 {{- if eq $machineType "personal" }}
 [".claude"]
 type = "archive"
-url = "https://github.com/pmgledhill102/agentic-coding-config/archive/refs/heads/main.tar.gz"
+url = "{{ $url }}"
 stripComponents = 2
 refreshPeriod = "168h"
+{{- if $isWSL }}
+include = [
+    "agentic-coding-config-main/home/[!C]*",
+    "agentic-coding-config-main/home/[!C]*/**",
+]
+
+[".claude/CLAUDE.md"]
+type = "archive-file"
+url = "{{ $url }}"
+path = "agentic-coding-config-main/profiles/claude-wsl/CLAUDE.md"
+refreshPeriod = "168h"
+{{- else }}
 include = ["agentic-coding-config-main/home/**"]
+{{- end }}
 {{- end }}
