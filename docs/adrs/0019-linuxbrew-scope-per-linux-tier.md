@@ -1,8 +1,9 @@
 # ADR-0019: How far Homebrew reaches on Linux, tier by tier
 
-- **Status**: Proposed. Measurements on a fresh Ubuntu 24.04 WSL distro are
-  still outstanding: every `TBD-MEASURE` below must be filled in before this
-  record can be accepted.
+- **Status**: Proposed. The M1 measurements on a fresh Ubuntu 24.04 WSL
+  distro are in. One question remains before acceptance (`TBD-CONFIRM`
+  below); the work-tier thresholds are checked in CI during implementation,
+  not before acceptance (see "Decision").
 - **Scope**: Repo — this record binds `dotfiles` only. It decides which
   package manager this repo drives for which tools on each Linux machine tier,
   which would bind nothing if this repo were archived.
@@ -90,9 +91,8 @@ disk is the change in used space on `/`:
 | Formulae built from source instead of poured | none: every formula and dependency poured a bottle |
 | `brew doctor` on WSL | "Your system is ready to brew." |
 | Warm `brew update` | 1 s |
-| ARM64 Linux bottles, sampled from the formula API | 10 of 10 have `arm64_linux` and `x86_64_linux` bottles: bat, mdcat, lazygit, starship, uv, gh, fzf, eza, ripgrep, zoxide. The rest of the Brewfile is not yet checked (`TBD-MEASURE: corrected M1 bottle table`) |
-| End-to-end first apply, `work` tier as today (status quo) | `TBD-MEASURE: M2 work time / disk` |
-| End-to-end first apply, `personal` tier (ADR-0017) | `TBD-MEASURE: M2 personal time / disk` |
+| ARM64 Linux bottles, sampled from the formula API | 10 of 10 have `arm64_linux` and `x86_64_linux` bottles: bat, mdcat, lazygit, starship, uv, gh, fzf, eza, ripgrep, zoxide. The rest of the work slice is checked during implementation (see "Decision") |
+| End-to-end first apply, `work` tier, status quo and with Homebrew | Measured in CI during implementation (see "Decision") |
 
 What the per-formula figures show:
 
@@ -171,16 +171,16 @@ apt's copy won.
 ### Bootstrap cost
 
 - **Status quo:** CI first apply about 1–1.5 min, about 1.1 GB (personal
-  before ADR-0017, the closest proxy for today's work tier). Work-tier WSL
-  numbers: `TBD-MEASURE: M2 work`.
+  before ADR-0017, the closest proxy for today's work tier). The real
+  work-tier figure comes from the CI `work` leg (see "Decision").
 - **Hybrid:** CI shows Homebrew itself costs about 16 s; the Brewfile is the
   cost (personal: 7–11 min, about 9.5 GB, 60 formulae). The work tier's
   Linux-capable slice is about 37 formulae (43 minus colima, the three
   docker formulae, nvm and the acli tap) and leaves out the heaviest
   personal entries (ffmpeg, imagemagick, ocrmypdf, pandoc, gradle, maven,
   hugo, typst, weasyprint), so it should cost well under the personal figure.
-  Expected, not measured: `TBD-MEASURE: render the work tier on Linux and
-  run M2`. A compiler is already present (build-essential, #442) on personal
+  Expected, not yet measured end to end: the CI `work` leg gives the real
+  figure. A compiler is already present (build-essential, #442) on personal
   and work. M1 on WSL: Homebrew itself 17 s and 283 MB; the 16 candidate
   and overlap formulae together 104 s and about 1.9 GB, of which PowerShell
   (through `dotnet`) is 951 MB. Without PowerShell the same set is about
@@ -189,8 +189,8 @@ apt's copy won.
   serves in seconds.
 - **ARM64:** every one of the 10 formulae sampled from the formula API,
   covering each hand-written installer that has a formula, has an
-  `arm64_linux` bottle. The rest of the Brewfile is
-  `TBD-MEASURE: corrected M1 bottle table`. Any formula with neither an
+  `arm64_linux` bottle. The rest of the work slice is
+  checked when its Linux rendering is written (see "Decision"). Any formula with neither an
   `arm64_linux` nor an `all` bottle either builds from source on ARM64
   Linux (slow, needs the toolchain) or goes behind a guard. mdcat shows the
   gain: its GitHub release is x86_64-only, so on ARM64 the status quo
@@ -235,7 +235,8 @@ apt's copy won.
 - **Status quo:** that blind spot stays.
 - **Hybrid for work:** the work tier gains code CI does not run unless a
   `work` leg is added to the ubuntu matrix. Its cost is the work slice's
-  bundle time (`TBD-MEASURE`) per push to `main`; PRs stay fast.
+  bundle time per push to `main`, which that leg itself reports; PRs stay
+  fast.
 - **Linuxbrew-first:** personal job time grows further for no benefit.
 
 ### WSL specifics
@@ -288,11 +289,26 @@ same way:
   not support the Homebrew formula, and its default layout loses installed
   Node versions on upgrade.
 
-Work-tier thresholds, to be checked against M2 before acceptance: a first
-apply of the work tier with Homebrew adds no more than **5 minutes** and
-**4 GB** over the status-quo work apply on the WSL distro, and M1 shows no
-formula in the work slice built from source on x86_64. If either fails, the
-work tier stays on option 1 and only the minimal trim goes ahead.
+Work-tier thresholds: a first apply of the work tier with Homebrew adds no
+more than **5 minutes** and **4 GB** over the status-quo work apply, and no
+formula in the work slice is built from source on x86_64. M1 already
+suggests a comfortable pass (Homebrew plus 16 tools: about 2 minutes and
+0.95 GB without PowerShell), so these are checked in CI during
+implementation rather than by a manual end-to-end run before acceptance:
+
+1. **Baseline first.** Add a `work` leg to the ubuntu full-install job on
+   today's code. It closes the CI blind spot on its own merit, and its first
+   runs on `main` give the status-quo work time and disk.
+2. **Then the change.** The PR that moves work Linux to Homebrew lands only
+   if that leg, run on `main` after merge (or via `workflow_dispatch` on the
+   branch), stays within the thresholds against the baseline. The same PR
+   runs the formula-API bottle check from M1 over the rendered work slice,
+   and any formula without an `arm64_linux` or `all` bottle gets a guard.
+
+If a threshold fails, the work tier stays on option 1 (revert that PR) and
+only the minimal trim goes ahead. The real-machine figure is no longer
+needed for acceptance: a CI runner is faster than a WSL distro, but the
+comparison is like for like on the same runner.
 
 ### What this deviates from, and why
 
@@ -322,8 +338,8 @@ work tier stays on option 1 and only the minimal trim goes ahead.
 
 ### Negative / trade-offs
 
-- Work Linux first applies get slower and larger (`TBD-MEASURE: M2`; M1
-  puts Homebrew plus the 16 tools measured at about 2 minutes and 1.9 GB,
+- Work Linux first applies get slower and larger (the CI `work` leg
+  reports by how much; M1 puts Homebrew plus the 16 tools measured at about 2 minutes and 1.9 GB,
   or 0.95 GB with PowerShell kept on apt).
 - Formulae such as mdcat bring Homebrew copies of libraries apt already
   has, `curl` among them, so a tool can be on `PATH` twice. The PATH
@@ -350,8 +366,9 @@ work tier stays on option 1 and only the minimal trim goes ahead.
 One issue per concern, as #445 asks: work-tier Brewfile darwin guard;
 Homebrew in the before-script for work; `brewup` deployment in
 `.chezmoiignore`; the bootstrap-set rule and its CI check; removing the
-replaced installers; a `work` leg in the ubuntu full-install job; the
-minimal-tier trim.
+replaced installers; the minimal-tier trim. The `work` leg in the ubuntu
+full-install job comes first of all, before any tier changes, so that it
+records the status-quo baseline the thresholds compare against.
 
 ## Measurement procedure
 
@@ -361,8 +378,9 @@ Run on a throwaway distro, never on a machine you keep. From PowerShell:
 wsl --install -d Ubuntu-24.04 --name brewtest
 ```
 
-Create the default user when prompted, then inside the distro run M1. For M2,
-use one fresh distro per tier (`wsl --unregister brewtest` between runs).
+Create the default user when prompted, then inside the distro run M1. M2
+is optional: the thresholds are checked in CI instead (see "Decision"), so
+run it only for a real-machine figure.
 
 ### M1: Homebrew and candidate tools
 
@@ -483,7 +501,7 @@ they appear, so read the set totals as the comparable figure. The bottle
 table reads Homebrew's metadata, so it is valid on an x86_64 machine for
 ARM64 coverage too.
 
-### M2: end-to-end first apply, per tier
+### M2 (optional): end-to-end first apply, per tier
 
 In a fresh distro, time the real bootstrap and answer `work` at the
 `machine_type` prompt; answer `personal` in the second distro. (Seeding
