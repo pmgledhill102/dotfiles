@@ -3,3 +3,7 @@
 # Defaults: ghostty +show-config --default --docs
 
 working-directory = ~/dev
+
+# Right Option sends Alt, so fzf's Alt-C (cd picker) and Alt-R (raw mode in
+# Ctrl-R) work. Left Option keeps typing #, ç, é (#512). macOS-only setting.
+macos-option-as-alt = right

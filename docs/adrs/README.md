@@ -50,3 +50,5 @@ Each ADR uses a short [MADR](https://adr.github.io/madr/)-style template:
 | [0017](0017-homebrew-on-personal-linux.md) | Homebrew and the Brewfile on personal Linux machines | Accepted |
 | [0018](0018-docker-via-colima-and-docker-engine.md) | Docker without Docker Desktop: Colima on macOS, Docker Engine on Linux | Accepted |
 | [0019](0019-linuxbrew-scope-per-linux-tier.md) | How far Homebrew reaches on Linux, tier by tier | Accepted |
+| [0020](0020-tool-selection-criteria.md) | Tool-selection criteria, and how to break them | Accepted |
+| [0021](0021-mise-for-language-runtimes.md) | mise for language runtimes (Node, Java) | Accepted |
