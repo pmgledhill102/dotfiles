@@ -20,6 +20,10 @@
             # zoxide, delta, jq, ...). apt keeps only what the bootstrap
             # needs before Homebrew exists. Docker comes from Docker's own apt
             # repo in run_onchange_install-ubuntu-packages (ADR-0018).
+            # One owner per tool (ADR-0019): nothing here may also be in the
+            # Linux Brewfile, except the bootstrap set (curl, git, wget, zsh)
+            # that apt must provide before Homebrew exists; CI enforces it
+            # with scripts/check-package-owners.sh.
             packages = [
                 "curl",
                 "git",
