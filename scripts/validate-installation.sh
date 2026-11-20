@@ -207,14 +207,13 @@ validate_test_pkg "Age is installed" "command -v age"
 # Phase 9 tools
 validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
 validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
-validate_test "Tmux config exists" "[ -f \"\$HOME/.tmux.conf\" ]"
 
 # Check for tools that should be installed via Brewfile or apt packages.
 # In fast CI mode (DOTFILES_SKIP_INSTALL=1), these binary presence checks
 # are skipped — the packages haven't been installed.
 if [ "$FAST_MODE" = "1" ]; then
-  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / tmux / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
-  SKIPPED_TESTS=$((SKIPPED_TESTS + 14))
+  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / mise / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
+  SKIPPED_TESTS=$((SKIPPED_TESTS + 16))
 else
   if command -v delta >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} git-delta is installed"
@@ -251,12 +250,12 @@ else
   validate_test "docker compose plugin works" "docker compose version"
   validate_test "docker buildx plugin works" "docker buildx version"
 
-  if command -v tmux >/dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC} tmux is installed"
-    ((PASSED_TESTS++))
-  else
-    echo -e "${RED}✗${NC} tmux is installed"
-    ((FAILED_TESTS++))
+  # mise and the runtimes it installs (ADR-0021). Minimal machines have none.
+  if [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" != "minimal" ]; then
+    export PATH="$HOME/.local/bin:$PATH"
+    validate_test "mise is in PATH" "command -v mise"
+    validate_test "node resolves through mise" "mise which node"
+    validate_test "java resolves through mise" "mise which java"
   fi
 
   if command -v rustup >/dev/null 2>&1; then

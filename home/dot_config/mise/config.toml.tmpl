@@ -1,0 +1,17 @@
+# mise: language runtimes and npm CLIs (ADR-0021). Managed by chezmoi.
+#
+# Change global versions here, not with `mise use -g`: that edits the target
+# copy, which the next `chezmoi apply` overwrites. In a project, `mise use`
+# writes the project's own mise.toml, which is what it is for.
+
+[tools]
+node = "lts"
+java = "temurin-25"
+{{- range .packages.npm.packages }}
+"npm:{{ . }}" = "latest"
+{{- end }}
+
+[settings]
+# Read the version files projects already carry: .nvmrc and .node-version for
+# Node, .java-version and .sdkmanrc for Java. mise ignores them unless enabled.
+idiomatic_version_file_enable_tools = ["node", "java"]

@@ -17,7 +17,7 @@
 {{- if eq $machineType "personal" }}
             # Personal Linux machines also run Homebrew and the Brewfile
             # (ADR-0017), which owns the CLI tools (bat, eza, fd, ripgrep,
-            # zoxide, delta, jq, tmux, ...). apt keeps only what the bootstrap
+            # zoxide, delta, jq, ...). apt keeps only what the bootstrap
             # needs before Homebrew exists. Docker comes from Docker's own apt
             # repo in run_onchange_install-ubuntu-packages (ADR-0018).
             packages = [
@@ -38,7 +38,6 @@
                 "git-delta",
                 "jq",
                 "ripgrep",
-                "tmux",
                 "unzip",
                 "wget",
                 "zoxide",
@@ -54,7 +53,6 @@
                 "git-delta",
                 "jq",
                 "ripgrep",
-                "tmux",
                 "wget",
                 "zoxide",
                 "zsh",
@@ -213,9 +211,9 @@
             packages_pinned = []
 {{- end }}
 
-        # npm - global packages installed via npm install -g
-        # Requires nvm (already in Brewfile for macOS personal/work).
-        # Install pattern: home/run_onchange_after_install-npm-globals.sh.tmpl
+        # npm CLIs, installed as mise "npm:" tools so they survive Node
+        # upgrades (ADR-0021). Rendered into home/dot_config/mise/config.toml.tmpl
+        # and installed by home/run_onchange_after_install-mise-tools.sh.tmpl
         [data.packages.npm]
 {{- if eq $machineType "personal" }}
             packages = [

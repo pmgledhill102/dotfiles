@@ -39,8 +39,9 @@ run_once_macos_defaults.sh
 macos_defaults.sh
 run_once_after_install-brewfile.sh
 install-brewfile.sh
-run_onchange_after_install-npm-globals.sh
-install-npm-globals.sh
+run_onchange_after_install-mise-tools.sh
+install-mise-tools.sh
+.config/mise/
 run_once_remove-claude-code-cask.sh
 remove-claude-code-cask.sh
 run_once_migrate-tart-to-openai-tap.sh
@@ -67,7 +68,6 @@ configure-wsl.sh
 run_once_install-vscode-extensions.sh
 install-vscode-extensions.sh
 Brewfile
-.tmux.conf
 run_onchange_setup-claude.sh
 setup-claude.sh
 run_after_prune-retired-claude-files.sh
@@ -146,6 +146,10 @@ install-cship.sh
 
 # Skip GUI app configs on minimal/server machines
 {{- if eq $machineType "minimal" }}
+# No language runtimes on servers (ADR-0021)
+.config/mise/
+run_onchange_after_install-mise-tools.sh
+install-mise-tools.sh
 .config/Code/
 .config/ghostty/
 .config/vscode-extensions

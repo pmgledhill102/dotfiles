@@ -91,7 +91,15 @@
     "xterm",
     "yadm",
     "ocrmypdf",
-    "xcodes"
+    "xcodes",
+    "jenv",
+    "linuxbrew",
+    "nvmrc",
+    "sdkmanrc",
+    "SDKMAN",
+    "temurin",
+    "tenv",
+    "tmpl"
   ],
   "ignorePaths": [
     "node_modules/**",
