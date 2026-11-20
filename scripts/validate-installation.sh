@@ -26,6 +26,11 @@ if [[ "$(uname -s)" == "Linux" ]] && [ -x /home/linuxbrew/.linuxbrew/bin/brew ];
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
 
+# The applied machine tier (personal, work or minimal). Some tools are not
+# installed on every tier, and CI runs each Ubuntu tier (#501). Empty if
+# chezmoi is not installed yet; the chezmoi checks below then fail anyway.
+MACHINE_TYPE=$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null || true)
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -205,7 +210,11 @@ validate_test_pkg "Git is installed" "command -v git"
 validate_test_pkg "Age is installed" "command -v age"
 
 # Phase 9 tools
-validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
+# Work machines keep their own git identity, so ~/.gitconfig is not applied
+# there (.chezmoiignore).
+if [ "$MACHINE_TYPE" != "work" ]; then
+  validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
+fi
 validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
 
 # Check for tools that should be installed via Brewfile or apt packages.
@@ -218,7 +227,10 @@ else
   if command -v delta >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} git-delta is installed"
     ((PASSED_TESTS++))
-    validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+    # The delta pager is set in the managed ~/.gitconfig, not applied on work.
+    if [ "$MACHINE_TYPE" != "work" ]; then
+      validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+    fi
   else
     echo -e "${RED}✗${NC} git-delta is installed"
     ((FAILED_TESTS++))
@@ -246,9 +258,13 @@ else
   # Colima's VM, so there is no daemon to talk to there. On macOS the
   # plugin checks also prove ~/.docker/config.json points at Homebrew's
   # cli-plugins directory.
-  validate_test "docker CLI is in PATH" "command -v docker"
-  validate_test "docker compose plugin works" "docker compose version"
-  validate_test "docker buildx plugin works" "docker buildx version"
+  # Not on minimal machines: Docker and rustup are installed only off the
+  # minimal tier (run_onchange_install-ubuntu-packages, run_once_before).
+  if [ "$MACHINE_TYPE" != "minimal" ]; then
+    validate_test "docker CLI is in PATH" "command -v docker"
+    validate_test "docker compose plugin works" "docker compose version"
+    validate_test "docker buildx plugin works" "docker buildx version"
+  fi
 
   # mise and the runtimes it installs (ADR-0021). Minimal machines have none.
   if [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" != "minimal" ]; then
@@ -258,7 +274,9 @@ else
     validate_test "java resolves through mise" "mise which java"
   fi
 
-  if command -v rustup >/dev/null 2>&1; then
+  if [ "$MACHINE_TYPE" = "minimal" ]; then
+    : # no Rust toolchain on minimal machines
+  elif command -v rustup >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} rustup is installed"
     ((PASSED_TESTS++))
     validate_test "Cargo is installed" "command -v cargo"
@@ -311,8 +329,7 @@ validate_test_pkg "Age is in PATH" "command -v age"
 validate_test_pkg "Age keygen is in PATH" "command -v age-keygen"
 
 # Personal Linux runs Homebrew and the Brewfile (ADR-0017)
-if [[ "$(uname -s)" == "Linux" ]] \
-  && [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" = "personal" ]; then
+if [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "personal" ]; then
   echo ""
   echo "Validating Homebrew on Linux (personal)..."
   echo "-----------------------------------"
@@ -431,8 +448,11 @@ fi
 echo ""
 echo "Validating VS Code configuration..."
 echo "-----------------------------------"
-validate_test "VS Code settings exist" "[ -f \"\$HOME/.config/Code/User/settings.json\" ]"
-validate_test "VS Code keybindings exist" "[ -f \"\$HOME/.config/Code/User/keybindings.json\" ]"
+# GUI app configs are not applied on minimal machines (.chezmoiignore).
+if [ "$MACHINE_TYPE" != "minimal" ]; then
+  validate_test "VS Code settings exist" "[ -f \"\$HOME/.config/Code/User/settings.json\" ]"
+  validate_test "VS Code keybindings exist" "[ -f \"\$HOME/.config/Code/User/keybindings.json\" ]"
+fi
 
 echo ""
 echo "================================"

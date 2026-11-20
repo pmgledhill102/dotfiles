@@ -246,13 +246,25 @@ jobs:
         & scripts/validate-installation-windows.ps1
 
   test-install:
-    name: Test Install on ${{ matrix.os }}
+    # Personal legs keep their historical names; the extra Ubuntu tiers get a
+    # suffix (#501).
+    name: Test Install on ${{ matrix.os }}${{ matrix.machine_type != 'personal' && format(' ({0})', matrix.machine_type) || '' }}
     if: github.event_name != 'pull_request'
     needs: [shellcheck, markdown-lint, actionlint, private-repo-refs]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        machine_type: [personal]
+        # work and minimal Linux run code no personal leg reaches (the tarball
+        # installers, latest_release_tag, the Starship installer), and the
+        # work leg is ADR-0019's baseline for moving work Linux to Homebrew.
+        include:
+          - os: ubuntu-latest
+            machine_type: work
+          - os: ubuntu-latest
+            machine_type: minimal
 
     steps:
     - name: Checkout repository
@@ -283,9 +295,10 @@ jobs:
         echo "Removing packages that install scripts should install..."
         sudo apt-get remove -y git zsh || true
         sudo apt-get autoremove -y
-        # The runner image ships Linuxbrew at /home/linuxbrew. CI applies the
-        # personal tier, which installs Homebrew itself (ADR-0017), so remove
-        # it to exercise that bootstrap from scratch, as the macOS leg does.
+        # The runner image ships Linuxbrew at /home/linuxbrew. Remove it on
+        # every leg: personal installs Homebrew itself (ADR-0017), so this
+        # exercises that bootstrap from scratch, as the macOS leg does; work
+        # and minimal must not find a Homebrew they would not have.
         sudo rm -rf /home/linuxbrew
         echo "Pre-installed tools stripped."
 
@@ -347,6 +360,8 @@ jobs:
 
     - name: Initialize and Apply Dotfiles (Unix)
       if: runner.os != 'Windows'
+      env:
+        MACHINE_TYPE: ${{ matrix.machine_type }}
       run: |
         # Use 'time' to benchmarking installation (T026)
         # We use --source . to use the checked-out repo
@@ -356,9 +371,9 @@ jobs:
         # chezmoi's --promptChoice flag does NOT work with promptChoiceOnce,
         # so we must write the config data directly.
         mkdir -p "$HOME/.config/chezmoi"
-        printf '[data]\n    machine_type = "personal"\n' > "$HOME/.config/chezmoi/chezmoi.toml"
+        printf '[data]\n    machine_type = "%s"\n' "$MACHINE_TYPE" > "$HOME/.config/chezmoi/chezmoi.toml"
 
-        echo "Starting Chezmoi Apply..."
+        echo "Starting Chezmoi Apply (machine_type: $MACHINE_TYPE)..."
         time chezmoi init --apply --source . --verbose
 
     - name: Initialize and Apply Dotfiles (Windows)
@@ -520,7 +535,7 @@ jobs:
       run: |
         # Generate Job Summary
         {
-          echo "### Installation Report (${{ matrix.os }}) :bar_chart:"
+          echo "### Installation Report (${{ matrix.os }}, ${{ matrix.machine_type }}) :bar_chart:"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
 
@@ -635,7 +650,7 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: test-results-${{ matrix.os }}
+        name: test-results-${{ matrix.os }}-${{ matrix.machine_type }}
         path: |
           home/
  
