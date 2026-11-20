@@ -288,7 +288,8 @@ same way:
 - **PowerShell** stays on the packages.microsoft.com apt repo. Through
   Homebrew it pulls a private `dotnet` and costs 951 MB on its own; the
   Microsoft `.deb` bundles only the runtime it needs (its size is not
-  measured here).
+  measured here). *Later change (2026-11-20, #514):* PowerShell is no longer
+  installed on Linux or macOS at all; Windows keeps it through winget.
 - **nvm** stays on its official installer (pinned, as today). Upstream does
   not support the Homebrew formula, and its default layout loses installed
   Node versions on upgrade.

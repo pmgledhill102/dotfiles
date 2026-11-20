@@ -47,7 +47,7 @@ Zsh + Oh My Zsh with quality-of-life add-ons:
 - **Better core tools** — `bat`, `fd`, `ripgrep`, `git-delta`, `jq`/`yq`,
   `fzf`, `zoxide`
 - **Git + dev** — `gh`, `lazygit`, `pre-commit`, `gitleaks`
-- **Languages** — Go, .NET, OpenJDK + `jenv`, `nvm`, `uv` (Python), Rust
+- **Languages** — Go, .NET, Node and Java through `mise` (ADR-0021), `uv` (Python), Rust
 - **Cloud / infra** — `gcloud`, `awscli`, `azure-cli`, `tenv` + `tflint`,
   `checkov`, `trivy`, `semgrep`, Docker (Colima on macOS)
 - **Personal-tier GUI apps** — VS Code, Ghostty, Bitwarden, Rectangle,
@@ -73,6 +73,9 @@ You don't need to remember chezmoi or brew incantations:
   (simulator runtime). Interactive — Apple sign-in can't be automated
 - **`dotstatus`** — machine type, source path, last applied, and any
   pending changes
+- **`dotguide`** — macOS only: open the shortcut guide for this machine's
+  profile in the browser; `dotguide md` shows the Markdown version in the
+  terminal
 - **`dotfuncs`** — list every custom function with its one-line description
   so you can rediscover what's available after `dotup`
 
@@ -155,7 +158,7 @@ chezmoi init --apply pmgledhill102
 ```
 
 This installs chezmoi, packages (Homebrew/apt/winget), shell config (Zsh +
-Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, tmux, VS Code
+Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, VS Code
 settings, JetBrains Mono Nerd Font, and platform-specific defaults.
 
 On Windows the PowerShell profile lives at
@@ -261,6 +264,7 @@ claudeup              # Interactive Claude Code MCP server setup
 xcodeup               # macOS: install/select latest Xcode via xcodes
 dotstatus             # Machine type, source path, last applied, pending changes
 dotfuncs              # List all custom shell functions with descriptions
+dotguide              # macOS: open the shortcut guide (dotguide md: in the terminal)
 ```
 
 ### Quick-capture notes
@@ -318,10 +322,10 @@ brew bundle
 # regenerates from it, and changes auto-install on the next apply.
 chezmoi init --apply
 
-# npm globals — declared under [data.packages.npm] in
-# home/.chezmoi.toml.tmpl. run_onchange_after_install-npm-globals
-# sources nvm, ensures NodeJS LTS is installed, then `npm install -g`
-# each entry. Re-runs whenever the list changes.
+# npm CLIs — declared under [data.packages.npm] in
+# home/.chezmoi.toml.tmpl. They render into ~/.config/mise/config.toml as
+# "npm:" tools, and run_onchange_after_install-mise-tools runs
+# `mise install` whenever the list or the config changes (ADR-0021).
 ```
 
 ## Secret Management
