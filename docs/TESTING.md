@@ -65,7 +65,7 @@ The script validates:
 - Starship prompt installation and configuration
 - Theme and prompt functionality
 - Tool availability (git, age, chezmoi, etc.)
-- Configuration files (.gitconfig, .tmux.conf, etc.)
+- Configuration files (.gitconfig, .gitignore_global, etc.)
 - Platform-specific tools (Homebrew on macOS, apt on Linux)
 - VS Code configuration
 - Font installation

@@ -158,7 +158,7 @@ chezmoi init --apply pmgledhill102
 ```
 
 This installs chezmoi, packages (Homebrew/apt/winget), shell config (Zsh +
-Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, tmux, VS Code
+Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, VS Code
 settings, JetBrains Mono Nerd Font, and platform-specific defaults.
 
 On Windows the PowerShell profile lives at

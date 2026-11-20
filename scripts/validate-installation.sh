@@ -207,14 +207,13 @@ validate_test_pkg "Age is installed" "command -v age"
 # Phase 9 tools
 validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
 validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
-validate_test "Tmux config exists" "[ -f \"\$HOME/.tmux.conf\" ]"
 
 # Check for tools that should be installed via Brewfile or apt packages.
 # In fast CI mode (DOTFILES_SKIP_INSTALL=1), these binary presence checks
 # are skipped — the packages haven't been installed.
 if [ "$FAST_MODE" = "1" ]; then
-  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / tmux / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
-  SKIPPED_TESTS=$((SKIPPED_TESTS + 14))
+  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
+  SKIPPED_TESTS=$((SKIPPED_TESTS + 13))
 else
   if command -v delta >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} git-delta is installed"
@@ -250,14 +249,6 @@ else
   validate_test "docker CLI is in PATH" "command -v docker"
   validate_test "docker compose plugin works" "docker compose version"
   validate_test "docker buildx plugin works" "docker buildx version"
-
-  if command -v tmux >/dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC} tmux is installed"
-    ((PASSED_TESTS++))
-  else
-    echo -e "${RED}✗${NC} tmux is installed"
-    ((FAILED_TESTS++))
-  fi
 
   if command -v rustup >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} rustup is installed"

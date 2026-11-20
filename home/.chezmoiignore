@@ -67,7 +67,6 @@ configure-wsl.sh
 run_once_install-vscode-extensions.sh
 install-vscode-extensions.sh
 Brewfile
-.tmux.conf
 run_onchange_setup-claude.sh
 setup-claude.sh
 run_after_prune-retired-claude-files.sh

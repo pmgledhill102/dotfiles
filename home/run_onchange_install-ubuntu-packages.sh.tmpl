@@ -186,22 +186,6 @@ case "$(uname -s)" in
       echo "Added $USER to the docker group (log out and back in to use it)"
     fi
 
-    # Install PowerShell from Microsoft repository
-    echo "Installing/Updating PowerShell..."
-    if ! command -v pwsh >/dev/null 2>&1; then
-      sudo apt-get install -y wget apt-transport-https software-properties-common
-      # shellcheck disable=SC1091
-      . /etc/os-release
-      wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb"
-      sudo dpkg -i packages-microsoft-prod.deb
-      rm packages-microsoft-prod.deb
-      sudo apt-get update
-      sudo apt-get install -y powershell
-      echo "PowerShell installed successfully"
-    else
-      echo "PowerShell already installed, skipping"
-    fi
-
 # {{ if ne .machine_type "personal" }}
     # Install gh (Linux counterpart of the Brewfile's brew "gh"; dotfiles#440)
     # from GitHub's own apt repo, per cli/cli docs/install_linux.md. The Ubuntu
