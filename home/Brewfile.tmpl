@@ -35,7 +35,6 @@ brew "ffmpeg"
 brew "hadolint"
 brew "hugo"
 brew "imagemagick"
-brew "jenv"
 brew "jq"
 brew "lazygit"
 brew "lychee"
@@ -45,9 +44,10 @@ brew "maven"
 # since the original was archived. Earns it: aligns piped Markdown tables,
 # which mdc relies on (#511).
 brew "mdcat"
+# Node and Java versions, and npm CLIs (ADR-0021)
+brew "mise"
 brew "nano"
 brew "ocrmypdf"
-brew "openjdk"
 brew "openssl"
 brew "pandoc"
 brew "poppler"
@@ -73,8 +73,8 @@ brew "zoxide"
 # macOS only. Personal Linux machines also run this Brewfile (ADR-0017), so
 # everything below is either macOS-only upstream (xcodes, xcodegen, tart,
 # fastlane's Xcode tooling, every cask) or has a different owner on Linux:
-# Docker from Docker's apt repo (ADR-0018), nvm from its install script
-# (dotfiles#435). PowerShell is Windows-only (winget), per #514.
+# Docker from Docker's apt repo (ADR-0018). PowerShell is Windows-only
+# (winget), per #514.
 tap "openai/tools"
 tap "terraform-linters/tap"
 
@@ -85,7 +85,6 @@ brew "docker"
 brew "docker-buildx"
 brew "docker-compose"
 brew "fastlane"
-brew "nvm"
 brew "openai/tools/tart"
 brew "xcodegen"
 brew "xcodes"
@@ -141,16 +140,15 @@ brew "git-filter-repo"
 brew "gitleaks"
 brew "go"
 brew "golangci-lint"
-brew "jenv"
 brew "jq"
 brew "lazygit"
 brew "lychee"
 brew "markdownlint-cli2"
 # ADR-0020 exception (3 Well regarded): see the personal block.
 brew "mdcat"
+# Node and Java versions, and npm CLIs (ADR-0021)
+brew "mise"
 brew "nano"
-brew "nvm"
-brew "openjdk"
 brew "openssl"
 brew "pre-commit"
 brew "prettier"

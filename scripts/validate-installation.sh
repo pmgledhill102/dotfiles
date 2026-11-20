@@ -212,8 +212,8 @@ validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
 # In fast CI mode (DOTFILES_SKIP_INSTALL=1), these binary presence checks
 # are skipped — the packages haven't been installed.
 if [ "$FAST_MODE" = "1" ]; then
-  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
-  SKIPPED_TESTS=$((SKIPPED_TESTS + 13))
+  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / mise / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
+  SKIPPED_TESTS=$((SKIPPED_TESTS + 16))
 else
   if command -v delta >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} git-delta is installed"
@@ -249,6 +249,14 @@ else
   validate_test "docker CLI is in PATH" "command -v docker"
   validate_test "docker compose plugin works" "docker compose version"
   validate_test "docker buildx plugin works" "docker buildx version"
+
+  # mise and the runtimes it installs (ADR-0021). Minimal machines have none.
+  if [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" != "minimal" ]; then
+    export PATH="$HOME/.local/bin:$PATH"
+    validate_test "mise is in PATH" "command -v mise"
+    validate_test "node resolves through mise" "mise which node"
+    validate_test "java resolves through mise" "mise which java"
+  fi
 
   if command -v rustup >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} rustup is installed"
