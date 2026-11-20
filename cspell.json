@@ -89,7 +89,9 @@
     "wekyb",
     "winget",
     "xterm",
-    "yadm"
+    "yadm",
+    "ocrmypdf",
+    "xcodes"
   ],
   "ignorePaths": [
     "node_modules/**",
