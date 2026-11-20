@@ -131,7 +131,10 @@ fi
 # fzf key bindings and fuzzy completion. `fzf --zsh` needs fzf 0.48+; an older
 # fzf (apt's 0.44 on Ubuntu 24.04) rejects the flag, so test the flag itself
 # rather than only that fzf exists, or every new shell prints an error (#503).
-if command -v fzf >/dev/null 2>&1 && _fzf_init=$(fzf --zsh 2>/dev/null); then
+# Key bindings need the line editor: in an interactive shell with no terminal
+# (`zsh -i -c ...` from a script or an editor's task runner) zle is off, and
+# fzf's script fails restoring it ("can't change option: zle").
+if [[ -o zle ]] && command -v fzf >/dev/null 2>&1 && _fzf_init=$(fzf --zsh 2>/dev/null); then
   eval "$_fzf_init"
 fi
 unset _fzf_init
