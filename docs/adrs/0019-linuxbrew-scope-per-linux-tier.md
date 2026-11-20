@@ -276,7 +276,7 @@ apt's copy won.
 | --- | --- | --- |
 | personal | 2, hybrid (unchanged from ADR-0017) | Write down the bootstrap-set exception to one-owner-per-tool. |
 | work | 2, hybrid, if the thresholds below hold | Render the work Brewfile tier on Linux with a darwin guard; install Homebrew in the before-script; deploy `brewup`. Fall back to the status quo on machines without sudo. |
-| minimal | 1, status quo, trimmed | apt only, plus the vendor installers for starship and uv. Drop the GitHub-release tarballs (fzf, lazygit, mdcat) and `latest_release_tag()`. |
+| minimal | 1, status quo, trimmed | apt only, plus the vendor installers for starship and uv. Drop the GitHub-release tarballs (fzf, lazygit, mdcat) and `latest_release_tag()`. *Later change (2026-11-20, #503):* only lazygit is dropped; fzf and mdcat keep their GitHub-release installs on minimal, so `latest_release_tag()` stays. |
 
 Option 3 is rejected on every tier.
 
@@ -351,6 +351,7 @@ comparison is like for like on the same runner.
   ordering rule above decides which one wins.
 - Two managers on work hosts: the PATH ordering above must hold there too.
 - Minimal machines lose fzf, lazygit and mdcat unless installed by hand.
+  *Later change (2026-11-20, #503):* only lazygit; fzf and mdcat were kept.
 - Work tier on Linux becomes a third rendering of the Brewfile to keep
   correct, and needs a CI leg to stay honest.
 

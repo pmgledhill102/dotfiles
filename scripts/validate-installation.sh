@@ -254,10 +254,7 @@ else
   validate_test "fd is in PATH" "command -v fd"
   validate_test "rg is in PATH" "command -v rg"
   validate_test "zoxide is in PATH" "command -v zoxide"
-  # Not on minimal: ADR-0019 dropped fzf's GitHub-release install there.
-  if [ "$MACHINE_TYPE" != "minimal" ]; then
-    validate_test "fzf supports --zsh (0.48+)" "fzf --zsh >/dev/null"
-  fi
+  validate_test "fzf supports --zsh (0.48+)" "fzf --zsh >/dev/null"
 
   # Docker CLI and plugins (ADR-0018). CLI only: macOS runners cannot boot
   # Colima's VM, so there is no daemon to talk to there. On macOS the

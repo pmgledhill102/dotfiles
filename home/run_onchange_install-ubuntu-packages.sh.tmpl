@@ -6,6 +6,30 @@
 
 set -e
 
+# Print the latest release tag for a GitHub repo ("jesseduffield/lazygit"),
+# or nothing at all if it cannot be resolved.
+#
+# The obvious route — api.github.com/.../releases/latest — is rate limited to
+# 60 requests an hour PER IP for unauthenticated callers, and GitHub-hosted
+# runners share an IP pool, so it intermittently answers with a rate-limit body
+# carrying no tag_name. That made the grep below exit 1, which under 'set -e'
+# killed the whole apply mid-provision rather than one optional tool
+# (dotfiles#429). The /releases/latest web URL redirects to /releases/tag/<tag>
+# and is not rate limited, so ask that first and keep the API as a fallback.
+latest_release_tag() {
+  tag_url=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+    "https://github.com/$1/releases/latest" 2>/dev/null || true)
+  case "$tag_url" in
+    */releases/tag/*)
+      printf '%s\n' "${tag_url##*/}"
+      return 0
+      ;;
+  esac
+
+  curl -s "https://api.github.com/repos/$1/releases/latest" |
+    grep -Po '"tag_name": *"\K[^"]*' || true
+}
+
 # {{ if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
 echo "DOTFILES_SKIP_INSTALL=1 — skipping apt package install (fast CI mode)"
 exit 0
@@ -38,10 +62,9 @@ case "$(uname -s)" in
     # ADR-0019). One owner per tool: installing both copies would leave a
     # stale one on disk.
     #
-    # fzf, lazygit and mdcat are deliberately not installed on minimal
-    # machines (ADR-0019): they came from GitHub release tarballs, which
-    # needed a rate-limit workaround (#429) and had no update path. apt's fzf
-    # (0.44 on Ubuntu 24.04) is too old for `fzf --zsh`.
+    # lazygit is not installed on minimal machines (ADR-0019). fzf and mdcat
+    # are kept, from their GitHub releases: apt's fzf (0.44 on Ubuntu 24.04)
+    # is too old for `fzf --zsh`, and mdcat is not in apt at all.
 
     # Ubuntu ships bat and fd under other names (batcat, fdfind), so the
     # `command -v bat` / `command -v fd` gates in aliases.zsh and dot_zshrc
@@ -57,6 +80,57 @@ case "$(uname -s)" in
         echo "Linked $name -> $apt_name"
       fi
     done
+
+    # Install fzf from the GitHub release. dot_zshrc runs `fzf --zsh`, which
+    # needs fzf 0.48+, newer than Ubuntu 24.04's archive, so apt is not an
+    # option. Goes to ~/.local/bin (no sudo), ahead of any system fzf on PATH.
+    if "$HOME/.local/bin/fzf" --zsh >/dev/null 2>&1; then
+      echo "fzf already installed, skipping"
+    else
+      case "$(uname -m)" in
+        x86_64) FZF_ARCH=amd64 ;;
+        aarch64 | arm64) FZF_ARCH=arm64 ;;
+        *) FZF_ARCH= ;;
+      esac
+      FZF_TAG=$(latest_release_tag junegunn/fzf)
+      FZF_VERSION=${FZF_TAG#v}
+      if [ -z "$FZF_ARCH" ]; then
+        echo "fzf: no release binary for $(uname -m), skipping"
+      elif [ -z "$FZF_VERSION" ]; then
+        echo "Warning: could not resolve latest fzf release, skipping"
+      elif curl -fsSL "https://github.com/junegunn/fzf/releases/download/${FZF_TAG}/fzf-${FZF_VERSION}-linux_${FZF_ARCH}.tar.gz" |
+          tar xzf - -C "$HOME/.local/bin" fzf; then
+        echo "fzf v${FZF_VERSION} installed successfully"
+      else
+        echo "Warning: could not download fzf v${FZF_VERSION}, skipping"
+      fi
+    fi
+
+    # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
+    # archive, so it comes from the GitHub release, same shape as fzf above.
+    # The release publishes x86_64-unknown-linux-gnu only, so other
+    # architectures are skipped rather than handed a binary that will not run.
+    if [ "$(uname -m)" = "x86_64" ]; then
+      if ! command -v mdcat >/dev/null 2>&1; then
+        echo "Installing mdcat..."
+        MDCAT_TAG=$(latest_release_tag BIRSAx2/mdcat)
+        MDCAT_VERSION=${MDCAT_TAG#mdcat-}
+        if [ -n "$MDCAT_VERSION" ]; then
+          echo "Downloading mdcat v${MDCAT_VERSION}..."
+          curl -Lo mdcat.tar.gz "https://github.com/BIRSAx2/mdcat/releases/download/mdcat-${MDCAT_VERSION}/mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar xf mdcat.tar.gz --strip-components=1 "mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu/mdcat"
+          sudo install mdcat -D -t /usr/local/bin/
+          rm -f mdcat.tar.gz mdcat
+          echo "mdcat installed successfully"
+        else
+          echo "Warning: could not resolve latest mdcat release, skipping"
+        fi
+      else
+        echo "mdcat already installed, skipping"
+      fi
+    else
+      echo "mdcat: no release binary for $(uname -m), skipping"
+    fi
 # {{ end }}
 
 # {{ if ne .machine_type "minimal" }}
