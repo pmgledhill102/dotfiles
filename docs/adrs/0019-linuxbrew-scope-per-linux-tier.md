@@ -315,6 +315,15 @@ only the minimal trim goes ahead. The real-machine figure is no longer
 needed for acceptance: a CI runner is faster than a WSL distro, but the
 comparison is like for like on the same runner.
 
+*Later change (2026-11-20, #502):* the check ran on CI. Time passed (+3 min
+22 s over `main`'s 71 s work apply). Disk failed: +5.47 GB over 1,230 MB, of
+which about 1.5 GB is Homebrew's download cache and most of the rest is the
+work Mac toolset (`dotnet`, `go`, `semgrep`, `checkov` and others) that work
+Linux never had, so the threshold measured the toolset more than Homebrew. The
+owner accepted the move anyway (#506): no work Linux machine is in use, work
+is a Mac, and a first apply is a one-off. The work tier on Linux stays
+supported and CI-tested, but is not tuned for size.
+
 ### What this deviates from, and why
 
 - **ADR-0004** (native managers, no second manager on a Linux host): for the
