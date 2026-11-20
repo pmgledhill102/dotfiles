@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{{- /* Source of ~/.config/dotfiles/guide/shortcuts.html. Keep in step with
+       shortcuts.md.tmpl beside it: same sections, same rows. The default
+       profile comes from this machine's machine_type. */}}
+<title>Mac Shortcut Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: sticky control bar (profile switch + filter), then one reading column of sections; each row is keys | what it does | tick. */
+:root {
+  --bg: #f6f7f4;
+  --panel: #ffffff;
+  --fg: #1d2420;
+  --muted: #5d6a62;
+  --rule: #dfe4dd;
+  --accent: #2f7d5b;
+  --accent-soft: #e3f1ea;
+  --key-bg: #fbfcfa;
+  --key-edge: #c3cbc4;
+  --code-bg: #1f2622;
+  --code-fg: #e7eee9;
+  --code-dim: #94a59a;
+  --warn: #9a5b12;
+  --warn-soft: #fbf0e1;
+  --daily: #7a4fb0;
+  --daily-soft: #efe7f8;
+  --display: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131815; --panel: #1a201c; --fg: #e3e9e5; --muted: #9aa89f; --rule: #2b342e;
+    --accent: #6fcf9f; --accent-soft: #1f3329; --key-bg: #222a25; --key-edge: #3d4a42;
+    --code-bg: #0d110f; --code-fg: #e3e9e5; --code-dim: #7f9086;
+    --warn: #e2a65a; --warn-soft: #2e2416; --daily: #c3a2ee; --daily-soft: #2b2238; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131815; --panel: #1a201c; --fg: #e3e9e5; --muted: #9aa89f; --rule: #2b342e;
+  --accent: #6fcf9f; --accent-soft: #1f3329; --key-bg: #222a25; --key-edge: #3d4a42;
+  --code-bg: #0d110f; --code-fg: #e3e9e5; --code-dim: #7f9086;
+  --warn: #e2a65a; --warn-soft: #2e2416; --daily: #c3a2ee; --daily-soft: #2b2238; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body);
+  font-size: 16px; line-height: 1.55; margin: 0;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 52rem; margin: 0 auto; }
+header.top { padding-block: 2.5rem 1.25rem; }
+header.top .wrap { display: flex; flex-direction: column; gap: .7rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.15; margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+.lede { color: var(--muted); font-size: 1.05rem; margin: 0; max-width: 65ch; }
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--rule); padding-block: .7rem;
+}
+.bar .wrap { display: flex; flex-wrap: wrap; gap: .7rem 1rem; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--key-edge); border-radius: 8px; overflow: hidden; }
+.seg button {
+  font: 600 .85rem var(--mono); padding: .4rem .9rem; border: 0; background: var(--panel); color: var(--muted); cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+.seg button + button { border-left: 1px solid var(--key-edge); }
+.filter { flex: 1 1 14rem; min-width: 0; }
+.filter input {
+  width: 100%; font: .95rem var(--body); padding: .45rem .7rem; border-radius: 8px;
+  border: 1px solid var(--key-edge); background: var(--panel); color: var(--fg);
+}
+.progress { font-family: var(--mono); font-size: .8rem; color: var(--muted); white-space: nowrap; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { padding-block: 1.5rem 4rem; }
+main .wrap { display: flex; flex-direction: column; gap: 2.5rem; }
+section { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem; padding-bottom: .45rem; border-bottom: 1px solid var(--rule); }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.25rem; margin: 0; letter-spacing: -.01em; }
+.head .tag { font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+.intro { color: var(--muted); margin: 0; max-width: 65ch; }
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) auto; gap: .3rem 1rem;
+  padding: .65rem 0; border-top: 1px solid var(--rule); align-items: start;
+}
+.row:first-child { border-top: 0; }
+.row .keys { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; min-width: 0; }
+.row .what { min-width: 0; display: flex; flex-direction: column; gap: .2rem; }
+.row .what b { font-weight: 600; }
+.row .what span { color: var(--muted); font-size: .93rem; }
+.row.done .what b { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.tick { display: flex; align-items: center; }
+.tick input { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); cursor: pointer; }
+@media (max-width: 36rem) {
+  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .row .keys { grid-column: 1 / 2; }
+  .row .what { grid-column: 1 / 3; grid-row: 2; }
+  .row .tick { grid-column: 2; grid-row: 1; }
+}
+kbd {
+  font-family: var(--mono); font-size: .8em; font-weight: 600;
+  background: var(--key-bg); color: var(--fg);
+  border: 1px solid var(--key-edge); border-bottom-width: 3px; border-radius: 6px;
+  padding: .05em .42em; white-space: nowrap;
+}
+code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft); padding: .08em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+.keys code { font-weight: 600; }
+.daily {
+  font: 700 .66rem var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--daily); background: var(--daily-soft); border-radius: 999px; padding: .1em .5em; align-self: flex-start;
+}
+.only {
+  font: 600 .66rem var(--mono); letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--rule); border-radius: 999px; padding: .05em .5em; align-self: flex-start;
+}
+pre {
+  margin: 0; background: var(--code-bg); color: var(--code-fg);
+  font-family: var(--mono); font-size: .85rem; line-height: 1.55;
+  padding: .9rem 1rem; border-radius: 10px; overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+pre .c { color: var(--code-dim); }
+.note {
+  background: var(--warn-soft); border-left: 3px solid var(--warn); border-radius: 0 8px 8px 0;
+  padding: .8rem 1rem; display: flex; flex-direction: column; gap: .55rem;
+}
+.note > p { margin: 0; }
+.note strong { color: var(--warn); }
+.legend { background: var(--accent-soft); border-radius: 10px; padding: .85rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
+.legend p { margin: 0; }
+[data-only="personal"].hide-profile, [data-only="work"].hide-profile { display: none !important; }
+.empty { color: var(--muted); font-style: italic; }
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rule); padding-top: 1rem; display: flex; flex-direction: column; gap: .4rem; }
+footer p { margin: 0; }
+a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="top gutter">
+  <div class="wrap">
+    <div class="eyebrow">dotfiles · macOS · zsh · Ghostty</div>
+    <h1>Mac Shortcut Manual</h1>
+    <p class="lede">Everything your dotfiles set up that saves keystrokes, taken from the config itself, not from generic cheat sheets. Items marked <span class="daily">Daily</span> are worth building into habit first. Tick a row once it's become a habit; ticks are saved in this browser only.</p>
+  </div>
+</header>
+
+<div class="bar gutter">
+  <div class="wrap">
+    <div class="seg" role="group" aria-label="Machine profile">
+      <button type="button" id="p-personal" data-profile="personal" aria-pressed="true">Personal</button>
+      <button type="button" id="p-work" data-profile="work" aria-pressed="false">Work</button>
+    </div>
+    <div class="filter"><input id="q" type="search" placeholder="Filter: git, split, copy…" aria-label="Filter shortcuts"></div>
+    <div class="progress" id="progress" aria-live="polite"></div>
+  </div>
+</div>
+
+<main class="gutter">
+  <div class="wrap">
+
+    <div class="legend">
+      <p><b>Reading the keys.</b> <kbd>⌃</kbd> is control, <kbd>⌥</kbd> option, <kbd>⌘</kbd> command, <kbd>⇧</kbd> shift. Shell shortcuts use <kbd>⌃</kbd>; Ghostty's own use <kbd>⌘</kbd>. Where a tool expects <em>Alt</em>, use the <b>right</b> <kbd>⌥</kbd>: the dotfiles set Ghostty up that way, and the left one keeps typing #.</p>
+    </div>
+
+    <section>
+      <div class="head"><h2>Finding things</h2><span class="tag">fzf · zoxide · fd · ripgrep</span></div>
+      <div class="rows">
+        <div class="row" data-id="ctrl-r"><div class="keys"><kbd>⌃</kbd><kbd>R</kbd></div><div class="what"><span class="daily">Daily</span><b>Search command history</b><span>Fuzzy search across 50,000 commands, shared between all open terminals. Press <kbd>⌃</kbd><kbd>R</kbd> again to switch to plain time order.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="ctrl-t"><div class="keys"><kbd>⌃</kbd><kbd>T</kbd></div><div class="what"><span class="daily">Daily</span><b>Insert a file path</b><span>Type the command first (<code>code </code>, <code>git add </code>, <code>bat </code>), then <kbd>⌃</kbd><kbd>T</kbd>. Lists files with fd, so .git, node_modules and gitignored files are skipped. <kbd>tab</kbd> picks several.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="z"><div class="keys"><code>z name</code></div><div class="what"><span class="daily">Daily</span><b>Jump to a directory you've used</b><span>Ranked by how often and how recently you've been there. <code>z dot</code> lands in <code>~/dev/dotfiles</code>. Several words narrow it: <code>z dev api</code>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="zi"><div class="keys"><code>zi</code></div><div class="what"><b>Pick from those directories</b><span>The same list in an fzf picker, for when <code>z</code> guesses wrong.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="alt-c"><div class="keys"><kbd>⌥</kbd><kbd>C</kbd><span class="only">right ⌥</span></div><div class="what"><b>cd into any subdirectory</b><span>Every folder below where you are, including ones zoxide hasn't seen yet.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="starstar"><div class="keys"><code>**</code><kbd>tab</kbd></div><div class="what"><b>Fuzzy completion mid-command</b><span><code>code ~/dev/**</code><kbd>tab</kbd>, <code>cd ~/dev/dot**</code><kbd>tab</kbd>, <code>kill -9 **</code><kbd>tab</kbd>, <code>ssh **</code><kbd>tab</kbd>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="rg"><div class="keys"><code>rg text</code></div><div class="what"><b>Search inside files</b><span>ripgrep: recursive, respects .gitignore, very fast. <code>rg -i</code> ignores case, <code>rg -l</code> lists only file names, <code>rg -t py</code> limits to Python.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="fd"><div class="keys"><code>fd name</code></div><div class="what"><b>Find files by name</b><span><code>fd '\.tf$' ~/dev</code> finds every Terraform file. <code>fd -H</code> includes hidden files, <code>fd -e md</code> filters by extension.</span></div><div class="tick"></div></div>
+      </div>
+      <p class="intro">More depth on the fzf side: <a href="https://github.com/junegunn/fzf#readme">fzf README</a>.</p>
+    </section>
+
+    <section>
+      <div class="head"><h2>At the prompt</h2><span class="tag">zsh · autosuggestions · Oh My Zsh</span></div>
+      <div class="rows">
+        <div class="row" data-id="suggest"><div class="keys"><kbd>→</kbd> or <kbd>⌃</kbd><kbd>E</kbd></div><div class="what"><span class="daily">Daily</span><b>Accept the grey suggestion</b><span>The faded text after your cursor is your most recent matching command. Accept all of it with <kbd>→</kbd>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="suggest-word"><div class="keys"><kbd>⌥</kbd><kbd>F</kbd><span class="only">right ⌥</span></div><div class="what"><b>Accept just the next word</b><span>Take the suggestion one word at a time, then type something different.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="line-keys"><div class="keys"><kbd>⌃</kbd><kbd>A</kbd> <kbd>⌃</kbd><kbd>E</kbd></div><div class="what"><b>Start / end of line</b><span>Faster than holding arrow keys. <kbd>⌃</kbd><kbd>W</kbd> deletes the word before the cursor, <kbd>⌃</kbd><kbd>U</kbd> clears the whole line.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="edit-line"><div class="keys"><kbd>⌃</kbd><kbd>X</kbd> <kbd>⌃</kbd><kbd>E</kbd></div><div class="what"><b>Edit a long command in nano</b><span>Opens the current command in nano (your <code>VISUAL</code>); save and quit to run it. Good for long <code>docker run</code> or <code>curl</code> lines.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="space"><div class="keys"><code>␣command</code></div><div class="what"><b>Keep a command out of history</b><span>Start with a space and it isn't saved. Use it for anything with a token in it.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="dots"><div class="keys"><code>...</code> <code>cd -</code></div><div class="what"><b>Move up fast, or go back</b><span><code>..</code> goes up one, <code>...</code> two, <code>....</code> three. <code>cd -</code> returns to the previous directory. <code>d</code> lists recent directories; type the number to jump.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="hs"><div class="keys"><code>hs word</code></div><div class="what"><b>Grep your history</b><span>For when you want the full list rather than a picker. <code>hsi</code> ignores case.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="x"><div class="keys"><code>x file</code></div><div class="what"><b>Extract any archive</b><span>zip, tar.gz, tar.xz, 7z, rar: one command, no flags to remember.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="copypath"><div class="keys"><code>copypath</code> <code>copyfile f</code></div><div class="what"><b>Copy to the clipboard</b><span><code>copypath</code> copies the current directory's path (or a file's: <code>copypath README.md</code>). <code>copyfile</code> copies a file's contents.</span></div><div class="tick"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="head"><h2>Git</h2><span class="tag">Oh My Zsh aliases · lazygit · delta</span></div>
+      <div class="rows">
+        <div class="row" data-id="lazygit"><div class="keys"><code>lazygit</code></div><div class="what"><span class="daily">Daily</span><b>Stage, commit and push without typing git</b><span><kbd>space</kbd> stages a file (or a single hunk after <kbd>return</kbd>), <kbd>c</kbd> commits, <kbd>P</kbd> pushes, <kbd>p</kbd> pulls, <kbd>?</kbd> shows every key in the current panel.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="gst"><div class="keys"><code>gst</code> <code>gss</code></div><div class="what"><span class="daily">Daily</span><b>Status, full or short</b><span><code>git status</code> and <code>git status --short</code>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="gd"><div class="keys"><code>gd</code> <code>gds</code></div><div class="what"><b>Diff unstaged / staged</b><span>What you've changed, and what you're about to commit.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="gaa"><div class="keys"><code>gaa</code> <code>gcmsg "…"</code></div><div class="what"><b>Add everything, commit with a message</b><span><code>gc</code> opens the editor with the diff shown below the message.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="gsw"><div class="keys"><code>gswc name</code> <code>gcm</code></div><div class="what"><b>New branch / back to main</b><span><code>gsw</code> switches branch, <code>gswc</code> creates one, <code>gcm</code> checks out main whatever it's called.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="gp"><div class="keys"><code>gl</code> <code>gp</code></div><div class="what"><b>Pull / push</b><span data-only="personal">Pull rebases rather than merging. A first <code>gp</code> on a new branch sets up the remote by itself, no <code>--set-upstream</code> needed.</span><span data-only="work">On work machines use <code>gpsup</code> for a new branch's first push, unless your work git config sets <code>push.autoSetupRemote</code>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="gwip"><div class="keys"><code>gwip</code> <code>gunwip</code></div><div class="what"><b>Park work in progress</b><span>Commits everything as a <code>--wip--</code> commit (skipping hooks and CI); <code>gunwip</code> undoes it. Safer than a stash you forget about.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="glog"><div class="keys"><code>glog</code><span data-only="personal"> <code>git lg</code></span></div><div class="what"><b>History as a graph</b><span>One line per commit with branches drawn. <span data-only="personal"><code>git lg</code> adds author and relative date.</span></span></div><div class="tick"></div></div>
+        <div class="row" data-id="delta" data-only="personal"><div class="keys"><kbd>n</kbd> / <kbd>N</kbd></div><div class="what"><b>Jump between files in a diff</b><span>Diffs go through delta, side by side with line numbers. Inside <code>gd</code> or <code>git show</code>, <kbd>n</kbd> and <kbd>N</kbd> jump file to file.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="git-aliases" data-only="personal"><div class="keys"><code>git last</code> <code>git amend</code></div><div class="what"><b>Your own git aliases</b><span><code>git last</code> shows the latest commit, <code>git amend</code> amends it, <code>git unstage f</code> takes a file out of the index.</span></div><div class="tick"></div></div>
+      </div>
+      <div class="note" data-only="work">
+        <p><strong>Your work git config isn't managed by the dotfiles.</strong> Work machines keep their own <code>~/.gitconfig</code> for the corporate identity, so delta, your <code>git lg</code>-style aliases, rebase-on-pull and auto-upstream aren't there. delta is installed, though. To get the same diffs and pushes, add this to the work <code>~/.gitconfig</code>:</p>
+<pre tabindex="0"><code>[core]
+    pager = delta
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true
+    side-by-side = true
+    line-numbers = true
+[pull]
+    rebase = true
+[push]
+    autoSetupRemote = true</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <div class="head"><h2>Ghostty</h2><span class="tag">built-in defaults, checked against its source</span></div>
+      <div class="rows">
+        <div class="row" data-id="jump-prompt"><div class="keys"><kbd>⌘</kbd><kbd>↑</kbd> <kbd>⌘</kbd><kbd>↓</kbd></div><div class="what"><span class="daily">Daily</span><b>Jump between prompts</b><span>Scrolls straight to the previous or next command you ran, past long output.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="split"><div class="keys"><kbd>⌘</kbd><kbd>D</kbd> <kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></div><div class="what"><b>Split right / split down</b><span>A second shell beside the first, in the same window.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="split-nav"><div class="keys"><kbd>⌘</kbd><kbd>[</kbd> <kbd>⌘</kbd><kbd>]</kbd></div><div class="what"><b>Move between splits</b><span>Previous / next. <kbd>⌘</kbd><kbd>⌥</kbd> + arrow moves by direction.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="zoom"><div class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>return</kbd></div><div class="what"><b>Zoom one split to full size</b><span>Press again to put it back. <kbd>⌘</kbd><kbd>⌃</kbd><kbd>=</kbd> evens out split sizes.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="clear"><div class="keys"><kbd>⌘</kbd><kbd>K</kbd></div><div class="what"><b>Clear the screen and scrollback</b><span>A clean slate before re-running something noisy.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="find"><div class="keys"><kbd>⌘</kbd><kbd>F</kbd></div><div class="what"><b>Search the scrollback</b><span>Find an error message in output that has scrolled away.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="palette"><div class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>P</kbd></div><div class="what"><b>Command palette</b><span>Every Ghostty action by name, for anything without a shortcut you remember.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="tabs"><div class="keys"><kbd>⌘</kbd><kbd>T</kbd> <kbd>⌘</kbd><kbd>1</kbd>–<kbd>9</kbd></div><div class="what"><b>New tab / go to tab</b><span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>[</kbd> and <kbd>]</kbd> step through tabs. <kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd> reopens one you closed.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="reload"><div class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>,</kbd></div><div class="what"><b>Reload config</b><span>After <code>chezmoi apply</code> changes Ghostty's config. New windows open in <code>~/dev</code>.</span></div><div class="tick"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="head"><h2>Reading output</h2><span class="tag">bat · eza · mdcat</span></div>
+      <div class="rows">
+        <div class="row" data-id="cat"><div class="keys"><code>cat</code> <code>man</code></div><div class="what"><b>Already highlighted</b><span><code>cat</code> is bat, with syntax colours and line numbers; man pages are coloured too. For the raw file, use <code>command cat</code>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="eza"><div class="keys"><code>ll</code> <code>la</code> <code>lt</code></div><div class="what"><b>Listings with git status</b><span><code>ll</code> long list with git state per file, <code>la</code> includes hidden files, <code>lt</code> shows a two-level tree.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="mdc"><div class="keys"><code>… | mdc</code></div><div class="what"><b>Render Markdown in the terminal</b><span>Pipe any tool's Markdown output through it and tables line up. <code>mdc README.md</code> renders a file; <code>mdcp</code> pages it.</span></div><div class="tick"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="head"><h2>Dotfiles helpers</h2><span class="tag">run <code>dotfuncs</code> for the full list</span></div>
+      <div class="rows">
+        <div class="row" data-id="note"><div class="keys"><code>n text</code></div><div class="what"><b>Jot a note for this project</b><span>Appends a timestamped line to <code>~/notes/&lt;repo&gt;.md</code>. <code>notes</code> reads them back, <code>note -e</code> edits.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="brewup"><div class="keys"><code>brewup</code></div><div class="what"><b>Update all packages</b><span>Homebrew update, install everything in the Brewfile, upgrade.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="dotguide"><div class="keys"><code>dotguide</code></div><div class="what"><b>Open this guide</b><span>Opens it in your browser, at the profile for this machine. <code>dotguide md</code> shows the Markdown version in the terminal.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="dotup"><div class="keys"><code>dotup</code> <code>dotstatus</code></div><div class="what"><b>Update the dotfiles / check their state</b><span><code>dotup</code> pulls the dotfiles, Oh My Zsh and plugins. <code>dotstatus</code> shows machine type, last apply and pending changes.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="claudeup" data-only="personal"><div class="keys"><code>claudeup</code></div><div class="what"><b>Configure Claude Code MCP servers</b><span>Interactive; reads keys from <code>~/.secrets</code>.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="xcodeup" data-only="personal"><div class="keys"><code>xcodeup</code></div><div class="what"><b>Install or update Xcode</b><span>Uses xcodes with aria2 for faster downloads, selects the toolchain, fetches the iOS platform.</span></div><div class="tick"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="head"><h2>macOS, as your setup leaves it</h2><span class="tag">from run_once_macos_defaults.sh</span></div>
+      <div class="rows">
+        <div class="row" data-id="kbd-access"><div class="keys"><kbd>tab</kbd> in dialogs</div><div class="what"><b>Tab reaches every button</b><span>Full keyboard access is on: <kbd>tab</kbd> moves to any control, <kbd>space</kbd> presses it. No mouse needed for "Don't Save".</span></div><div class="tick"></div></div>
+        <div class="row" data-id="clip"><div class="keys"><kbd>⌘</kbd><kbd>space</kbd> then <kbd>⌘</kbd><kbd>4</kbd></div><div class="what"><b>Clipboard history in Spotlight</b><span>Your setup turns on Spotlight's clipboard history (macOS 26). Earlier copies are a keystroke away.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="hidden"><div class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>.</kbd></div><div class="what"><b>Toggle hidden files in Finder</b><span>They're shown by default here, with the path bar and status bar on. This hides them again when they're in the way.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="quotes"><div class="keys">typing</div><div class="what"><b>Straight quotes and dashes everywhere</b><span>Smart quotes, smart dashes and double-space full stops are off, so code pasted from Notes or Mail still runs.</span></div><div class="tick"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="head"><h2>Rectangle</h2><span class="tag">window snapping</span></div>
+      <p class="intro">Rectangle's config isn't in the dotfiles, so these are its recommended defaults. If they don't work, check Rectangle's settings.</p>
+      <div class="rows">
+        <div class="row" data-id="rect-half"><div class="keys"><kbd>⌃</kbd><kbd>⌥</kbd> + <kbd>←</kbd> <kbd>→</kbd></div><div class="what"><span class="daily">Daily</span><b>Left / right half</b><span>Press again to cycle through a third and two-thirds.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="rect-max"><div class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>return</kbd></div><div class="what"><b>Maximise</b><span><kbd>⌃</kbd><kbd>⌥</kbd><kbd>delete</kbd> restores the previous size.</span></div><div class="tick"></div></div>
+        <div class="row" data-id="rect-display"><div class="keys"><kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd> + <kbd>←</kbd> <kbd>→</kbd></div><div class="what"><b>Move to the other display</b><span>Keeps the window's size and position.</span></div><div class="tick"></div></div>
+      </div>
+    </section>
+
+    <p class="empty" id="none" hidden>No shortcuts match that filter.</p>
+
+    <footer>
+      <p>Built from the dotfiles repository on 20 November 2026: <code>.zshrc</code>, <code>aliases.zsh</code>, the shell functions, <code>.gitconfig</code>, the Ghostty config and the macOS defaults script. Ghostty and Oh My Zsh shortcuts were checked against their source code. Personal and Work differ where the dotfiles do: work machines skip the managed <code>.gitconfig</code> and the personal-only helpers.</p>
+      <p>Installed by the dotfiles at <code>~/.config/dotfiles/guide/</code>; the source is <code>home/dot_config/dotfiles/guide/</code> in the repo. Change the guide there, in both the HTML and Markdown versions, when the config it describes changes.</p>
+    </footer>
+  </div>
+</main>
+
+<script>
+(function () {
+  var DEFAULT_PROFILE = {{ if eq .machine_type "work" }}"work"{{ else }}"personal"{{ end }};
+  var KEY_DONE = "mac-manual-done", KEY_PROFILE = "mac-manual-profile";
+  function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  var done = load(KEY_DONE, {});
+  var rows = Array.prototype.slice.call(document.querySelectorAll(".row"));
+  rows.forEach(function (row) {
+    var id = row.getAttribute("data-id");
+    var box = document.createElement("input");
+    box.type = "checkbox"; box.id = "t-" + id;
+    var label = row.querySelector(".what b");
+    box.setAttribute("aria-label", "Habit formed: " + (label ? label.textContent : id));
+    box.checked = !!done[id];
+    row.classList.toggle("done", box.checked);
+    box.addEventListener("change", function () {
+      done[id] = box.checked; if (!box.checked) delete done[id];
+      row.classList.toggle("done", box.checked);
+      save(KEY_DONE, done); update();
+    });
+    row.querySelector(".tick").appendChild(box);
+  });
+
+  var profile = location.hash === "#work" ? "work" : location.hash === "#personal" ? "personal" : load(KEY_PROFILE, DEFAULT_PROFILE);
+  var buttons = document.querySelectorAll(".seg button");
+  var q = document.getElementById("q");
+
+  function visible(el) { return !el.classList.contains("hide-profile") && !el.classList.contains("hide-filter"); }
+
+  function update() {
+    document.querySelectorAll("[data-only]").forEach(function (el) {
+      el.classList.toggle("hide-profile", el.getAttribute("data-only") !== profile);
+    });
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-profile") === profile)); });
+    var term = q.value.trim().toLowerCase();
+    var shown = 0, total = 0, ticked = 0;
+    rows.forEach(function (row) {
+      var match = !term || row.textContent.toLowerCase().indexOf(term) !== -1;
+      row.classList.toggle("hide-filter", !match);
+      row.style.display = match ? "" : "none";
+      if (!row.classList.contains("hide-profile")) { total++; if (done[row.getAttribute("data-id")]) ticked++; if (match) shown++; }
+    });
+    document.querySelectorAll("main section").forEach(function (sec) {
+      var any = Array.prototype.some.call(sec.querySelectorAll(".row"), visible);
+      sec.hidden = !!term && !any;
+    });
+    document.getElementById("none").hidden = shown > 0;
+    document.getElementById("progress").textContent = ticked + " of " + total + " habits";
+  }
+
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      profile = b.getAttribute("data-profile"); save(KEY_PROFILE, profile);
+      history.replaceState(null, "", "#" + profile); update();
+    });
+  });
+  window.addEventListener("hashchange", function () {
+    if (location.hash === "#work" || location.hash === "#personal") { profile = location.hash.slice(1); update(); }
+  });
+  q.addEventListener("input", update);
+  update();
+})();
+</script>
+</body>
+</html>

@@ -73,6 +73,9 @@ You don't need to remember chezmoi or brew incantations:
   (simulator runtime). Interactive — Apple sign-in can't be automated
 - **`dotstatus`** — machine type, source path, last applied, and any
   pending changes
+- **`dotguide`** — macOS only: open the shortcut guide for this machine's
+  profile in the browser; `dotguide md` shows the Markdown version in the
+  terminal
 - **`dotfuncs`** — list every custom function with its one-line description
   so you can rediscover what's available after `dotup`
 
@@ -261,6 +264,7 @@ claudeup              # Interactive Claude Code MCP server setup
 xcodeup               # macOS: install/select latest Xcode via xcodes
 dotstatus             # Machine type, source path, last applied, pending changes
 dotfuncs              # List all custom shell functions with descriptions
+dotguide              # macOS: open the shortcut guide (dotguide md: in the terminal)
 ```
 
 ### Quick-capture notes
