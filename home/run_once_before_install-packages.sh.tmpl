@@ -27,8 +27,9 @@ case "$(uname -s)" in
     # ncurses-bin provides 'tic' command needed to compile terminfo
     sudo apt-get install -y git zsh age ncurses-term ncurses-bin
 
-{{- if ne .machine_type "personal" }}
-    # Personal machines get Starship from the Brewfile (ADR-0017).
+{{- if eq .machine_type "minimal" }}
+    # Personal and work machines get Starship from the Brewfile (ADR-0017,
+    # ADR-0019); only minimal machines use the installer.
     if ! command -v starship >/dev/null 2>&1; then
       echo "Installing Starship..."
       # Install to ~/.local/bin (on PATH via dot_zshrc) so neither this nor
@@ -93,10 +94,10 @@ case "$(uname -s)" in
       echo "Rustup already installed, skipping..."
     fi
 {{- end }}
-{{- if eq .machine_type "personal" }}
+{{- if ne .machine_type "minimal" }}
 
-    # Homebrew on Linux, personal tier only (ADR-0017): the Brewfile is then
-    # installed by run_once_after_install-brewfile. Homebrew's Linux
+    # Homebrew on Linux, personal (ADR-0017) and work (ADR-0019): the
+    # Brewfile is then installed by run_once_after_install-brewfile. Homebrew's Linux
     # prerequisites are build-essential, procps, curl, file and git;
     # build-essential is installed above. NONINTERACTIVE skips the "Press
     # RETURN" prompt; the installer still uses sudo once to create

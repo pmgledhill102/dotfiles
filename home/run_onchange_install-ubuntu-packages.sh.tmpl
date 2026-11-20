@@ -56,10 +56,11 @@ case "$(uname -s)" in
       sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
     done
 
-# {{ if ne .machine_type "personal" }}
+# {{ if eq .machine_type "minimal" }}
     # Everything from here to the matching end comes from the Brewfile on
-    # personal machines, which run Homebrew on Linux (ADR-0017). One owner per
-    # tool: installing both copies would leave a stale one on disk.
+    # personal and work machines, which run Homebrew on Linux (ADR-0017,
+    # ADR-0019). One owner per tool: installing both copies would leave a
+    # stale one on disk.
 
     # Ubuntu ships bat and fd under other names (batcat, fdfind), so the
     # `command -v bat` / `command -v fd` gates in aliases.zsh and dot_zshrc
@@ -186,41 +187,6 @@ case "$(uname -s)" in
       echo "Added $USER to the docker group (log out and back in to use it)"
     fi
 
-# {{ if ne .machine_type "personal" }}
-    # Install gh (Linux counterpart of the Brewfile's brew "gh"; dotfiles#440)
-    # from GitHub's own apt repo, per cli/cli docs/install_linux.md. The Ubuntu
-    # archive's gh trails upstream by many releases. Once the repo is
-    # registered, apt upgrade keeps it current.
-    if ! command -v gh >/dev/null 2>&1; then
-      echo "Installing gh..."
-      GH_KEYRING=/etc/apt/keyrings/githubcli-archive-keyring.gpg
-      sudo mkdir -p -m 755 /etc/apt/keyrings
-      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg |
-        sudo tee "$GH_KEYRING" >/dev/null
-      sudo chmod go+r "$GH_KEYRING"
-      echo "deb [arch=$(dpkg --print-architecture) signed-by=$GH_KEYRING] https://cli.github.com/packages stable main" |
-        sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-      sudo apt-get update
-      sudo apt-get install -y gh
-      echo "gh installed successfully"
-    else
-      echo "gh already installed, skipping"
-    fi
-# {{ end }}
-
-# {{ if ne .machine_type "personal" }}
-    # Install mise (ADR-0021) on work Linux. Personal Linux gets it from the
-    # Brewfile; minimal machines go without. The official installer puts the
-    # binary at ~/.local/bin/mise and checks its checksum. Bumping the pin
-    # re-runs this script; an existing install of that release or newer is
-    # left alone.
-    if ! command -v mise >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/mise" ]; then
-      echo "Installing mise..."
-      curl -fsSL https://mise.run | MISE_VERSION=v2026.11.10 sh
-    else
-      echo "mise already installed, skipping"
-    fi
-# {{ end }}
 # {{ end }}
 
 # {{ if eq .machine_type "personal" }}
@@ -235,8 +201,9 @@ case "$(uname -s)" in
     fi
 # {{ end }}
 
-# {{ if ne .machine_type "personal" }}
-    # Install uv (Python package manager; from the Brewfile on personal)
+# {{ if eq .machine_type "minimal" }}
+    # Install uv (Python package manager; from the Brewfile on personal and
+    # work)
     echo "Installing/Updating uv..."
     if ! command -v uv >/dev/null 2>&1; then
       # UV_NO_MODIFY_PATH: otherwise the installer appends

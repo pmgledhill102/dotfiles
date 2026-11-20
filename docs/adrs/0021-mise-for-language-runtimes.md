@@ -49,7 +49,10 @@ Linux.** It replaces nvm and jenv, and Homebrew's explicit `openjdk` line.
 - **Install:**
   - macOS and personal Linux get mise from the Brewfile.
   - Work Linux gets it from the official `mise.run` installer, pinned with
-    `MISE_VERSION`, into `~/.local/bin`.
+    `MISE_VERSION`, into `~/.local/bin`. *Later change (2026-11-20, #502):*
+    work Linux now runs Homebrew and the work Brewfile (ADR-0019), so it gets
+    mise from the Brewfile like personal Linux, and the `mise.run` installer
+    is gone.
   - Minimal machines and Windows get none of it.
 - **Tools:** `run_onchange_after_install-mise-tools.sh` runs `mise install`
   whenever the config or the npm list changes.

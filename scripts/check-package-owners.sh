@@ -32,8 +32,8 @@
 #   BREWFILE       default home/Brewfile.tmpl
 #   TIERS          default "personal"
 #
-# TIERS lists the tiers that run Homebrew on Linux. Only personal does today
-# (ADR-0017); add work when its Linux machines move to Homebrew (#502).
+# TIERS lists the tiers that run Homebrew on Linux: personal (ADR-0017) and
+# work (ADR-0019, #502). Minimal stays apt-only, so it is not checked.
 #
 # Needs chezmoi.
 
@@ -41,7 +41,7 @@ set -eu
 
 APT_TEMPLATE="${APT_TEMPLATE:-home/.chezmoi.toml.tmpl}"
 BREWFILE="${BREWFILE:-home/Brewfile.tmpl}"
-TIERS="${TIERS:-personal}"
+TIERS="${TIERS:-personal work}"
 
 # apt installs these before Homebrew exists, so both lists may carry them.
 BOOTSTRAP_SET="curl git wget zsh"

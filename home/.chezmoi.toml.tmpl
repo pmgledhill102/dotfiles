@@ -33,18 +33,14 @@
                 "zsh",
             ]
 {{- else if eq $machineType "work" }}
+            # Work Linux machines run Homebrew and the work Brewfile too
+            # (ADR-0019), which owns the CLI tools; apt keeps the bootstrap
+            # set, as on personal.
             packages = [
-                "bat",
                 "curl",
-                "eza",
-                "fd-find",
                 "git",
-                "git-delta",
-                "jq",
-                "ripgrep",
                 "unzip",
                 "wget",
-                "zoxide",
                 "zsh",
             ]
 {{- else }}

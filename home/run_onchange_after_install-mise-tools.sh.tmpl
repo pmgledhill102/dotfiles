@@ -5,9 +5,9 @@
 # config {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 # npm {{ .packages.npm.packages | toJson | sha256sum }}
 #
-# Runs after run_once_after_install-brewfile (which installs mise on macOS and
-# personal Linux) and after the Ubuntu package script (which installs it on
-# work Linux), because chezmoi runs after-scripts in name order.
+# Runs after run_once_after_install-brewfile, which installs mise on macOS and
+# on personal and work Linux (ADR-0019), because chezmoi runs after-scripts in
+# name order.
 
 set -e
 

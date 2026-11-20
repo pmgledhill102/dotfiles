@@ -117,18 +117,10 @@ cask "voiceink"
 cask "whatsapp"
 {{- end }}
 {{- else if eq .machine_type "work" }}
-tap "atlassian/acli"
-tap "terraform-linters/tap"
-
 brew "actionlint"
-brew "atlassian/acli/acli"
 brew "bat"
 brew "checkov"
-brew "colima"
 brew "cspell"
-brew "docker"
-brew "docker-buildx"
-brew "docker-compose"
 brew "dotnet"
 brew "eza"
 brew "fd"
@@ -164,11 +156,28 @@ brew "wget"
 brew "yq"
 brew "zoxide"
 
+{{- if eq .chezmoi.os "darwin" }}
+
+# macOS only. Work Linux machines also run this Brewfile (ADR-0019), so
+# everything below is either macOS-only upstream (every cask) or has a
+# different owner on Linux: Docker from Docker's apt repo (ADR-0018). The
+# acli and tflint taps are kept to macOS too: work Linux has never had them,
+# and their Linux support is unverified.
+tap "atlassian/acli"
+tap "terraform-linters/tap"
+
+brew "atlassian/acli/acli"
+brew "colima"
+brew "docker"
+brew "docker-buildx"
+brew "docker-compose"
+
 cask "font-jetbrains-mono-nerd-font"
 cask "ghostty"
 # ADR-0020 exception (6 Plain-text config): see #516.
 cask "rectangle"
 cask "terraform-linters/tap/tflint"
+{{- end }}
 {{- else }}
 brew "bat"
 brew "fzf"
