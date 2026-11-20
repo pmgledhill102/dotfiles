@@ -89,7 +89,17 @@
     "wekyb",
     "winget",
     "xterm",
-    "yadm"
+    "yadm",
+    "ocrmypdf",
+    "xcodes",
+    "jenv",
+    "linuxbrew",
+    "nvmrc",
+    "sdkmanrc",
+    "SDKMAN",
+    "temurin",
+    "tenv",
+    "tmpl"
   ],
   "ignorePaths": [
     "node_modules/**",

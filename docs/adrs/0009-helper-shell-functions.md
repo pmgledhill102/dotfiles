@@ -51,6 +51,7 @@ established the split above, and `dotclaude` → `claudeup` completes it.
 | `xcodeup` | macOS only. Install/update the latest Xcode via `xcodes`, select the toolchain, and download the iOS platform (simulator runtime). Interactive — Apple ID sign-in cannot be automated. |
 | `dotstatus` | Print machine type, chezmoi source path, last applied time, and any pending diff. |
 | `dotfuncs` | List every custom function with its one-line description (self-documenting), grouped into `*up` update commands and everything else. |
+| `dotguide` | macOS only. Open the shortcut guide (`~/.config/dotfiles/guide/`) in the browser, at this machine's profile; `dotguide md` pages the Markdown version. |
 | `note` / `n` | Append a timestamped bullet to `~/notes/<project>.md` (project = git repo basename or cwd basename). `note -e` opens it in `$EDITOR`. |
 | `notes` | List all note files, or grep across them. |
 

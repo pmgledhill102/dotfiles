@@ -30,6 +30,24 @@ repos:
         pass_filenames: false
         always_run: true
 
+  # Layer 2 of ADR-0013 for ADR-0019's one-owner-per-tool rule: a tool on a
+  # Linux Homebrew tier comes from apt or the Brewfile, never both, bar the
+  # bootstrap set. Renders both templates with chezmoi (no network, well under
+  # a second), so it runs only when one of them, or the check, changes. A
+  # machine without chezmoi (a cloud sandbox) skips it with a notice rather
+  # than blocking the commit; the CI job is the gate there.
+  - repo: local
+    hooks:
+      - id: check-package-owners
+        name: apt and Brewfile never both own a tool
+        entry: >-
+          sh -c 'command -v chezmoi >/dev/null 2>&1
+          || { echo "skipped: chezmoi not on PATH; CI runs this check" >&2; exit 0; };
+          exec scripts/check-package-owners.sh'
+        language: system
+        pass_filenames: false
+        files: ^(home/\.chezmoi\.toml\.tmpl|home/Brewfile\.tmpl|scripts/check-package-owners\.sh)$
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:

@@ -1,0 +1,143 @@
+{{- /* Source of ~/.config/dotfiles/guide/shortcuts.md. Keep in step with
+       shortcuts.html.tmpl beside it: same sections, same rows. Rendered per
+       machine: work machines get the work view only. */ -}}
+{{- $work := eq .machine_type "work" -}}
+# Mac Shortcut Manual ({{ if $work }}work{{ else }}personal{{ end }})
+
+Everything these dotfiles set up that saves keystrokes, taken from the
+config itself. Rows marked **Daily** are worth building into habit first.
+Run `dotguide` for the HTML version, with a filter and habit ticks.
+
+**Reading the keys:** ⌃ control, ⌥ option, ⌘ command, ⇧ shift. Shell
+shortcuts use ⌃; Ghostty's own use ⌘. Where a tool expects Alt, use the
+**right** ⌥: the dotfiles set Ghostty up that way, and the left one keeps
+typing #.
+
+## Finding things
+
+| Keys | What it does |
+| --- | --- |
+| `⌃R` | **Daily.** Search command history: fuzzy, across 50,000 commands shared between terminals. `⌃R` again switches to time order |
+| `⌃T` | **Daily.** Insert a file path. Type the command first (`code`, `git add`, `bat`), then `⌃T`. Skips .git, node_modules and gitignored files. Tab picks several |
+| `z name` | **Daily.** Jump to a directory you've used, ranked by frequency and recency. Several words narrow it: `z dev api` |
+| `zi` | Pick from those directories in fzf, for when `z` guesses wrong |
+| `⌥C` (right ⌥) | cd into any subdirectory, including ones zoxide hasn't seen |
+| `**` then Tab | Fuzzy completion mid-command: `code ~/dev/**`, `cd ~/dev/dot**`, `kill -9 **`, `ssh **` |
+| `rg text` | Search inside files. `-i` ignores case, `-l` lists file names, `-t py` limits to Python |
+| `fd name` | Find files by name. `fd '\.tf$' ~/dev`, `-H` includes hidden, `-e md` filters by extension |
+
+## At the prompt
+
+| Keys | What it does |
+| --- | --- |
+| `→` or `⌃E` | **Daily.** Accept the grey suggestion (your latest matching command) |
+| `⌥F` (right ⌥) | Accept just the next word of the suggestion |
+| `⌃A` / `⌃E` | Start / end of line. `⌃W` deletes the previous word, `⌃U` clears the line |
+| `⌃X ⌃E` | Edit the current command in nano, then save and quit to run it |
+| `␣command` | A leading space keeps the command out of history. Use it for anything with a token in it |
+| `...` / `cd -` | `..` up one, `...` two, `....` three. `cd -` goes back. `d` lists recent directories; type the number to jump |
+| `hs word` | Grep your history. `hsi` ignores case |
+| `x file` | Extract any archive: zip, tar.gz, tar.xz, 7z, rar |
+| `mise use node@22` | Pin a Node (or `java@temurin-21`) version for this project. Writes its `mise.toml`; `.nvmrc` files work too |
+| `copypath` / `copyfile f` | Copy the current directory's path, or a file's contents, to the clipboard |
+
+## Git
+
+| Keys | What it does |
+| --- | --- |
+| `lazygit` | **Daily.** Space stages a file (or a hunk after Return), `c` commits, `P` pushes, `p` pulls, `?` shows every key |
+| `gst` / `gss` | **Daily.** `git status`, full or short |
+| `gd` / `gds` | Diff unstaged / staged |
+| `gaa`, `gcmsg "…"` | Add everything, commit with a message. `gc` opens the editor with the diff shown |
+| `gswc name` / `gcm` | Create a branch / check out main whatever it's called. `gsw` switches |
+{{- if $work }}
+| `gl` / `gp` | Pull / push. Use `gpsup` for a new branch's first push, unless your work git config sets `push.autoSetupRemote` |
+{{- else }}
+| `gl` / `gp` | Pull / push. Pull rebases; a first `gp` on a new branch sets up the remote by itself |
+{{- end }}
+| `gwip` / `gunwip` | Park work in progress as a `--wip--` commit (skips hooks and CI); `gunwip` undoes it |
+{{- if $work }}
+| `glog` | History as a graph, one line per commit |
+{{- else }}
+| `glog` / `git lg` | History as a graph. `git lg` adds author and relative date |
+| `n` / `N` in a diff | Jump between files. Diffs go through delta, side by side with line numbers |
+| `git last`, `git amend` | Your own aliases: latest commit, amend it. `git unstage f` takes a file out of the index |
+{{- end }}
+{{- if $work }}
+
+Your work `~/.gitconfig` isn't managed by the dotfiles, so delta,
+rebase-on-pull and auto-upstream aren't set. delta is installed. To match
+the personal setup, add this to the work `~/.gitconfig`:
+
+```ini
+[core]
+    pager = delta
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true
+    side-by-side = true
+    line-numbers = true
+[pull]
+    rebase = true
+[push]
+    autoSetupRemote = true
+```
+{{- end }}
+
+## Ghostty
+
+| Keys | What it does |
+| --- | --- |
+| `⌘↑` / `⌘↓` | **Daily.** Jump to the previous / next prompt, past long output |
+| `⌘D` / `⌘⇧D` | Split right / split down |
+| `⌘[` / `⌘]` | Previous / next split. `⌘⌥` + arrow moves by direction |
+| `⌘⇧Return` | Zoom one split to full size and back. `⌘⌃=` evens out split sizes |
+| `⌘K` | Clear the screen and scrollback |
+| `⌘F` | Search the scrollback |
+| `⌘⇧P` | Command palette: every Ghostty action by name |
+| `⌘T` / `⌘1`–`⌘9` | New tab / go to tab. `⌘⇧[` and `⌘⇧]` step through tabs, `⌘⇧T` reopens a closed one |
+| `⌘⇧,` | Reload config after `chezmoi apply`. New windows open in `~/dev` |
+
+## Reading output
+
+| Keys | What it does |
+| --- | --- |
+| `cat` / `man` | `cat` is bat, with syntax colours and line numbers; man pages are coloured. `command cat` for the raw file |
+| `ll` / `la` / `lt` | Long list with git status / including hidden files / two-level tree |
+| `… \| mdc` | Render Markdown in the terminal with aligned tables. `mdc README.md` for a file, `mdcp` to page it |
+
+## Dotfiles helpers
+
+Run `dotfuncs` for the full list.
+
+| Keys | What it does |
+| --- | --- |
+| `n text` | Append a timestamped note to `~/notes/<repo>.md`. `notes` reads them back, `note -e` edits |
+| `dotguide` | Open this guide in the browser. `dotguide md` shows this Markdown version |
+| `brewup` | Homebrew update, install everything in the Brewfile, upgrade |
+| `dotup` / `dotstatus` | Update the dotfiles, Oh My Zsh and plugins / show machine type, last apply and pending changes |
+{{- if not $work }}
+| `claudeup` | Configure Claude Code MCP servers (interactive) |
+| `xcodeup` | Install or update Xcode via xcodes and aria2, select the toolchain, fetch the iOS platform |
+{{- end }}
+
+## macOS, as the setup leaves it
+
+| Keys | What it does |
+| --- | --- |
+| Tab in dialogs | Full keyboard access: Tab reaches every button, Space presses it |
+| `⌘Space` then `⌘4` | Clipboard history in Spotlight (macOS 26), turned on by the setup |
+| `⌘⇧.` | Toggle hidden files in Finder (shown by default here, with path and status bars) |
+| typing | Smart quotes, smart dashes and double-space full stops are off, so pasted code still runs |
+
+## Rectangle
+
+Rectangle's config isn't in the dotfiles, so these are its recommended
+defaults.
+
+| Keys | What it does |
+| --- | --- |
+| `⌃⌥←` / `⌃⌥→` | **Daily.** Left / right half; press again to cycle through a third and two-thirds |
+| `⌃⌥Return` | Maximise. `⌃⌥Delete` restores the previous size |
+| `⌃⌥⌘←` / `⌃⌥⌘→` | Move the window to the other display |
