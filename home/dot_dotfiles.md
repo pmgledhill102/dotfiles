@@ -7,6 +7,7 @@ Repo: <https://github.com/pmgledhill102/dotfiles>
 ```bash
 dotup                 # Update dotfiles, brew, OMZ, plugins, and starship
 dotstatus             # Show machine type, source path, pending changes
+dotguide              # macOS: open the shortcut guide (dotguide md: in the terminal)
 mytool | mdc          # Render piped markdown with aligned tables
 chezmoi diff          # Preview what would change
 chezmoi apply -v      # Apply changes

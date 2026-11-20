@@ -94,6 +94,9 @@ run_onchange_after_install-cship.sh
 install-cship.sh
 # macOS-only commands: xcodes and Tart VMs (dotfiles#439)
 .config/zsh/functions/xcodeup.zsh
+# The shortcut guide describes the macOS setup and opens with `open`
+.config/dotfiles/guide/
+.config/zsh/functions/dotguide.zsh
 .local/bin/ci-vm-*
 # Colima and Homebrew's Docker CLI plugins are macOS-only; Linux runs Docker
 # Engine natively, with its plugins on the default path (ADR-0018)

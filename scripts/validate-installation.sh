@@ -331,6 +331,9 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   validate_test_pkg "Homebrew is in PATH" "command -v brew"
   validate_test_pkg "Ghostty is installed" "[ -d \"/Applications/Ghostty.app\" ] || command -v ghostty"
   validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
+  validate_test "Shortcut guide (HTML) is deployed" "[ -f \"\$HOME/.config/dotfiles/guide/shortcuts.html\" ]"
+  validate_test "Shortcut guide (Markdown) is deployed" "[ -f \"\$HOME/.config/dotfiles/guide/shortcuts.md\" ]"
+  validate_test "dotguide is deployed" "[ -f \"\$HOME/.config/zsh/functions/dotguide.zsh\" ]"
 
   # Check for Nerd Font installation (macOS only via Brewfile)
   # Font cask installs are flaky on GitHub Actions runners (headless, no GUI),
