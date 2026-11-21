@@ -236,7 +236,9 @@ else
     ((FAILED_TESTS++))
   fi
 
-  if command -v lazygit >/dev/null 2>&1; then
+  if [ "$MACHINE_TYPE" = "minimal" ]; then
+    : # ADR-0019 dropped lazygit's GitHub-release install on minimal
+  elif command -v lazygit >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} lazygit is installed"
     ((PASSED_TESTS++))
     validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
@@ -349,6 +351,23 @@ elif [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "minimal" ]; then
   echo "-----------------------------------"
   validate_test "Homebrew is not installed" "[ ! -e /home/linuxbrew/.linuxbrew/bin/brew ]"
   validate_test "brewup is not deployed" "[ ! -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
+  # Minimal has fewer tools, so a missing guard in dot_zshrc or aliases.zsh
+  # shows up here first as an error on every new shell (#503).
+  # Print what zsh wrote, so a failure says which guard is missing.
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  zsh_check() {
+    # Skip both compinit security audits: Ubuntu's /etc/zsh/zshrc runs a plain
+    # compinit unless skip_global_compinit is set, and oh-my-zsh runs
+    # compaudit unless ZSH_DISABLE_COMPFIX is. On a CI runner they find
+    # group-writable completion dirs and, with no terminal to ask on, abort
+    # ("not interactive and can't open terminal"). That is the runner's
+    # permissions, not a missing guard; real startup errors still show.
+    zsh_err=$(skip_global_compinit=1 ZSH_DISABLE_COMPFIX=true zsh -i -c exit 2>&1 >/dev/null </dev/null)
+    [ -z "$zsh_err" ] && return 0
+    printf '  zsh stderr: %s\n' "$zsh_err" | head -20
+    return 1
+  }
+  validate_test_pkg "Interactive zsh starts without errors" "zsh_check"
 fi
 
 # macOS-specific validations

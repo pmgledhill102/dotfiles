@@ -61,6 +61,10 @@ case "$(uname -s)" in
     # personal and work machines, which run Homebrew on Linux (ADR-0017,
     # ADR-0019). One owner per tool: installing both copies would leave a
     # stale one on disk.
+    #
+    # lazygit is not installed on minimal machines (ADR-0019). fzf and mdcat
+    # are kept, from their GitHub releases: apt's fzf (0.44 on Ubuntu 24.04)
+    # is too old for `fzf --zsh`, and mdcat is not in apt at all.
 
     # Ubuntu ships bat and fd under other names (batcat, fdfind), so the
     # `command -v bat` / `command -v fd` gates in aliases.zsh and dot_zshrc
@@ -102,26 +106,8 @@ case "$(uname -s)" in
       fi
     fi
 
-    # Install lazygit
-    echo "Installing/Updating lazygit..."
-    LAZYGIT_TAG=$(latest_release_tag jesseduffield/lazygit)
-    LAZYGIT_VERSION=${LAZYGIT_TAG#v}
-    if [ -n "$LAZYGIT_VERSION" ]; then
-      echo "Downloading lazygit v${LAZYGIT_VERSION}..."
-      if curl -fsSLo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" &&
-        tar xf lazygit.tar.gz lazygit; then
-        sudo install lazygit -D -t /usr/local/bin/
-        echo "lazygit installed successfully"
-      else
-        echo "Warning: could not download lazygit v${LAZYGIT_VERSION}, skipping"
-      fi
-      rm -f lazygit.tar.gz lazygit
-    else
-      echo "Warning: could not resolve latest lazygit release, skipping"
-    fi
-
     # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
-    # archive, so it comes from the GitHub release, same shape as lazygit above.
+    # archive, so it comes from the GitHub release, same shape as fzf above.
     # The release publishes x86_64-unknown-linux-gnu only, so other
     # architectures are skipped rather than handed a binary that will not run.
     if [ "$(uname -m)" = "x86_64" ]; then
