@@ -147,9 +147,9 @@ jq --argjson ctx '[{"context":"ci"},{"context":"lint"}]' \
 jq 'del(.rules[] | select(.type == "required_status_checks"))' ruleset.json > ruleset.final.json
 ```
 
-On a surface where `~/.claude/standards/` was not delivered, read the raw
-copy of `home/standards/github-repo.json` from this repo's `main` — never
-reconstruct the payload from memory.
+On a surface where `~/.claude/standards/` was not delivered, read the
+published copy, `agent/home/standards/github-repo.json` on `main` of
+`pmgledhill102/dotfiles` — never reconstruct the payload from memory.
 
 - Approvals are 0 because this is a single-human estate: requiring an approval the same human must give adds a click, not a control — the PR and its CI are the control
 - The **empty bypass list is what `enforce_admins` bought under classic protection**: with no bypass actors the rules bind admin-level tokens and coding agents too. Add the narrowest actor only when something concretely breaks without it

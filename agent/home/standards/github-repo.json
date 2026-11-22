@@ -3,7 +3,7 @@
   "standard": "home/standards/github-standards.md",
   "read_from": [
     "$HOME/.claude/standards/github-repo.json",
-    "https://raw.githubusercontent.com/pmgledhill102/agentic-coding-config/main/home/standards/github-repo.json"
+    "https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/agent/home/standards/github-repo.json"
   ],
   "field_names": "GitHub REST response shape: `repository` keys are GET /repos/{owner}/{repo} fields, `ruleset` is a POST /repos/{owner}/{repo}/rulesets payload. No translation layer between this file, the applier and the audit.",
   "file_matching": "A `files` key is an fnmatch glob, matched against every path in the repo's git tree — not a filename list. `dependabot*merge*.y*ml` covers the three spellings the estate has used and the fourth nobody has invented yet. A `pattern` is a Python `re` regular expression, searched (not matched) over the file's decoded text.",
