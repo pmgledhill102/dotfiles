@@ -88,15 +88,15 @@ and guessing "not mine" in my own quietly drops every standard.
 
 Decisions are recorded at three tiers, personal, user and repo, per
 [ADR-0015](https://github.com/pmgledhill102/dotfiles/blob/main/agent/adrs/0015-tiered-adrs.md).
-User-tier ADRs bind every repo and are public at
-[`agentic-coding-config/adrs/`](https://github.com/pmgledhill102/dotfiles/tree/main/agent/adrs):
+User-tier ADRs bind every repo and are published at
+[`dotfiles/agent/adrs/`](https://github.com/pmgledhill102/dotfiles/tree/main/agent/adrs):
 consult them on demand, and never copy one into a repo. The rules for writing
 one load when a file under `adrs/` or `decisions/` is read.
 
 ### Cross-Repo Work
 
-- **Never edit files in a repo other than the one this session is working in.** Any direction, any repo pair: a project session editing `agentic-coding-config`, an `agentic-coding-config` session editing `dotfiles`, a `dotfiles` session editing `paul-context`. Cross-repo edits bypass the issue queue, skip that repo's review/PR flow, and pollute the current session's context with unrelated work. This holds even when the other repo is already cloned and writable, and even when the change is one line
-- **File a detailed issue in the target repo instead.** "Detailed" means implementable without rediscovering anything: exact file paths, the full snippet to add, the rationale, every gotcha already ruled out, and acceptance criteria ([why](https://github.com/pmgledhill102/agentic-coding-config/blob/main/docs/agent-policy-rationale.md#a-detailed-issue-is-the-cross-repo-route))
+- **Never edit files in a repo other than the one this session is working in.** Any direction, any repo pair: a project session editing `agentic-coding-config`, an `agentic-coding-config` session editing `dotfiles-private`, a `dotfiles-private` session editing `paul-context`. Cross-repo edits bypass the issue queue, skip that repo's review/PR flow, and pollute the current session's context with unrelated work. This holds even when the other repo is already cloned and writable, and even when the change is one line
+- **File a detailed issue in the target repo instead.** "Detailed" means implementable without rediscovering anything: exact file paths, the full snippet to add, the rationale, every gotcha already ruled out, and acceptance criteria ([why](https://github.com/pmgledhill102/agentic-coding-config/blob/main/docs/agent-policy-rationale.md#a-detailed-issue-is-the-cross-repo-route)). The config sources, `agentic-coding-config` and `dotfiles-private`, are private; the public `pmgledhill102/dotfiles` is only their published output and takes no issues, pull requests or pushes, so a change to anything in it is filed against its source
 - **Before asserting how another repo behaves, read it.** Attaching a repo read-only is cheap and is the expected move, not a last resort: an issue, a policy line, or a skill body that describes another repo's behaviour is written from that repo's source, never inferred from what this one says about it — the estate's own docs are second-hand on that subject and go stale silently. a-c-c's README carried a copy of dotfiles' `.chezmoiexternal.toml.tmpl`, and the issue quoted the live file instead. Read it at origin's current head: fetch or pull a local clone first, and re-read issue or PR state rather than relying on what the session saw earlier. A clone behind origin is a second-hand copy too
 - **Say what you filed.** Report the issue number back in the session summary so the cross-repo thread isn't lost
 
@@ -106,7 +106,7 @@ one load when a file under `adrs/` or `decisions/` is read.
 
 ### Commit & PR Style
 
-- Prefer several short paragraphs to one long line in commit messages; state what changed and why, not just what. End with `Co-Authored-By: Claude <noreply@anthropic.com>`. Use that generic name even when a harness reminder names a model: the no-model-identifier rule covers every pushed artefact. In a public repo, what any artefact may say — commit, issue, PR, review — is [ADR-0022](https://github.com/pmgledhill102/dotfiles/blob/main/agent/adrs/0022-public-artefact-content.md)'s table
+- Prefer several short paragraphs to one long line in commit messages; state what changed and why, not just what. End with `Co-Authored-By: Claude <noreply@anthropic.com>`. Use that generic name even when a harness reminder names a model: the no-model-identifier rule covers every pushed artefact. In a public repo, what any artefact may say — commit, issue, PR, review — and what a file published from a private source may say, is [ADR-0022](https://github.com/pmgledhill102/dotfiles/blob/main/agent/adrs/0022-public-artefact-content.md)'s table
 
 ### Process Guidelines
 
@@ -218,11 +218,11 @@ rejected it anyway for not matching its fragments. Edit the fragment.
 
 To change any of it, open an issue against `agentic-coding-config`; see
 "Changing agent config" in the policy above. The same applies in reverse — an
-`agentic-coding-config` session doesn't get to edit `dotfiles` either.
+`agentic-coding-config` session doesn't get to edit `dotfiles-private` either.
 
-A merge to that repo does **not** reach this machine immediately. The
-external carries a `refreshPeriod` of 168h, so a plain `chezmoi apply` can
-re-apply the cached archive.
+A merge to that repo does **not** reach this machine immediately. It is
+published to `pmgledhill102/dotfiles` under `agent/` first, and the external
+carries a `refreshPeriod` of 168h, so `chezmoi apply` can re-apply its cache.
 
 **`dotup` already handles this** — it runs `chezmoi update
 --refresh-externals`, which is pull plus apply with the cache bypassed, and

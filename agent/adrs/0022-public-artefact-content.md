@@ -2,6 +2,9 @@
 
 - **Status**: Accepted (2026-10-22)
 - **Date**: 2026-10-22
+- **Amended**: 2026-11-22, which rows still have a public repository to
+  apply to once [ADR-0028](0028-private-sources-one-public-output.md) is in
+  force, [#833](https://github.com/pmgledhill102/agentic-coding-config/issues/833)
 - **Tags**: security, workflow, github, documentation
 - **Scope**: user (applies to all personal repos and agent surfaces)
 
@@ -88,6 +91,17 @@ carries the full rule and the allowlist check that enforces it.
 Apply it by artefact type and content type, not by how sensitive the content
 feels. Every row assumes the repository is public.
 
+**Once [ADR-0028](0028-private-sources-one-public-output.md) is in force**,
+the two config sources, `agentic-coding-config` and `dotfiles-private`, are
+private. Their only public artefact is a **published file**: the tree their
+publish jobs copy into `pmgledhill102/dotfiles`, which accepts no issue, pull
+request, review or hand-written commit message. For those repositories the
+issue, PR, review comment and commit message rows therefore have nothing to
+apply to. A published file, whatever its kind, is held to the "must never be
+public" column of the ADR and code comment rows, by its writer first and by
+the publish gates second. Every row still applies in full to any other
+repository that is public.
+
 | Artefact | May be public | Must never be public | Where it goes instead |
 | --- | --- | --- | --- |
 | Issue body | The change wanted and why; a bug's symptoms and reproduction; acceptance criteria | A current-state finding; audit output; access topology; a private issue number | A `paul-context` issue. The public issue, if any, describes the change |
@@ -142,6 +156,10 @@ standard keeps where its evidence lives, the issues workflow keeps how to file
 a security-control defect, and ADR-0017 keeps its own audit's placement.
 
 ### Deferred: paired public and private repositories
+
+**Superseded by [ADR-0028](0028-private-sources-one-public-output.md)**: the
+revisit trigger below fired, and that ADR adopts the model for the two config
+sources. The section is kept as the record of why it was first deferred.
 
 The alternative weighed alongside this ADR was to work in private repositories
 and publish public ones as mirrors through a promotion job, so that issues and

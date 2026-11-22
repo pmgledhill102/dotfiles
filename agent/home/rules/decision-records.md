@@ -19,12 +19,12 @@ stated rather than inferred from where it sits.
 | Tier | Home | Holds |
 | --- | --- | --- |
 | **Personal** | `paul-context/decisions/` | Life/estate decisions, private rationale (private repo) |
-| **User** | [`agentic-coding-config/adrs/`](https://github.com/pmgledhill102/dotfiles/tree/main/agent/adrs) | How I work with agents and repos, across the estate |
+| **User** | [`dotfiles/agent/adrs/`](https://github.com/pmgledhill102/dotfiles/tree/main/agent/adrs), published from `agentic-coding-config/adrs/` | How I work with agents and repos, across the estate |
 | **Repo** | `<repo>/adrs/` | Architecture and technology choices for that repo |
 
-- **User-tier ADRs bind every repo.** They are public, so a sandbox session
-  with no local clone can read them at the URL above. Consult them on demand;
-  never copy them into a repo, because a copy drifts
+- **User-tier ADRs bind every repo.** They are written in the private source
+  and published, so a session with no clone can read them at the URL above.
+  Consult them on demand; never copy them into a repo, because a copy drifts
 - **Placement follows scope, not convenience.** The authoring test: *would
   this decision still bind if the current repo were archived?* If yes, it is
   not repo-tier

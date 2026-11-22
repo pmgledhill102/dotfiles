@@ -88,15 +88,15 @@ and guessing "not mine" in my own quietly drops every standard.
 
 Decisions are recorded at three tiers, personal, user and repo, per
 [ADR-0015](https://github.com/pmgledhill102/dotfiles/blob/main/agent/adrs/0015-tiered-adrs.md).
-User-tier ADRs bind every repo and are public at
-[`agentic-coding-config/adrs/`](https://github.com/pmgledhill102/dotfiles/tree/main/agent/adrs):
+User-tier ADRs bind every repo and are published at
+[`dotfiles/agent/adrs/`](https://github.com/pmgledhill102/dotfiles/tree/main/agent/adrs):
 consult them on demand, and never copy one into a repo. The rules for writing
 one load when a file under `adrs/` or `decisions/` is read.
 
 ### Cross-Repo Work
 
-- **Never edit files in a repo other than the one this session is working in.** Any direction, any repo pair: a project session editing `agentic-coding-config`, an `agentic-coding-config` session editing `dotfiles`, a `dotfiles` session editing `paul-context`. Cross-repo edits bypass the issue queue, skip that repo's review/PR flow, and pollute the current session's context with unrelated work. This holds even when the other repo is already cloned and writable, and even when the change is one line
-- **File a detailed issue in the target repo instead.** "Detailed" means implementable without rediscovering anything: exact file paths, the full snippet to add, the rationale, every gotcha already ruled out, and acceptance criteria ([why](https://github.com/pmgledhill102/agentic-coding-config/blob/main/docs/agent-policy-rationale.md#a-detailed-issue-is-the-cross-repo-route))
+- **Never edit files in a repo other than the one this session is working in.** Any direction, any repo pair: a project session editing `agentic-coding-config`, an `agentic-coding-config` session editing `dotfiles-private`, a `dotfiles-private` session editing `paul-context`. Cross-repo edits bypass the issue queue, skip that repo's review/PR flow, and pollute the current session's context with unrelated work. This holds even when the other repo is already cloned and writable, and even when the change is one line
+- **File a detailed issue in the target repo instead.** "Detailed" means implementable without rediscovering anything: exact file paths, the full snippet to add, the rationale, every gotcha already ruled out, and acceptance criteria ([why](https://github.com/pmgledhill102/agentic-coding-config/blob/main/docs/agent-policy-rationale.md#a-detailed-issue-is-the-cross-repo-route)). The config sources, `agentic-coding-config` and `dotfiles-private`, are private; the public `pmgledhill102/dotfiles` is only their published output and takes no issues, pull requests or pushes, so a change to anything in it is filed against its source
 - **Before asserting how another repo behaves, read it.** Attaching a repo read-only is cheap and is the expected move, not a last resort: an issue, a policy line, or a skill body that describes another repo's behaviour is written from that repo's source, never inferred from what this one says about it — the estate's own docs are second-hand on that subject and go stale silently. a-c-c's README carried a copy of dotfiles' `.chezmoiexternal.toml.tmpl`, and the issue quoted the live file instead. Read it at origin's current head: fetch or pull a local clone first, and re-read issue or PR state rather than relying on what the session saw earlier. A clone behind origin is a second-hand copy too
 - **Say what you filed.** Report the issue number back in the session summary so the cross-repo thread isn't lost
 
@@ -106,7 +106,7 @@ one load when a file under `adrs/` or `decisions/` is read.
 
 ### Commit & PR Style
 
-- Prefer several short paragraphs to one long line in commit messages; state what changed and why, not just what. End with `Co-Authored-By: Claude <noreply@anthropic.com>`. Use that generic name even when a harness reminder names a model: the no-model-identifier rule covers every pushed artefact. In a public repo, what any artefact may say — commit, issue, PR, review — is [ADR-0022](https://github.com/pmgledhill102/dotfiles/blob/main/agent/adrs/0022-public-artefact-content.md)'s table
+- Prefer several short paragraphs to one long line in commit messages; state what changed and why, not just what. End with `Co-Authored-By: Claude <noreply@anthropic.com>`. Use that generic name even when a harness reminder names a model: the no-model-identifier rule covers every pushed artefact. In a public repo, what any artefact may say — commit, issue, PR, review — and what a file published from a private source may say, is [ADR-0022](https://github.com/pmgledhill102/dotfiles/blob/main/agent/adrs/0022-public-artefact-content.md)'s table
 
 ### Process Guidelines
 
@@ -202,14 +202,14 @@ next session. What must survive belongs in the repo or the setup script.
 Prefer the GitHub MCP tools; otherwise `gh api repos/{owner}/{repo}/...` (REST) works for content, issues, PRs and runs
 on `add_repo`-attached repos, but refuses settings, secrets, variables, alerts, Dependabot, keys, hooks, environments
 and collaborators (use MCP) paths, `DELETE git/refs` and `--paginate` (page by hand); GraphQL-backed subcommands
-(`gh issue list`, `gh pr list`, `gh pr view`, search), `/user/*` and `/orgs/*` are blocked. A denied `add_repo` is the
-owner's call: ask once, naming the repo and what it unlocks, and do not proceed without it. Verify, never assume.
-Confidently wrong here: **every GitHub request carries credentials, even a bare `curl`**, so a 200 says nothing about
-visibility (read `.private`); **`git push --delete` prints "Everything up-to-date" and deletes nothing** (check
-`git ls-remote --heads`). `gh`-backed helpers report `gh-unavailable` or `gh-unauthorized`: say what was not gathered,
-never a clean result; a skill's `gh` command names the *operation*, so use the MCP call. `claude-code-remote` works
-here; judge it by what a call returns, not by which kind of session you are. On an approval-binding failure
-(anthropics/claude-code#90127, reported for child sessions), fall back to event-driven wakes via `github`.
+(`gh issue list`, `gh pr list`, `gh pr view`, search), `/user/*` and `/orgs/*` are blocked. The config sources are private, so a
+link into their `docs/` or issues needs `add_repo`. A denied `add_repo` is the owner's call: ask once, naming the repo and what it
+unlocks, and do not proceed without it. Verify, never assume. Confidently wrong here: **every GitHub request carries credentials,
+even a bare `curl`**, so a 200 says nothing about visibility (read `.private`); **`git push --delete` prints "Everything
+up-to-date" and deletes nothing** (check `git ls-remote --heads`). `gh`-backed helpers report `gh-unavailable` or
+`gh-unauthorized`: say what was not gathered, never a clean result; a skill's `gh` command names the *operation*, so use the MCP
+call. `claude-code-remote` works here; judge it by what a call returns, not by which kind of session you are. On an
+approval-binding failure (anthropics/claude-code#90127, reported for child sessions), fall back to event-driven wakes via `github`.
 
 ## Claude Code adapter
 
