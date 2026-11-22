@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "standard": "Which tools the estate's agent surfaces install, at which version, and from where. Declared once here (ADR-0020 section 2); each surface keeps its native installer and CI asserts the installers agree with this file.",
+  "read_from": "tests/tool-manifest.py asserts every bootstrap_var below equals the literal in cloud/bootstrap.sh. Nothing reads it at runtime: the bootstrap must keep working when this file cannot be fetched.",
+  "surfaces": {
+    "macos": "OS=macos (ADR-0020 axes). Installer: dotfiles' Brewfile.",
+    "ubuntu-durable": "OS=ubuntu, persistence=durable: Linux and WSL workstations. Installer: dotfiles' apt data.",
+    "ubuntu-ephemeral": "OS=ubuntu, persistence=ephemeral: every cloud sandbox. Installer: cloud/bootstrap.sh."
+  },
+  "recorded_surfaces": [
+    "ubuntu-ephemeral"
+  ],
+  "unrecorded_surfaces_why": "macos and ubuntu-durable are installed by pmgledhill102/dotfiles. Their arms are declared by that repo against this file, via the issues this change files there; this file does not assert what dotfiles currently installs.",
+  "on_failure_values": {
+    "degraded": "The capability runs in a subshell, a failure is recorded as status=degraded in ~/.agents/.bootstrap-manifest, and the run continues (ADR-0020 section 2)."
+  },
+  "tools": [
+    {
+      "name": "shellcheck",
+      "version": "0.11.0",
+      "bootstrap_var": "SC_VER",
+      "capability": "precommit",
+      "why": "The shellcheck binary the repo's local hook runs; Ubuntu's package is 0.9.0, so a pinned release keeps the CLI and the hook on one version.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "shellcheck-v{v}.linux.x86_64.tar.xz",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "actionlint",
+      "version": "1.7.12",
+      "bootstrap_var": "AL_VER",
+      "capability": "precommit",
+      "why": "Not packaged in Ubuntu. Same rev as the actionlint-system hook in cloud/precommit-warm.yaml.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "actionlint_{v}_linux_amd64.tar.gz",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "gitleaks",
+      "version": "8.30.1",
+      "bootstrap_var": "GL_VER",
+      "capability": "precommit",
+      "why": "The gitleaks-system hook needs 8.19 or later and avoids a ~30s source build on a cold cache.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "gitleaks_{v}_linux_x64.tar.gz",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "hadolint",
+      "version": "2.15.1",
+      "bootstrap_var": "HL_VER",
+      "capability": "precommit",
+      "why": "The upstream hadolint hook /setup-docker stamps runs the binary on PATH; not packaged in Ubuntu. The release has no checksum asset, so the bootstrap pins the digest as first fetched (HL_SHA256).",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "hadolint-linux-x86_64",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "trivy",
+      "version": "0.76.2",
+      "bootstrap_var": "TV_VER",
+      "capability": "precommit",
+      "why": "trivy config before a push (/setup-docker's CI scan) and the terraform_trivy hook /setup-terraform stamps, which runs the binary on PATH. Digest pinned in the bootstrap (TV_SHA256), checked against the release's checksums file.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "trivy_{v}_Linux-64bit.tar.gz",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "markdownlint-cli2",
+      "version": "0.23.2",
+      "bootstrap_var": "ML_VER",
+      "capability": "precommit",
+      "why": "CI parity: the version the markdownlint hook pins.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "npm",
+          "package": "markdownlint-cli2",
+          "on_failure": "degraded",
+          "needs": "npm from the image"
+        }
+      }
+    },
+    {
+      "name": "cspell",
+      "version": "10.3.3",
+      "bootstrap_var": "CS_VER",
+      "capability": "precommit",
+      "why": "CI parity for spell checking.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "npm",
+          "package": "cspell",
+          "on_failure": "degraded",
+          "needs": "npm from the image"
+        }
+      }
+    },
+    {
+      "name": "terraform",
+      "version_from": "github-repo.json#terraform.pin",
+      "bootstrap_var": "TF_VER",
+      "capability": "precommit",
+      "why": "One version for CI and the sandbox. The pin is owned by the repo-settings spec, which also holds the floor and the sweep rules, so the manifest points at it rather than copying it.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "hashicorp-release",
+          "asset": "terraform_{v}_linux_amd64.zip",
+          "on_failure": "degraded",
+          "needs": "unzip"
+        }
+      }
+    },
+    {
+      "name": "tflint",
+      "version": "0.53.0",
+      "bootstrap_var": "TFL_VER",
+      "capability": "precommit",
+      "why": "Terraform lint for repos with *.tf files.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "tflint_linux_amd64.zip",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "tflint-ruleset-google",
+      "version": "0.31.0",
+      "bootstrap_var": "TFL_GOOGLE_VER",
+      "capability": "precommit",
+      "why": "The Google ruleset plugin for tflint.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "tflint-ruleset-google_linux_amd64.zip",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "gh",
+      "version": "2.97.0",
+      "bootstrap_var": "GH_VER",
+      "capability": "gh",
+      "why": "The GitHub CLI, used for REST reads where the MCP server lacks a call.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "gh_{v}_linux_amd64.tar.gz",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "golangci-lint",
+      "version": "2.14.0",
+      "bootstrap_var": "GCL_VER",
+      "capability": "golangci",
+      "why": "The image's copy is built with an older Go and refuses newer modules, so it is replaced in place.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "github-release",
+          "asset": "golangci-lint-{v}-linux-amd64.tar.gz",
+          "on_failure": "degraded"
+        }
+      }
+    },
+    {
+      "name": "semgrep",
+      "version": null,
+      "unpinned_why": "Installed from PyPI at latest; the repo's own hook pins its rev. A version pin belongs here once CI parity needs one.",
+      "capability": "precommit",
+      "why": "Static analysis hook.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "uv-or-pip",
+          "package": "semgrep",
+          "on_failure": "degraded"
+        }
+      },
+      "if_absent": "The pre-commit hook reports semgrep as NOT CHECKED, never as passed (#335)."
+    },
+    {
+      "name": "checkov",
+      "version": null,
+      "unpinned_why": "Installed from PyPI at latest.",
+      "capability": "precommit",
+      "why": "Terraform policy scan.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "uv-or-pip",
+          "package": "checkov",
+          "on_failure": "degraded"
+        }
+      },
+      "if_absent": "Reported NOT CHECKED, never as passed."
+    },
+    {
+      "name": "pre-commit",
+      "version": null,
+      "unpinned_why": "The framework; each hook pins its own rev.",
+      "capability": "precommit",
+      "why": "Runs every hook.",
+      "surfaces": {
+        "ubuntu-ephemeral": {
+          "source": "uv-or-pip",
+          "package": "pre-commit",
+          "on_failure": "degraded"
+        }
+      }
+    }
+  ],
+  "not_installed": [],
+  "exclusion_rule": "A tool left off a surface on weight grounds is listed in not_installed with its reason. The consumer must keep reporting it as NOT CHECKED rather than treating absence as a pass."
+}

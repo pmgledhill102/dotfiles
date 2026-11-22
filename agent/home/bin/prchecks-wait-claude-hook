@@ -1,0 +1,54 @@
+#!/bin/sh
+# prchecks-wait-claude-hook — Claude Code PreToolUse(Bash) hook.
+#
+# Rewrites `gh pr checks ... --watch` commands to go through the
+# gh-pr-checks-wait sitting beside this script, which waits (bounded) for
+# GitHub to register check runs before watching. Without this, a --watch
+# issued in the seconds after `gh pr create` exits immediately with "no checks
+# reported" — the registration lag is variable (0-60s+ observed), so a
+# fixed sleep after create doesn't fix it and penalises the wrong command.
+#
+# Mechanism: exit 0 emitting hookSpecificOutput.updatedInput, which
+# replaces the tool's arguments before it runs. Only the `gh pr checks`
+# substring is substituted, so compound commands (pipes, redirects,
+# leading env vars) keep their shape, and every other tool_input field is
+# carried over unchanged.
+#
+# Fast-exits with no output (command runs unmodified) when: the command
+# isn't a `gh pr checks ... --watch`, it's already wrapped, jq is missing,
+# or the wrapper isn't present/executable beside it (fresh machine before
+# chezmoi apply). Non-watch `gh pr checks` calls pass through — poll loops
+# using --json handle the empty case themselves.
+
+set -u
+
+command -v jq >/dev/null 2>&1 || exit 0
+payload=$(cat)
+cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty')
+
+# Fires on EVERY Bash call: the not-a-match case must be cheap.
+case "$cmd" in
+  *"gh pr checks"*) ;;
+  *) exit 0 ;;
+esac
+case "$cmd" in
+  *"--watch"*) ;;
+  *) exit 0 ;;
+esac
+case "$cmd" in
+  *gh-pr-checks-wait*) exit 0 ;;   # already wrapped — never rewrite twice
+esac
+
+# Resolved next to this script rather than at a fixed ~/.claude/bin path, so
+# the same file works wherever it was installed -- chezmoi's ~/.claude/bin on a
+# workstation, the copy cloud/bootstrap.sh writes to the same path in a sandbox.
+wrapper="$(dirname -- "$0")/gh-pr-checks-wait"
+[ -x "$wrapper" ] || exit 0
+
+printf '%s' "$payload" | jq -c --arg w "$wrapper" '
+  .tool_input as $ti
+  | {hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      updatedInput: ($ti + {command: ($ti.command | sub("gh pr checks"; $w))})
+    }}'
+exit 0

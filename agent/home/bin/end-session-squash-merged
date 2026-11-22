@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# end-session-squash-merged — list local branches whose upstream is gone, each
+# annotated with the evidence available locally about whether its work landed.
+#
+# A squash-merge on GitHub rewrites history, so `git branch --merged` does not
+# list them. After the remote branch is deleted they show up locally with
+# `upstream: gone`. That is the candidate set this script emits.
+#
+# **It does not prove containment, and nothing it prints authorises a `-D`.**
+# The two signals it can gather are both weaker than they look:
+#
+#   1. `git diff main..<branch>` empty — fast, offline, and a *tree* diff at
+#      two dots, so it answers "does this branch's tree still match main's
+#      tip" rather than "did this work land". It goes non-empty the moment
+#      main advances past the squash, which on an active repo is minutes
+#      (#302). Useful as a hint, never as a proof.
+#   2. A merged PR whose head ref is this branch — only reachable where `gh`
+#      is on PATH and authorised for repo data, which is never true on a cloud
+#      sandbox (#273, #276). Matched on `headRefOid` against the local tip,
+#      because matching on branch *name* alone calls a branch merged when
+#      commits were pushed to it after its PR merged (#435).
+#
+# The containment proof lives in the skill body, which can reach GitHub
+# through the MCP server on every surface — see step 6 Batch B.
+#
+# Output: one line per `[upstream: gone]` branch,
+#
+#   <branch> tip=<sha> diff=<empty|differs> pr=<sha-match|newer-commits|none|unchecked>
+#
+# `tip=` is the branch's local tip, printed so the caller can match it against
+# a merged PR's `head.sha` without a second pass over the branch list.
+#
+# where `pr=newer-commits` means a merged PR carries this branch as its head
+# ref but the local tip is not that PR's merged commit — the #435 case, and
+# the one that must never be auto-deleted.
+#
+# Exit: always 0 (empty output is a valid result).
+#
+# See docs/end-session-design.md.
+
+set -uo pipefail
+
+# Owner/repo slug for an explicit `gh -R` flag — repo inference is unreliable
+# behind the cloud sandbox's egress proxy (#257). Empty on a non-GitHub
+# remote, where no merged-PR record can exist anyway, so the gh lookup below
+# reports `unchecked` rather than guessing.
+REPO_SLUG=$(git remote get-url origin 2>/dev/null | sed -n 's#.*github\.com[:/]##p' | sed 's#\.git$##')
+
+# Prints the merged-PR verdict for branch $1 whose local tip is $2.
+#   sha-match      a merged PR's headRefOid equals the local tip
+#   newer-commits  a merged PR names this branch, but the tip has moved on
+#   none           no merged PR carries this branch as its head ref
+#   unchecked      no gh, no slug, or the call failed — the question was never asked
+gh_merged_pr_state() {
+    local branch=$1
+    local tip=$2
+    command -v gh >/dev/null 2>&1 || { echo unchecked; return; }
+    [ -n "$REPO_SLUG" ] || { echo unchecked; return; }
+    local oids
+    oids=$(gh pr list -R "$REPO_SLUG" --state merged --head "$branch" \
+               --json headRefOid --jq '.[].headRefOid' 2>/dev/null) \
+        || { echo unchecked; return; }
+    [ -n "$oids" ] || { echo none; return; }
+    if printf '%s\n' "$oids" | grep -qxF "$tip"; then
+        echo sha-match
+    else
+        echo newer-commits
+    fi
+}
+
+git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ \
+    | awk '$2 ~ /gone/ { print $1 }' \
+    | grep -vE '^(main|master)$' \
+    | while read -r branch; do
+        tip=$(git rev-parse "$branch" 2>/dev/null) || continue
+        if git diff --quiet main.."$branch" 2>/dev/null; then
+            diff_state=empty
+        else
+            diff_state=differs
+        fi
+        printf '%s tip=%s diff=%s pr=%s\n' \
+            "$branch" "$tip" "$diff_state" "$(gh_merged_pr_state "$branch" "$tip")"
+      done || true

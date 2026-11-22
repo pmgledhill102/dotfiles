@@ -1,0 +1,165 @@
+#!/bin/sh
+# agent-telemetry-claude-hook — the Claude Code hooks that feed agent-telemetry.
+#
+#   session-start   record the session marker once per session, then ship. Wired after
+#                   session-cache-verdict. Also puts agent-shim's shim
+#                   directory ahead on the Bash tool's PATH, when the bootstrap
+#                   made one, and clears the previous session's shim state.
+#   prompt-submit   one `hook prompt-submit` event. Wired to UserPromptSubmit.
+#   stop            one `hook stop` event per turn; at most once every 5
+#                   minutes, also a `session shape` snapshot, a ship and a
+#                   transcript-tail upload. Wired to the Stop hook.
+#   skill           one `skill invoke` event carrying the skill's name and how
+#                   it was invoked: via=tool from PreToolUse on the Skill tool,
+#                   via=slash from UserPromptExpansion, the path a typed
+#                   /name takes, which never reaches PreToolUse. The name is
+#                   the only thing read from the payload: never the skill's
+#                   arguments, never the prompt.
+#
+# prompt-submit and stop are raw timestamps for an offline judgement: a prompt
+# soon after a Stop means someone was watching that stretch (#625). Nothing
+# here decides it.
+#
+# The Claude-specific part is the payload: both events arrive as JSON on stdin,
+# and `stop` carries `transcript_path`. agent-telemetry itself stays
+# vendor-neutral, which is why this is a separate script.
+#
+# Exits 0 always and prints nothing: a SessionStart hook's stdout reaches the
+# agent's context, a PreToolUse hook's is parsed as a decision about the tool
+# call, and instrumentation must never be why a session fails to start, a turn
+# fails to end or a skill fails to run. Every slow step is detached.
+
+set -u
+
+HELPER="$(dirname "$0")/agent-telemetry"
+SHIMS="$(dirname "$0")/shims"
+STATE="${AGENT_TELEMETRY_HOME:-$HOME/.agents/telemetry}"
+MARKER="${AGENT_TELEMETRY_MARKER:-$HOME/.agents/.session-marker}"
+# Seconds between Stop-hook shipments. Stop fires after every turn; shipping on
+# each would be a process spawn and a request per turn for no gain.
+STOP_EVERY="${AGENT_TELEMETRY_STOP_EVERY:-300}"
+
+event=${1:-}
+
+# Drain stdin before anything can block; a hook that never reads it can leave
+# the harness writing into a full pipe. No stdin at all is legitimate.
+PAYLOAD=$(cat 2> /dev/null || true)
+
+field() { # field <key> — from the payload, or empty
+    [ -n "$PAYLOAD" ] || return 0
+    command -v jq > /dev/null 2>&1 || return 0
+    printf '%s' "$PAYLOAD" | jq -r --arg k "$1" '.[$k] // empty' 2> /dev/null || true
+}
+
+# detach <helper args> — run the helper without the hook waiting on it.
+detach() {
+    ( trap '' HUP; "$HELPER" "$@" ) < /dev/null > /dev/null 2>&1 &
+}
+
+[ -x "$HELPER" ] || exit 0
+
+case "$event" in
+    session-start)
+        # Inline, not detached: Claude Code reads CLAUDE_ENV_FILE once the
+        # SessionStart hooks return, and sources it before every Bash command.
+        # Only directories that exist get named, so a machine without shims
+        # gets nothing.
+        if [ -d "$SHIMS" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+            # $PATH is literal: the env file expands it when it is sourced.
+            # shellcheck disable=SC2016
+            printf 'case ":$PATH:" in *":%s:"*) ;; *) export PATH="%s:$PATH" ;; esac\n' \
+                "$SHIMS" "$SHIMS" >> "$CLAUDE_ENV_FILE" 2> /dev/null || true
+        fi
+        # First-use stamps are per session; a resume starts a new one.
+        rm -rf "$STATE/shims" 2> /dev/null || true
+        sid=$(field session_id)
+        # The marker is written by session-cache-verdict, a separate hook that
+        # runs alongside this one with no ordering guarantee. Wait for it in the
+        # background rather than here, so the session never waits on telemetry.
+        (
+            trap '' HUP
+            i=0
+            while [ "$i" -lt 25 ]; do
+                if [ -f "$MARKER" ] && { [ -z "$sid" ] || grep -q "^session_id=$sid\$" "$MARKER" 2> /dev/null; }; then
+                    break
+                fi
+                sleep 0.2
+                i=$((i + 1))
+            done
+            # A marker that never appeared is a workstation, or a container with no
+            # manifest: there is simply nothing to record.
+            # SessionStart also fires on resume, clear and compact, and the
+            # marker is written once per session, so record it only when its
+            # session_id/observed_at differ from the last one recorded.
+            stamp="$STATE/session-marker.recorded"
+            key=$(grep -E '^(session_id|observed_at)=' "$MARKER" 2> /dev/null | sort | tr '\n' ' ')
+            if [ -n "$key" ] && [ "$key" != "$(cat "$stamp" 2> /dev/null)" ]; then
+                "$HELPER" record session-marker "$MARKER" && printf '%s' "$key" > "$stamp"
+            fi
+            # Unconditional: a resume still flushes what earlier turns spooled.
+            "$HELPER" ship
+            # The one place a 401 is retried. In a proxy-injected environment
+            # the proxy can start attaching the write key a little after the
+            # session does, so this first ship can be refused while every later
+            # one would be accepted, and a session that ends before its first
+            # Stop then ships nothing at all. Bounded, background, and only
+            # while spool bytes are still unsent, so a stale 401 from an
+            # earlier session with nothing pending does not start it. Every
+            # other 401 keeps the contract's "do not retry".
+            for d in ${AGENT_TELEMETRY_AUTH_RETRY_DELAYS:-2 4 8 16 32 60}; do
+                grep -q '^[^ ]* 401 ' "$STATE/last-ship" 2> /dev/null || break
+                off=$(head -1 "$STATE/shipped.offset" 2> /dev/null || echo 0)
+                size=$(wc -c < "$STATE/spool.jsonl" 2> /dev/null | tr -d ' ')
+                [ "${off:-0}" -lt "${size:-0}" ] 2> /dev/null || break
+                sleep "$d"
+                "$HELPER" ship
+            done
+        ) < /dev/null > /dev/null 2>&1 &
+        ;;
+    prompt-submit)
+        detach event hook prompt-submit
+        ;;
+    skill)
+        [ -n "$PAYLOAD" ] || exit 0
+        command -v jq > /dev/null 2>&1 || exit 0
+        # One jq: how it was invoked on the first line, the name after it.
+        # Anything that is not a Skill call or a typed command yields nothing.
+        got=$(printf '%s' "$PAYLOAD" | jq -r '
+            if .hook_event_name == "UserPromptExpansion" then
+                select(.expansion_type == "slash_command") | "slash", (.command_name | strings)
+            else
+                select(.tool_name == "Skill") | "tool", (.tool_input.skill | strings)
+            end' 2> /dev/null) || exit 0
+        nl='
+'
+        case "$got" in *"$nl"*) ;; *) exit 0 ;; esac
+        via=${got%%"$nl"*}
+        skill=${got#*"$nl"}
+        # The helper would turn each unsafe character into _ and cut at 120,
+        # which still lets through a sentence with its spaces replaced. A name
+        # outside the helper's value charset or length is not a skill name, so
+        # none of it is recorded.
+        case "$skill" in
+            "") exit 0 ;;
+            *[!A-Za-z0-9._:/@+,#=-]*) skill=invalid ;;
+        esac
+        [ "${#skill}" -le 120 ] || skill=invalid
+        detach event skill invoke "skill=$skill" "via=$via"
+        ;;
+    stop)
+        detach event hook stop
+        mkdir -p "$STATE" 2> /dev/null || exit 0
+        stamp="$STATE/stop.last"
+        now=$(date +%s 2> /dev/null || echo 0)
+        last=$(cat "$stamp" 2> /dev/null || echo 0)
+        case "$last" in "" | *[!0-9]*) last=0 ;; esac
+        [ "$now" -gt 0 ] && [ $((now - last)) -ge "$STOP_EVERY" ] || exit 0
+        echo "$now" > "$stamp" 2> /dev/null || exit 0
+        # The shape before the ship, so this ship carries it.
+        ( trap '' HUP; "$HELPER" session-shape; "$HELPER" ship ) < /dev/null > /dev/null 2>&1 &
+        transcript=$(field transcript_path)
+        [ -z "$transcript" ] || "$HELPER" upload-transcript "$transcript" --background
+        ;;
+    *) ;;
+esac
+exit 0

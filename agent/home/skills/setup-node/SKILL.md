@@ -1,0 +1,163 @@
+---
+name: setup-node
+description: Set up Node.js formatting, linting and dependency auditing for a JavaScript project — prettier, eslint and npm audit, wired into pre-commit and CI.
+---
+
+# Set up Node.js tooling
+
+## What to install and configure
+
+### 1. Prettier (formatting)
+
+Create `.prettierrc` in the project root (if it doesn't already exist). If one exists, review and suggest additions.
+
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "tabWidth": 2
+}
+```
+
+Create `.prettierignore` if it doesn't exist:
+
+```text
+node_modules/
+dist/
+build/
+coverage/
+```
+
+### 2. ESLint
+
+Create `eslint.config.js` (flat config) in the project root (if it doesn't already exist). If one exists, review and suggest additions.
+
+```js
+import js from '@eslint/js';
+
+export default [
+  js.configs.recommended,
+  {
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-console': 'warn',
+      'prefer-const': 'error',
+      'no-var': 'error',
+    },
+  },
+  {
+    ignores: ['node_modules/', 'dist/', 'build/', 'coverage/'],
+  },
+];
+```
+
+If the project uses CommonJS (no `"type": "module"` in `package.json`), use `eslint.config.cjs` with `require()` instead.
+
+### 3. .gitignore
+
+Append these lines to `.gitignore` if they aren't already present:
+
+```gitignore
+# Node.js
+node_modules/
+dist/
+build/
+coverage/
+*.tgz
+.npm
+.eslintcache
+```
+
+### 4. Add pre-commit hooks
+
+Append this repo to the existing `.pre-commit-config.yaml`. Use `repo: local` hooks running the project's own binaries — not the `pre-commit/mirrors-*` repos: `mirrors-prettier` is archived and no longer receives releases, and both mirrors pin their own copy of the tool, so the hook and `package.json` can silently run different versions.
+
+```yaml
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: npx --no-install prettier --write
+        language: system
+        types_or: [javascript, jsx, json, css, markdown]
+      - id: eslint
+        name: eslint
+        entry: npx --no-install eslint
+        language: system
+        types: [javascript]
+```
+
+`--no-install` matters: without it, a missing `node_modules` makes npx silently download some other version instead of failing. Both tools must be devDependencies — `npm install -D prettier eslint @eslint/js` if they aren't already.
+
+### 5. GitHub Actions workflow
+
+Create or update the CI workflow to include Node.js linting and dependency auditing jobs that only run when JS files change. Use a separate workflow file (e.g., `.github/workflows/node.yml`) with path filters, or add jobs to an existing workflow.
+
+```yaml
+name: Node.js
+on:
+  push:
+    paths: ['**/*.js', '**/*.mjs', '**/*.cjs', 'package.json', 'package-lock.json']
+  pull_request:
+    paths: ['**/*.js', '**/*.mjs', '**/*.cjs', 'package.json', 'package-lock.json']
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<full-sha> # <version>
+      - uses: actions/setup-node@<full-sha> # <version>
+        with:
+          node-version-file: '.node-version'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx prettier --check .
+      - run: npx eslint .
+
+  audit:
+    name: npm Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<full-sha> # <version>
+      - uses: actions/setup-node@<full-sha> # <version>
+        with:
+          node-version-file: '.node-version'
+      - run: npm audit --audit-level=high
+```
+
+If the project doesn't have `.node-version`, use a fixed `node-version: '22'` (or whatever the project uses). Don't duplicate if Node.js lint jobs already exist. Look up latest action versions.
+
+### 6. Dependabot ecosystem
+
+Read `.github/dependabot.yml` and add the `npm` ecosystem entry if it isn't already present. Don't duplicate entries.
+
+```yaml
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "javascript"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+```
+
+### 7. Verify
+
+Run `npx prettier --check .` and `npx eslint .` to confirm. Fix formatting issues with `npx prettier --write .`.
+
+## Important
+
+- Do NOT overwrite existing configs. Read first and merge.
+- If `.pre-commit-config.yaml` doesn't exist, tell the user to run `setup-common` first.
+- Use ESLint flat config format (eslint.config.js) for new projects. If the project has an existing `.eslintrc.*`, don't migrate unless asked.
+- If the project uses yarn or pnpm instead of npm, adjust commands and CI accordingly.

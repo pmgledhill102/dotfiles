@@ -1,0 +1,288 @@
+#!/bin/sh
+# prepush-guard-claude-hook — Claude Code PreToolUse(Bash) hook.
+#
+# Blocks `git push` to a branch whose PR has already been merged or closed.
+# The failure this prevents: the user merges the PR via the GitHub UI
+# mid-session (branch auto-deletes), and the next push silently recreates an
+# orphaned remote branch — the only tell is `* [new branch]` in output nobody
+# reads. Recovery costs a cleanup cycle every time (new branch, cherry-pick,
+# delete orphan, new PR). The prose rule in CLAUDE.md ("check the PR is still
+# open before pushing") failed twice in one session; this enforces it.
+#
+# Authority is GitHub's REST pulls listing for the branch, filtered by head:
+# local state is useless here (the stale remote-tracking ref survives the
+# remote deletion until a fetch --prune). REST rather than `gh pr view`,
+# because `gh pr view` is GraphQL, which cloud sandboxes refuse outright while
+# serving REST. An open PR for the branch wins over older closed ones, so
+# re-using a branch name after an old PR merged still pushes fine once a new
+# PR is open.
+#
+# A merged PR's branch name may be reused for new work, which the cloud
+# harness instructs: restart the branch from the up-to-date default branch and
+# push again. That push is allowed, with one notice line. What stays blocked is
+# the orphan shape -- new commits stacked on the merged PR's own history -- and
+# a branch whose PR closed unmerged. See "the restart rule" below.
+#
+# Fail-open by design: no gh, no network, no repo, detached HEAD, or any
+# lookup error -> allow the push. The guard exists to stop one specific
+# silent mistake, not to make pushing fragile. Honours --no-verify, same as
+# precommit-claude-hook, but never suggests it: an auto-mode classifier denies
+# that flag as weakening a safeguard, so advice to use it strands an agent.
+#
+# Fail-open is not fail-silent. Every stand-down that leaves a real push
+# unexamined prints one `prepush-guard: not checked -- <reason>` line on
+# stderr, with a reason distinct enough to grep, because the fixes differ:
+# an unresolvable path is the command's wording (rewrite it with a literal
+# path), while a missing or unauthenticated gh is a fact about the machine.
+# Pushes the guard has no business with -- not a git push, an escape hatch,
+# the default branch, no PR for the branch -- stay silent.
+#
+# The branch judged is the one the push TARGETS: each refspec's destination,
+# or the checked-out branch when no refspec is named. A PreToolUse hook runs
+# before the command, so `git checkout -b x && git push` with no refspec would
+# be judged against the branch being left; that shape stands down as not
+# checked instead of guessing.
+
+set -u
+
+# --- Read payload; degrade gracefully without jq. -------------------------
+command -v jq >/dev/null 2>&1 || exit 0
+payload=$(cat)
+cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty')
+cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty')
+
+# --- Fast-exit: fires on EVERY Bash call, so not-a-push must be cheap. ----
+# Matching the literal phrase "git push" missed `git -C <path> push`, which is
+# one of the two shapes #404 is about -- so the guard silently waved through
+# exactly the cross-repo form it was being fixed to handle. This is the cheap
+# half of the test; resolve_command_dir below does the positional match, the
+# way precommit-claude-hook already classifies.
+case "$cmd" in
+  *push*) ;;
+  *) exit 0 ;;
+esac
+case "$cmd" in
+  *" --no-verify "*|*" --no-verify") exit 0 ;;      # standard escape hatch
+  *" --delete "*|*" --delete"|*" -d "*) exit 0 ;;   # deleting, not pushing work
+  *" --tags"*) exit 0 ;;                            # tag pushes have no PR
+esac
+
+# not_checked <reason> -- the one stand-down message shape (see header).
+not_checked() {
+  printf 'prepush-guard: not checked -- %s\n' "$1" >&2
+  exit 0
+}
+
+# --- Resolve the repo the push targets, then its branch (see limitation). -
+# The walk over `cd` / `git -C` lives in lib/resolve-command-dir, shared with
+# precommit-claude-hook. A missing lib fails open like everything else here:
+# dash exits 2 on a failed `.`, and 2 is the one exit code that blocks.
+rcd_lib="$(dirname -- "$0")/lib/resolve-command-dir"
+[ -r "$rcd_lib" ] || not_checked "lib missing: $rcd_lib is not installed."
+# shellcheck source=/dev/null  # lib/resolve-command-dir, resolved at run time
+. "$rcd_lib"
+
+# Anything unresolvable (status 2) skips the guard instead of guessing. A
+# PreToolUse denial rejects the WHOLE Bash call, so a false positive also
+# destroys any heredoc or file write earlier in the same command -- that cost
+# a rewritten script three times in one session (#404). An unguarded push
+# costs one orphan branch; a false positive costs the whole tool call.
+# Status 1 (no `git push` segment: "push" was only mentioned) stays silent.
+target=$(resolve_command_dir "$cmd" "${cwd:-$PWD}" push)
+case $? in
+  0) ;;
+  2) not_checked "unresolvable path: the push runs in a directory that cannot be resolved before the command runs (variable, substitution, glob, quoted or ~ path, or subshell/pushd nesting). Use a literal path to have it checked." ;;
+  *) exit 0 ;;
+esac
+[ -n "$target" ] || exit 0
+root=$(git -C "$target" rev-parse --show-toplevel 2>/dev/null) || exit 0
+
+current=$(git -C "$root" symbolic-ref --short -q HEAD) || current=''
+
+# --- Which branches does the push target? ---------------------------------
+# resolve_command_dir found WHERE the push runs; this finds WHAT it pushes.
+# The same separator split as the lib, then the first segment whose command is
+# `git [global options] push`. Segments before it that switch branch make a
+# refspec-less push unknowable (see header).
+push_targets() (
+    set -f
+    nl='
+'
+    # nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- newline-only IFS for the split below; push_targets is a subshell, so it cannot leak.
+    IFS=$nl
+    # shellcheck disable=SC2046,SC2086  # deliberate: split on the separators.
+    set -- $(printf '%s' "$1" |
+        sed -e 's/>|/>/g' -e 's/||/;/g' -e 's/|&/|/g' -e 's/&&/;/g' -e 's/|/;/g' |
+        tr ';&' '\n')
+    switched=0
+    for seg in "$@"; do
+        # nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- space-and-tab IFS to split the segment into words, inside the push_targets subshell.
+        IFS=' 	'
+        # shellcheck disable=SC2086  # deliberate: split the segment into words.
+        set -- $seg
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                '(' | '{') shift ;;
+                '('*) w=${1#?}; shift; set -- "$w" "$@" ;;
+                *) break ;;
+            esac
+        done
+        [ "${1:-}" = git ] || continue
+        shift
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                -C | -c | --git-dir | --work-tree | --namespace) [ $# -ge 2 ] || break; shift 2 ;;
+                -*) shift ;;
+                *) break ;;
+            esac
+        done
+        case "${1:-}" in
+            checkout | switch) switched=1; continue ;;
+            push) shift ;;
+            *) continue ;;
+        esac
+        # Options; those taking a value consume the next word. A redirection
+        # ends the arguments.
+        n=0
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                '>'* | '<'* | [0-9]'>'* | [0-9]'<'* | ')'* | '}'*) break ;;
+                --repo | -o | --push-option | --receive-pack | --exec) shift ;;
+                -*) ;;
+                *)
+                    n=$((n + 1))
+                    if [ "$n" -gt 1 ]; then
+                        w=$1
+                        case "$w" in *')'* | *'}'*) w=${w%%[')}']*} ;; esac
+                        printf 'ref %s\n' "$w"
+                    fi
+                    ;;
+            esac
+            [ $# -gt 0 ] && shift
+        done
+        [ "$n" -le 1 ] && printf 'none %s\n' "$switched"
+        exit 0
+    done
+    exit 1
+)
+
+targets=$(push_targets "$cmd") || not_checked "push not parsed: could not find the push's arguments in the command."
+# Each line: "<src> <dst>" for a branch to judge. Tags and deletions are not
+# this guard's business.
+pairs=$(printf '%s\n' "$targets" | while IFS=' ' read -r kind val; do
+    # Every pattern in a case inside $(...) opens with "(": bash 3.2, which is
+    # macOS's /bin/sh, ends the substitution at the first unbalanced ")".
+    case "$kind" in
+        (none)
+            [ "$val" = 1 ] && { echo "SWITCHED"; continue; }
+            [ -n "$current" ] && printf '%s %s\n' "$current" "$current"
+            ;;
+        (ref)
+            spec=${val#+}
+            case "$spec" in
+                ('' | :*) continue ;;                       # deletion
+                (*'$'* | *'`'* | *'*'* | *'?'* | *'['* | *'"'* | *"'"* | '~'*) echo "UNSAFE"; continue ;;
+            esac
+            case "$spec" in
+                (*:*) src=${spec%%:*} dst=${spec#*:} ;;
+                (*) src=$spec dst=$spec ;;
+            esac
+            [ "$dst" = HEAD ] && dst=$current
+            [ "$src" = HEAD ] && src=HEAD
+            case "$dst" in
+                (refs/tags/* ) continue ;;
+                (refs/heads/*) dst=${dst#refs/heads/} ;;
+            esac
+            [ -n "$dst" ] && printf '%s %s\n' "$src" "$dst"
+            ;;
+    esac
+done)
+case "$pairs" in
+    *SWITCHED*) not_checked "branch changes earlier in the command: the push names no refspec, so its target is only known after the checkout runs. Name the branch (git push -u origin <branch>) to have it checked." ;;
+    *UNSAFE*) not_checked "unresolvable refspec: a pushed ref is a variable, substitution, glob or quoted word. Use a literal branch name to have it checked." ;;
+esac
+[ -n "$pairs" ] || exit 0   # detached HEAD with no refspec, deletions only
+
+# Checked after resolution, so a command that merely mentions "push" never
+# reports a missing gh.
+command -v gh >/dev/null 2>&1 || not_checked "gh unavailable: gh is not installed, so the PR state cannot be looked up."
+
+# origin is read with `git config`, not `git remote get-url`: the latter
+# applies url.*.insteadOf rewrites, which sandboxes inject.
+origin=$(git -C "$root" config --get remote.origin.url 2>/dev/null) || origin=""
+slug=$(printf '%s' "$origin" | sed -n -E 's#^(https://|ssh://)?([^@/]+@)?github\.com[:/]([^/]+/[^/]+)$#\3#p' | sed 's#\.git$##')
+[ -n "$slug" ] || not_checked "origin is not a github.com remote, so the PR state cannot be looked up."
+
+# --- The restart rule -----------------------------------------------------
+# restarted <src> <old-head-sha> <base-ref> is true when the push carries no
+# commit of the merged PR that its base lacks: the PR's head is already in
+# origin/<base>, and the pushed tip forks from origin/<base> somewhere the old
+# head does not reach -- at or after the merge -- rather than stacking on the
+# old head. No fetch: a stale origin/<base> that predates the merge fails the
+# first test, which errs towards blocking.
+restarted() {
+    [ -n "$2" ] && [ -n "$3" ] || return 1
+    base="refs/remotes/origin/$3"
+    git -C "$root" rev-parse -q --verify "$base" >/dev/null || return 1
+    tip=$(git -C "$root" rev-parse -q --verify "$1^{commit}") || return 1
+    git -C "$root" merge-base --is-ancestor "$2" "$base" 2>/dev/null || return 1
+    mb=$(git -C "$root" merge-base "$tip" "$base") || return 1
+    ! git -C "$root" merge-base --is-ancestor "$mb" "$2" 2>/dev/null
+}
+
+# --- Judge each target branch ---------------------------------------------
+printf '%s\n' "$pairs" | {
+blocked=0
+while IFS=' ' read -r src branch; do
+    [ -n "$branch" ] || continue
+    default=$(git -C "$root" symbolic-ref --short -q refs/remotes/origin/HEAD | sed 's|^origin/||')
+    [ -n "$default" ] && [ "$branch" = "$default" ] && continue
+    head=$(printf '%s' "${slug%%/*}:$branch" | jq -sRr @uri)
+
+    gh_err_file=$(mktemp 2>/dev/null) || gh_err_file=/dev/null
+    prs=$(gh api "repos/$slug/pulls?head=$head&state=all&per_page=100" 2>"$gh_err_file")
+    gh_rc=$?
+    gh_err=$(cat "$gh_err_file" 2>/dev/null)
+    [ "$gh_err_file" = /dev/null ] || rm -f "$gh_err_file"
+    if [ "$gh_rc" -ne 0 ]; then
+        # gh exits 4 when authentication is required.
+        case "$gh_rc:$gh_err" in
+            4:* | *"gh auth login"* | *"HTTP 401"* | *"Bad credentials"*)
+                not_checked "gh unauthorised: gh is not authenticated, so the PR state cannot be looked up." ;;
+        esac
+        not_checked "gh lookup failed: $(printf '%s' "$gh_err" | head -1)"
+    fi
+
+    # No PR yet is the ordinary case and stays silent. Otherwise the open PR
+    # if there is one, else the newest: MERGED when it has a merge time, else
+    # CLOSED.
+    pr=$(printf '%s' "$prs" | jq -c '
+      if type != "array" or length == 0 then empty
+      else (map(select(.state == "open")) | first) // (sort_by(.number) | last)
+         | {number, url: .html_url, sha: (.head.sha // ""), base: (.base.ref // ""),
+            state: (if .state == "open" then "OPEN"
+                    elif .merged_at != null then "MERGED" else "CLOSED" end)}
+      end' 2>/dev/null) || not_checked "gh lookup failed: unreadable response from the pulls API."
+    [ -n "$pr" ] || continue
+    state=$(printf '%s' "$pr" | jq -r '.state')
+    case "$state" in
+        MERGED | CLOSED) ;;
+        *) continue ;;
+    esac
+    number=$(printf '%s' "$pr" | jq -r '.number')
+    url=$(printf '%s' "$pr" | jq -r '.url')
+    base_ref=$(printf '%s' "$pr" | jq -r '.base')
+
+    if [ "$state" = MERGED ] && restarted "$src" "$(printf '%s' "$pr" | jq -r '.sha')" "$base_ref"; then
+        printf 'prepush-guard: PR #%s merged; %s restarted from origin/%s -- allowing\n' "$number" "$branch" "$base_ref" >&2
+        continue
+    fi
+
+    restart=${base_ref:-<default>}
+    printf 'push blocked: PR #%s for branch %s is already %s (%s).\n\nPushing now would recreate the deleted remote branch as an orphan carrying the\nold PR'"'"'s history, with no PR open for the new work.\n\nTo reuse the branch name for new work, restart it from the latest %s:\n  git fetch origin %s && git checkout -B %s origin/%s\nthen re-apply the new commits and push again -- a branch restarted that way is\nallowed. Or push the work to a new branch name.\n' \
+        "$number" "$branch" "$state" "$url" "$restart" "$restart" "$branch" "$restart" >&2
+    blocked=1
+done
+[ "$blocked" -eq 0 ] || exit 2
+exit 0
+}

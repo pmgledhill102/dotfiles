@@ -1,0 +1,156 @@
+#!/bin/sh
+# toolchain-start — start the deferred toolchain install, once, in the background.
+#
+# A container bootstrapped with --toolchain=background installs the toolkit and
+# the global git hook at setup time, and defers the pre-commit toolchain and its
+# hook-environment warm to the session (ADR-0021, 2026-11-10 amendment; #631).
+# The deferred run is the bootstrap itself, re-run at the same resolved sha with
+# --toolchain=run, from a copy the setup phase left in the toolchain directory.
+#
+# Usage:
+#   toolchain-start --hook        SessionStart hook: start it if needed. Prints
+#                                 nothing and always exits 0.
+#   toolchain-start --wait <s>    Start it if needed, then wait up to <s> seconds
+#                                 for it to finish. Exit 0 when the install has
+#                                 finished (done or degraded), 1 when it failed,
+#                                 2 when it is still running at the deadline.
+#                                 Prints the wait time in ms on stdout.
+#   toolchain-start --status      Print the state: none (nothing deferred),
+#                                 pending, running, done, degraded, failed or
+#                                 dead (running, but its process is gone).
+#
+# The state file is the protocol. The launcher writes `running` and the pid. The
+# run writes `done`, `degraded` or `failed` when it ends. A run that dies
+# without ending (reaped detached processes have been observed in these
+# sandboxes) leaves `running` with a dead pid, which every caller treats as a
+# reason to start again, never as a reason to keep waiting.
+#
+# With no args file in the toolchain directory, nothing was deferred (an
+# eager-mode container, or a workstation), and every mode is a silent no-op.
+#
+# Test seams: TOOLCHAIN_DIR overrides ~/.agents/toolchain.
+
+set -u
+
+dir=${TOOLCHAIN_DIR:-$HOME/.agents/toolchain}
+state_file=$dir/state
+pid_file=$dir/pid
+lock=$dir/lock
+
+mode=${1:-}
+case "$mode" in
+    --hook)
+        # A SessionStart hook receives JSON on stdin; drain it so the harness
+        # never blocks on a full pipe.
+        cat >/dev/null 2>&1 || true
+        ;;
+    --wait | --status) ;;
+    *)
+        echo "usage: toolchain-start --hook | --wait <seconds> | --status" >&2
+        exit 64
+        ;;
+esac
+
+if [ ! -f "$dir/args" ]; then
+    [ "$mode" = --status ] && echo none
+    [ "$mode" = --wait ] && echo 0
+    exit 0
+fi
+
+read_state() {
+    _s=$(cat "$state_file" 2>/dev/null) || _s=pending
+    [ -n "$_s" ] || _s=pending
+    if [ "$_s" = running ] && ! alive; then
+        _s=dead
+    fi
+    echo "$_s"
+}
+
+alive() {
+    _pid=$(cat "$pid_file" 2>/dev/null) || return 1
+    [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null
+}
+
+# put <file> <value>: replace a file in one step. The state and pid files are
+# polled while they are rewritten, and a plain `>` hands a reader an empty file
+# between the truncate and the write. read_state takes empty as `pending`, so
+# that window started a second run.
+put() {
+    echo "$2" >"$1.tmp.$$" && mv -f "$1.tmp.$$" "$1"
+}
+
+now_ms() {
+    if IFS=' .' read -r _up _cs _ </proc/uptime 2>/dev/null; then
+        echo $((_up * 1000 + ${_cs#0} * 10))
+    else
+        echo "$(date +%s)000"
+    fi
+}
+
+start() {
+    case "$(read_state)" in
+        done | degraded | failed | running) return 0 ;;
+    esac
+    # One starter at a time. A lock older than 30 s belongs to a starter that
+    # died between mkdir and rmdir; nothing legitimate holds it that long.
+    if ! mkdir "$lock" 2>/dev/null; then
+        _age=$(($(date +%s) - $(stat -c %Y "$lock" 2>/dev/null || stat -f %m "$lock" 2>/dev/null || date +%s)))
+        [ "$_age" -gt 30 ] || return 0
+        rmdir "$lock" 2>/dev/null || true
+        mkdir "$lock" 2>/dev/null || return 0
+    fi
+    # args holds the resolved sha and the setup run's flags, one per line.
+    # Values with spaces are not supported, and the bootstrap never writes one.
+    set -f
+    # shellcheck disable=SC2046 # one argument per line, split deliberately
+    set -- $(cat "$dir/args")
+    set +f
+    # `running` goes in before the spawn, so a run that finishes quickly writes
+    # its outcome over this line rather than the other way round. Until the pid
+    # lands, a caller reads `dead` and tries to start; the lock turns it away.
+    put "$state_file" running
+    # setsid so the run outlives the hook or the commit that started it, both
+    # of which the harness reaps.
+    if command -v setsid >/dev/null 2>&1; then
+        setsid nohup sh "$dir/bootstrap.sh" "$@" >"$dir/install.log" 2>&1 </dev/null &
+    else
+        nohup sh "$dir/bootstrap.sh" "$@" >"$dir/install.log" 2>&1 </dev/null &
+    fi
+    put "$pid_file" "$!"
+    rmdir "$lock" 2>/dev/null || true
+}
+
+case "$mode" in
+    --hook)
+        start >/dev/null 2>&1 || true
+        exit 0
+        ;;
+    --status)
+        read_state
+        exit 0
+        ;;
+esac
+
+limit=${2:-90}
+case "$limit" in '' | *[!0-9]*) limit=90 ;; esac
+t0=$(now_ms)
+start
+end=$(($(date +%s) + limit))
+while :; do
+    case "$(read_state)" in
+        done | degraded)
+            echo $(($(now_ms) - t0))
+            exit 0
+            ;;
+        failed)
+            echo $(($(now_ms) - t0))
+            exit 1
+            ;;
+        dead | pending) start ;;
+    esac
+    if [ "$(date +%s)" -ge "$end" ]; then
+        echo $(($(now_ms) - t0))
+        exit 2
+    fi
+    sleep 1
+done

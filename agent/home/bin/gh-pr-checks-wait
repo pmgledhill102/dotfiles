@@ -1,0 +1,57 @@
+#!/bin/sh
+# gh-pr-checks-wait — bounded wait-until-registered wrapper for `gh pr checks`.
+#
+# GitHub takes a variable 0-60s+ to register check runs after a PR is
+# created, and `gh pr checks --watch` treats "no checks yet" as terminal
+# ("no checks reported") rather than pending — there is no native flag to
+# wait for registration. This wrapper polls until at least one check exists
+# (5s interval, ~2 min cap), then execs the real `gh pr checks` with the
+# original arguments untouched.
+#
+# Fail-open: if checks never register inside the cap, it execs anyway and
+# the user sees gh's own error rather than a hang. All failure modes of the
+# probe (offline, bad selector, auth) fall through the same way.
+#
+# Normally invoked via the prchecks-wait-claude-hook rewrite, but safe to
+# call directly: gh-pr-checks-wait <n> --watch [gh pr checks flags...]
+
+set -u
+
+# Probe with the original selector/repo args, minus the watch/display flags
+# that conflict with --json. gh pr checks arguments never contain whitespace
+# (PR number/URL/branch, -R owner/repo, flags), so a word-split rebuild is
+# safe here.
+probe_args=""
+skip_next=""
+for a in "$@"; do
+  if [ -n "$skip_next" ]; then skip_next=""; continue; fi
+  case "$a" in
+    --watch|--fail-fast|-w|--web) ;;
+    -i|--interval) skip_next=1 ;;
+    --interval=*) ;;
+    *) probe_args="$probe_args $a" ;;
+  esac
+done
+
+tries=0
+misses=0
+while [ "$tries" -lt 24 ]; do
+  # shellcheck disable=SC2086  # intentional word-split, see above
+  out=$(gh pr checks $probe_args --json name --jq 'length' 2>&1)
+  case "$out" in
+    [1-9]*)
+      break ;;                    # one or more checks registered — done waiting
+    0|*"no checks reported"*)
+      ;;                          # registration pending — keep polling
+    *)
+      # Some other failure (bad selector, offline, auth): the wait can't
+      # help, so give up after a few consecutive misses instead of sitting
+      # out the full cap before surfacing gh's real error.
+      misses=$((misses + 1))
+      [ "$misses" -ge 3 ] && break ;;
+  esac
+  tries=$((tries + 1))
+  sleep 5
+done
+
+exec gh pr checks "$@"

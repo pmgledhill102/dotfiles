@@ -1,0 +1,105 @@
+#!/bin/sh
+# credguard-claude-hook — Claude Code PreToolUse(Bash) hook.
+#
+# Blocks the Bash commands that print a live credential where the transcript,
+# or another process, can read it. Three token-printing gcloud forms, and an
+# `Authorization: Bearer` header anywhere in a command — the latter because
+# /proc/<pid>/cmdline is world-readable, so a token passed as an argument is
+# exposed to every other process on the box for the life of the call (#375).
+# The one carve-out is the body of a heredoc fed to cat, tee or an interpreter
+# (#691), which travels on stdin rather than in argv.
+#
+# THIS IS A GUARDRAIL, NOT A SECURITY BOUNDARY. It matches strings in a Bash
+# command, and that is evadable by eval, variable indirection, $(printf …),
+# aliases and odd quoting. It is not trying to contain a hostile agent; it is
+# trying to stop drift, and to stop a COMPLIANT agent faithfully following
+# installed instruction text that tells it to print a token — which is the
+# accident #439 found shipped in a third-party skill. Do not make it clever
+# enough to look airtight, because that invites someone to trust it as
+# containment (#440).
+#
+# Why a hook and not just permissions.deny: the permission allowlist travels
+# only in a repo's own .claude/settings.json, so `deny` never reaches a cloud
+# sandbox — which is the surface a brokered token actually lives on. The deny
+# block is the workstation half; this hook is the half that reaches both.
+#
+# Fail-open by design, following prepush-guard-claude-hook's precedent: no jq
+# or an unreadable payload allows the call. A guard that breaks the session
+# when it cannot parse something gets removed, and then guards nothing.
+#
+# exit 2 is the only code that both stops the call and feeds stderr back to
+# Claude, so the model learns why rather than retrying blind.
+
+set -u
+
+command -v jq >/dev/null 2>&1 || exit 0
+payload=$(cat)
+cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty')
+[ -n "$cmd" ] || exit 0
+
+# Collapse newlines, tabs and runs of spaces so a padded flag cannot slip a
+# form past a matcher written for single spaces. The `sed` is what handles a
+# line continuation: turning the newline into a space leaves the backslash
+# behind, and `gcloud auth \ print-access-token` then matches nothing.
+normalise() { tr '\n\t' '  ' | sed 's/\\ / /g' | tr -s ' '; }
+norm=$(printf '%s' "$cmd" | normalise)
+
+# The bearer check reads the command with the bodies of data heredocs removed.
+# `cat > f <<'EOF'` and `python3 - <<'PY'` carry their body on stdin, never in
+# argv, so a header written into a file or a script is not the /proc exposure
+# this check exists for (#691). Only consumers that are not a shell qualify:
+# the body of `bash <<EOF` is code, and a `curl -H` inside it is argv, so a
+# line naming a shell keeps its body in view. An unterminated heredoc is left
+# whole rather than guessed at, and the gcloud check below still reads the
+# unstripped command.
+#
+# This is a heuristic, not a parser (#440): `python3` can shell out to curl
+# from inside its own body, which the test records as allowed.
+stripped=$(printf '%s\n' "$cmd" | awk '
+function flush(   i) { for (i = 1; i <= n; i++) print buf[i]; n = 0 }
+BEGIN { q = sprintf("%c", 39) }
+{
+    if (hd) {
+        t = $0
+        if (dash) sub(/^\t+/, "", t)
+        if (t == term) { hd = 0; n = 0; next }
+        buf[++n] = $0
+        next
+    }
+    print $0
+    if (!match($0, /<<-?[ \t]*[^ \t;|&<>)]+/)) next
+    if (RSTART > 1 && substr($0, RSTART - 1, 1) == "<") next
+    pre = substr($0, 1, RSTART - 1)
+    tok = substr($0, RSTART, RLENGTH)
+    if (pre !~ /(^|[;&|(`])[ \t]*(cat|tee|python[0-9.]*|node|ruby|perl)([ \t]|$)/) next
+    if ($0 ~ /(^|[^A-Za-z0-9_.-])(sh|bash|zsh|dash|ksh)([ \t]|$)/) next
+    dash = (tok ~ /^<<-/)
+    sub(/^<<-?[ \t]*/, "", tok)
+    gsub(q, "", tok); gsub(/"/, "", tok); gsub(/\\/, "", tok)
+    if (tok == "") next
+    term = tok; hd = 1; n = 0
+}
+END { if (hd) flush() }
+')
+norm_bearer=$(printf '%s' "$stripped" | normalise)
+
+# Interleaved flags are the point of the `( +-[^ ]+)*` runs: `gcloud --quiet
+# auth print-access-token` and `gcloud auth --project x print-access-token`
+# are the same command as the bare form.
+gcloud_token='gcloud( +-[^ ]+)* +auth( +-[^ ]+)*( +application-default( +-[^ ]+)*)? +print-(access|identity)-token'
+
+blocked=""
+if printf '%s' "$norm" | grep -Eq -- "$gcloud_token"; then
+    blocked="a gcloud token-printing command"
+elif printf '%s' "$norm_bearer" | grep -Eqi -- 'authorization: *bearer'; then
+    blocked="an Authorization: Bearer header in argv"
+fi
+
+[ -n "$blocked" ] || exit 0
+
+# shellcheck disable=SC2016  # deliberate: the backticks are prose, not a
+# substitution -- and a finding here makes shellcheck echo this line, which
+# fails outright under an unset locale because the message contains an em dash.
+printf 'blocked: %s.\n\nPrinting a live credential puts it in the transcript, and a token passed as\nan argument is readable by every process on the machine via /proc/<pid>/cmdline.\n\nUse the broker instead: the gcp-credentials skill installs a short-lived token\nstraight to disk, where nothing has to echo it. For an API call, let gcloud or\nthe client library attach the credential rather than building the header by\nhand.\n\n(`gcloud auth list` is fine and is allowlisted — it prints no secret.)\n' \
+    "$blocked" >&2
+exit 2

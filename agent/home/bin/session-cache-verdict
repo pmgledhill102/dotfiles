@@ -1,0 +1,152 @@
+#!/bin/sh
+# session-cache-verdict — did this session rebuild its environment, or restore a
+# cached snapshot?
+#
+# WHY THIS EXISTS. A cloud environment runs its setup script once, snapshots the
+# filesystem, and reuses that snapshot for later sessions — re-running the script
+# only when its text changes, the allowed hosts change, or the cache expires
+# after roughly seven days. Nothing in a session says which of the two happened.
+#
+# That one bit decides real questions. On a cache hit, tools installed at build
+# time cost almost no wall-clock, so the case for deferring them rests on disk
+# and setup-limit headroom rather than on speed. Nobody can weigh that without
+# knowing how often a rebuild actually happens (#430, #323).
+#
+# IT MUST RUN EARLY, which is why it is a SessionStart hook rather than something
+# start-session works out when asked. The fallback method below compares the
+# bootstrap's install time against now; run twenty minutes into a session, that
+# arithmetic says "hours ago" for a container that rebuilt at startup. The answer
+# is only true if it is taken at the start.
+#
+# Writes $HOME/.agents/.session-marker and prints nothing. A SessionStart hook's
+# stdout reaches the agent's context, and a line of build trivia at the top of
+# every session is a cost paid every time for something read occasionally.
+#
+# Exits 0 always. This is instrumentation: it must never be the reason a session
+# fails to start.
+
+set -u
+
+MANIFEST="$HOME/.agents/.bootstrap-manifest"
+MARKER="$HOME/.agents/.session-marker"
+
+# No manifest means a workstation, or a container built before manifests
+# existed. Neither is a problem to report, and leaving early is also what keeps
+# this a no-op on a machine with no jq.
+[ -f "$MANIFEST" ] || exit 0
+
+# The hook payload arrives on stdin as JSON. Read it before anything can block:
+# a hook that never drains stdin can leave the caller writing into a full pipe.
+# `|| true` because no stdin at all (a hand-run for testing) is legitimate.
+PAYLOAD=$(cat 2> /dev/null || true)
+
+field() { # field <key> -- from the payload, or empty
+    [ -n "$PAYLOAD" ] || return 0
+    command -v jq > /dev/null 2>&1 || return 0
+    printf '%s' "$PAYLOAD" | jq -r --arg k "$1" '.[$k] // empty' 2> /dev/null || true
+}
+
+manifest_field() { sed -n "s/^$1=//p" "$MANIFEST" 2> /dev/null || true; }
+
+SESSION_ID=$(field session_id)
+SOURCE=$(field source)
+BUILT_IN=$(manifest_field built_in_session)
+INSTALLED_AT=$(manifest_field installed_at)
+REF=$(manifest_field ref)
+SHA=$(manifest_field sha)
+DURATION=$(manifest_field duration_seconds)
+
+# Which client started the session. The value is a fixed token or `other`,
+# never the variable's text: the marker is spooled whole by `agent-telemetry
+# record`, which filters nothing, so this is the only place it is restricted.
+# It is where the session STARTED: one opened on a phone and continued on a
+# desktop reads as mobile throughout.
+case "${CLAUDE_CODE_ENTRYPOINT:-}" in
+    "") ENTRYPOINT=unknown ;;
+    cli | sdk-cli | sdk-ts | sdk-py | claude-vscode | claude-desktop | claude-desktop-3p | \
+        claude-in-slack | local-agent | remote | remote_desktop | remote_mobile)
+        ENTRYPOINT=$CLAUDE_CODE_ENTRYPOINT
+        ;;
+    *) ENTRYPOINT=other ;;
+esac
+
+NOW_S=$(date +%s 2> /dev/null || echo 0)
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ 2> /dev/null || echo unknown)
+
+# Written once per session. A `resume` fires SessionStart again, and recomputing
+# then would compare a days-old install against a fresh clock and report a
+# rebuild as a hit. The first observation is the only true one, so it stands.
+if [ -f "$MARKER" ]; then
+    prev=$(sed -n 's/^session_id=//p' "$MARKER" 2> /dev/null || true)
+    if [ -n "$SESSION_ID" ] && [ "$prev" = "$SESSION_ID" ]; then
+        exit 0
+    fi
+    # A different session id in a container that already holds a marker is a
+    # cache hit by definition: the marker came with the snapshot.
+fi
+
+# --- the verdict --------------------------------------------------------------
+#
+# Two methods, and which one was used is recorded, because they are not equally
+# trustworthy and a reader should not have to guess.
+#
+# EXACT: the bootstrap recorded the session it built for. If that is this
+# session, the setup script ran for it; if it is any other session, this
+# container restored a snapshot built for someone else. No clocks involved.
+#
+# HEURISTIC: no session id was available at build time, so fall back to elapsed
+# time since the install. This is genuinely ambiguous in one case — a session
+# started minutes after another rebuilt the cache restores a snapshot whose
+# install is minutes old, and reads as a rebuild. The threshold bounds that
+# window rather than closing it, and `method=heuristic` is the flag that says so.
+METHOD=heuristic
+VERDICT=unknown
+AGE=
+
+if [ -n "$INSTALLED_AT" ]; then
+    # GNU first, BSD second: the same pattern the rest of the estate uses for
+    # date and stat. A parse failure leaves AGE empty rather than zero, so
+    # "could not tell" never reads as "installed this instant".
+    installed_s=$(date -d "$INSTALLED_AT" +%s 2> /dev/null ||
+        date -j -f %Y-%m-%dT%H:%M:%SZ "$INSTALLED_AT" +%s 2> /dev/null || true)
+    if [ -n "$installed_s" ] && [ "$NOW_S" -gt 0 ]; then
+        AGE=$(( NOW_S - installed_s ))
+    fi
+fi
+
+if [ -n "$BUILT_IN" ] && [ "$BUILT_IN" != unknown ] && [ -n "$SESSION_ID" ]; then
+    METHOD=exact
+    if [ "$BUILT_IN" = "$SESSION_ID" ]; then
+        VERDICT=rebuild
+    else
+        VERDICT=hit
+    fi
+elif [ -n "$AGE" ]; then
+    # 300s is the platform's own setup-script limit, so a run that produced this
+    # container cannot have finished longer ago than that plus launch time.
+    if [ "$AGE" -le 300 ]; then
+        VERDICT=rebuild
+    else
+        VERDICT=hit
+    fi
+fi
+
+# Evidence, not just the verdict: a future reader disagreeing with the call can
+# recompute it, which a bare `cache=hit` would not allow.
+{
+    echo "cache=$VERDICT"
+    echo "method=$METHOD"
+    echo "session_id=${SESSION_ID:-unknown}"
+    echo "session_source=${SOURCE:-unknown}"
+    echo "entrypoint=$ENTRYPOINT"
+    echo "observed_at=$NOW_ISO"
+    echo "bootstrap_installed_at=${INSTALLED_AT:-unknown}"
+    echo "bootstrap_built_in_session=${BUILT_IN:-unknown}"
+    echo "bootstrap_age_seconds=${AGE:-unknown}"
+    echo "bootstrap_duration_seconds=${DURATION:-unknown}"
+    echo "ref=${REF:-unknown}"
+    echo "sha=${SHA:-unknown}"
+} > "$MARKER.tmp" 2> /dev/null || exit 0
+mv "$MARKER.tmp" "$MARKER" 2> /dev/null || true
+
+exit 0

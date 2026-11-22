@@ -1,0 +1,357 @@
+#!/usr/bin/env bash
+# end-session-gather-state — parallel read-only state gather for /end-session.
+#
+# Runs `git fetch` first, then fans out independent read-only queries in
+# parallel, and collates results into a single sectioned stdout stream that
+# /end-session's Phase 1 consumes in one tool call.
+#
+# Output protocol (stdout):
+#   ===<section> (exit=<N>)===
+#   <section stdout+stderr>
+#
+# Progress pings go to stderr so a human watching sees something move;
+# parseable data is stdout-only.
+#
+# Exit codes per section are preserved so the agent can distinguish silent
+# skips ("gh-unavailable") from real errors.
+#
+# See docs/end-session-design.md for the reasoning.
+
+set -uo pipefail
+
+progress() { printf '[gather] %s\n' "$*" >&2; }
+
+# --- Phase 0: resolve the repo ------------------------------------------
+# The pre-flight used to live in the skill text as a bare `git rev-parse`,
+# which stopped the command whenever cwd was not itself a repo. A container
+# handed several repos as siblings starts the session in their parent, so that
+# stopped on a session that plainly had a repo one level down.
+#
+# Same helper, same verdict, same handling as start-session-gather-state — the
+# resolution is identical on both surfaces and in both commands, so it is one
+# script rather than four copies (ADR-0018 principle 8, step 0).
+RESOLVE_OUT=$("$(dirname "$0")/session-repo-resolve" 2>/dev/null)
+RESOLVE_STATE=$(printf '%s\n' "$RESOLVE_OUT" | sed -n 's/^state=//p' | head -1)
+
+# A container installed before session-repo-resolve existed has no helper to
+# run. Degrade to the old inline check rather than reporting every repo as
+# unresolvable.
+if [ -z "$RESOLVE_STATE" ]; then
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        RESOLVE_STATE=cwd
+    else
+        RESOLVE_STATE=none
+    fi
+fi
+
+# count_unpushed <repo> — commits on local branches that no remote holds.
+#
+# --branches --not --remotes: commits on any local branch that no
+# remote-tracking ref holds. Unlike @{u}..HEAD it needs neither a checked-out
+# branch nor a configured upstream, and it sees every branch rather than the
+# current one.
+#
+# It judges against *locally known* refs, so a branch merged on GitHub with its
+# remote branch deleted reads as unpushed while the local origin/<default>
+# predates the merge. A zero needs no network and gets none. A non-zero earns
+# one fetch and a re-count, and `git cherry` against origin/<default> then
+# drops commits whose patch the default branch already carries — which is what
+# a squash or rebase merge leaves behind. If the fetch fails the count cannot
+# be verified, so it is reported as the local count, labelled, never as zero.
+count_unpushed() {
+    local repo=$1 n def b plus
+    n=$(git -C "$repo" log --branches --not --remotes --format=%H 2>/dev/null | grep -c . || true)
+    if [ "$n" -eq 0 ]; then
+        printf '0'
+        return
+    fi
+    if ! GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes}" \
+        git -C "$repo" fetch --quiet origin >/dev/null 2>&1; then
+        printf '%s (refs unfetched)' "$n"
+        return
+    fi
+    def=$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
+    if [ -z "$def" ]; then
+        for b in origin/main origin/master; do
+            if git -C "$repo" rev-parse --verify --quiet "$b" >/dev/null; then
+                def=$b
+                break
+            fi
+        done
+    fi
+    if [ -z "$def" ]; then
+        git -C "$repo" log --branches --not --remotes --format=%H 2>/dev/null | grep -c . || true
+        return
+    fi
+    # Count a commit only when it is still on no remote after the fetch AND
+    # `git cherry` marks it "+" (no equivalent patch upstream) on some branch.
+    plus=$(git -C "$repo" for-each-ref --format='%(refname:short)' refs/heads \
+        | while IFS= read -r b; do
+            git -C "$repo" cherry "$def" "$b" 2>/dev/null
+        done | sed -n 's/^+ //p')
+    if [ -z "$plus" ]; then
+        printf '0'
+        return
+    fi
+    # Newline-separated -e patterns are a pattern list, one SHA per line.
+    git -C "$repo" log --branches --not --remotes --format=%H 2>/dev/null \
+        | grep -cFx -e "$plus" || true
+}
+
+RESOLVED_REPO=""
+case "$RESOLVE_STATE" in
+    cwd)
+        : # ordinary case: the session is already standing in the repo
+        ;;
+    resolved-child)
+        RESOLVED_REPO=$(printf '%s\n' "$RESOLVE_OUT" | sed -n 's/^repo=//p' | head -1)
+        cd "$RESOLVED_REPO" || {
+            printf '===not_a_git_repo (exit=1)===\n'
+            printf 'resolved %s but could not enter it — nothing to tidy.\n\n' "$RESOLVED_REPO"
+            exit 1
+        }
+        ;;
+    ambiguous)
+        # Several candidates is the one case the script must not decide. It
+        # reports them and stops; the skill asks which.
+        #
+        # Every candidate is probed, not just the one that will be chosen
+        # (#450). Tidy-up happens in one repo, but the three kinds of state
+        # that a reclaimed container destroys — dirty tree, unpushed commits,
+        # stashes — exist per repo, and a repo nobody chose is a repo nobody
+        # looked at. The probes are local-first: status, a log of commits on
+        # no remote, and the stash list. Only a non-zero unpushed count goes
+        # to the network, via count_unpushed below.
+        printf '===repo_candidates (exit=2)===\n'
+        printf 'cwd=%s\n' "$(pwd)"
+        printf '%s\n' "$RESOLVE_OUT" | sed -n 's/^candidate=//p' | while IFS= read -r c; do
+            [ -n "$c" ] || continue
+            dirty=$(git -C "$c" status --porcelain=v1 2>/dev/null | grep -c . || true)
+            unpushed=$(count_unpushed "$c")
+            stashes=$(git -C "$c" stash list 2>/dev/null | grep -c . || true)
+            printf 'candidate=%s dirty=%s unpushed=%s stashes=%s\n' \
+                "$c" "$dirty" "$unpushed" "$stashes"
+        done
+        printf '\n'
+        exit 2
+        ;;
+    *)
+        printf '===not_a_git_repo (exit=1)===\n'
+        printf 'end-session requires a git-backed repo — nothing to tidy.\n\n'
+        exit 1
+        ;;
+esac
+
+TMP=$(mktemp -d -t end-session-gather.XXXXXX)
+trap 'rm -rf "$TMP"' EXIT
+
+# --- Phase 1: git fetch (blocks remote-aware sections below) ---
+progress "git fetch --all --prune --tags"
+git fetch --all --prune --tags >"$TMP/fetch.out" 2>&1
+FETCH_EXIT=$?
+progress "fetch exit=$FETCH_EXIT"
+
+# Owner/repo slug for explicit `gh -R` flags — same reasoning as
+# start-session-gather-state: repo inference is unreliable behind the cloud
+# sandbox's egress proxy (#257), and an explicit -R is deterministic
+# everywhere. Empty on a non-GitHub remote; the ${REPO_SLUG:+...} expansions
+# then collapse and gh falls back to inference.
+REPO_SLUG=$(git remote get-url origin 2>/dev/null | sed -n 's#.*github\.com[:/]##p' | sed 's#\.git$##')
+export REPO_SLUG
+
+# One repo-scoped auth probe for the gh sections below — same reasoning as
+# start-session-gather-state: gh can be installed yet policy-blocked from repo
+# data (the Claude cloud sandbox proxy authenticates identity endpoints but
+# 403s every repo-scoped API path, #273), and one gh-unauthorized sentinel
+# beats three separate 403 dumps. Costs one API round-trip when healthy.
+#
+# The REST probe does not license `gh pr list` / `gh issue list`: those ride
+# GraphQL, a separate lane the Claude Code proxy blocks for every session while
+# repo-scoped REST can pass (#600). GH_ISSUES_API probes GraphQL itself, once,
+# and only after REST passed.
+GH_REPO_API=unavailable
+GH_ISSUES_API=unavailable
+if command -v gh >/dev/null 2>&1 && [ -n "$REPO_SLUG" ]; then
+    if gh api "repos/$REPO_SLUG" --jq .id >/dev/null 2>&1; then
+        GH_REPO_API=ok
+        if gh api graphql -f query='{viewer{login}}' >/dev/null 2>&1; then
+            GH_ISSUES_API=ok
+        fi
+    fi
+fi
+export GH_REPO_API GH_ISSUES_API
+
+# --- Phase 2: parallel fan-out of independent reads ---
+# Each helper runs the command, captures stdout+stderr into <name>.out and
+# the exit code into <name>.exit. The subshell backgrounds with &.
+
+run_section() {
+    local name=$1
+    shift
+    (
+        "$@" >"$TMP/$name.out" 2>&1
+        echo $? >"$TMP/$name.exit"
+    ) &
+}
+
+run_sh() {
+    # Variant for shell pipelines. First arg is section name, second is the
+    # pipeline as a single string passed to `sh -c`.
+    local name=$1
+    local script=$2
+    (
+        sh -c "$script" >"$TMP/$name.out" 2>&1
+        echo $? >"$TMP/$name.exit"
+    ) &
+}
+
+# shellcheck disable=SC2016  # Intentional single quotes: expansion happens inside `sh -c`.
+run_sh local_state '
+    echo "pwd=$(pwd)"
+    echo "branch=$(git branch --show-current)"
+    echo "---status---"
+    git status --porcelain=v1 --branch
+    echo "---unpushed (vs @{u})---"
+    git log @{u}..HEAD --oneline 2>/dev/null | head -20
+    echo "---origin---"
+    git remote get-url origin 2>&1
+'
+
+run_section stashes git stash list
+run_section worktrees git worktree list
+
+run_sh merged_brs "
+    git branch --merged origin/main --format='%(refname:short)' \
+      | grep -vE '^(main|master|HEAD)\$' || true
+"
+
+# NOTE: main_ci was removed here deliberately (#273). Eager repo-wide CI
+# status cost ~104K tokens via the MCP fallback and answered a question
+# /end-session rarely acts on. CI now belongs on-demand, scoped to the PR(s)
+# actually touched this session, via the harness's GitHub tools. See
+# docs/end-session-design.md.
+
+# shellcheck disable=SC2016  # Intentional single quotes: expansion happens inside `sh -c`.
+run_sh open_prs '
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "gh-unavailable"
+        exit 1
+    fi
+    if [ "$GH_REPO_API" != "ok" ] || [ "$GH_ISSUES_API" != "ok" ]; then
+        echo "gh-unauthorized"
+        exit 1
+    fi
+    gh pr list ${REPO_SLUG:+-R "$REPO_SLUG"} --author @me --state open \
+        --json number,title,isDraft,mergeable,statusCheckRollup,reviewDecision,url
+'
+
+# shellcheck disable=SC2016
+run_sh gh_assigned '
+    # My active work: open GitHub issues assigned to me. Output:
+    #   #<number> <title>
+    # one per line. Empty output = nothing in flight. Mirrors the
+    # gh_assigned section in start-session-gather-state (simpler row shape —
+    # /end-session only surfaces, it does not rank by priority).
+    if ! git remote get-url origin 2>/dev/null | grep -q "github.com"; then
+        echo "not-github"
+        exit 1
+    fi
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "gh-unavailable"
+        exit 1
+    fi
+    if [ "$GH_REPO_API" != "ok" ] || [ "$GH_ISSUES_API" != "ok" ]; then
+        echo "gh-unauthorized"
+        exit 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "jq-unavailable"
+        exit 1
+    fi
+    # Capture first: a pipe would report the exit status of jq, not gh, and
+    # turn a gh failure into exit=0 data.
+    issues=$(gh issue list ${REPO_SLUG:+-R "$REPO_SLUG"} --assignee @me --state open --limit 20 \
+        --json number,title) || exit 1
+    printf "%s\n" "$issues" | jq -r '\''.[] | "#\(.number) \(.title)"'\''
+'
+
+# shellcheck disable=SC2016
+run_sh stale_claude_files '
+    # Detect files in ~/.claude/commands or ~/.claude/bin that chezmoi
+    # does not know about — typical drift after a slash command rename
+    # (chezmoi only adds/updates; never removes from target unless exact=true).
+    if ! command -v chezmoi >/dev/null 2>&1; then
+        echo "chezmoi-unavailable"
+        exit 1
+    fi
+    managed=$(mktemp)
+    actual=$(mktemp)
+    trap "rm -f $managed $actual" EXIT
+    chezmoi managed --include=files 2>/dev/null \
+      | grep -E "^\.claude/(commands|bin)/" \
+      | sort > "$managed"
+    for d in commands bin; do
+        [ -d "$HOME/.claude/$d" ] || continue
+        find "$HOME/.claude/$d" -mindepth 1 -maxdepth 1 -type f \
+          | sed "s|^$HOME/||"
+    done | sort > "$actual"
+    # Output: each line is a stale path under .claude/. Empty = nothing stale.
+    comm -23 "$actual" "$managed"
+'
+
+# The broker client owns the question of what "created under this grant" means,
+# so this section only has to find the helper and relay its answer. Resolving it
+# by hand rather than trusting PATH: the bootstrap installs it to /usr/local/bin
+# and links ~/.claude/bin, and neither is guaranteed to be on a login PATH.
+# shellcheck disable=SC2016  # Intentional single quotes: expansion happens inside `sh -c`.
+run_sh gcp_projects '
+    for c in gcp-credentials "$HOME/.claude/bin/gcp-credentials" /usr/local/bin/gcp-credentials; do
+        if command -v "$c" > /dev/null 2>&1; then
+            out=$("$c" created 2>&1) || out=""
+            # A container pins the helper at the SHA its bootstrap ran, while
+            # the skill arrives with whatever composed it, so a helper with no
+            # `created` subcommand is a normal state rather than a fault -- it
+            # answers with a usage dump on stderr. Anything that is not the
+            # documented contract is reported as one value the skill can render,
+            # instead of leaking an error into a section that promises state=.
+            case "$out" in
+                state=*) printf "%s\n" "$out" ;;
+                *) echo "state=helper-too-old" ;;
+            esac
+            exit 0
+        fi
+    done
+    echo "state=helper-unavailable"
+'
+
+wait
+progress "all sections complete"
+
+# --- Emit consolidated output ---
+emit() {
+    local name=$1
+    local exit_code
+    exit_code=$(cat "$TMP/$name.exit" 2>/dev/null || echo "n/a")
+    printf '===%s (exit=%s)===\n' "$name" "$exit_code"
+    cat "$TMP/$name.out" 2>/dev/null
+    printf '\n'
+}
+
+# Only present when the repo was not the one the caller was standing in —
+# there is nothing to report when cwd was already the repo, and the caller
+# needs to chdir here itself, since this script's own cd died with it.
+if [ -n "$RESOLVED_REPO" ]; then
+    printf '===repo_resolution (exit=0)===\n'
+    printf 'state=resolved-child\n'
+    printf 'repo=%s\n' "$RESOLVED_REPO"
+    printf 'name=%s\n' "$(basename "$RESOLVED_REPO")"
+    printf '\n'
+fi
+
+printf '===fetch (exit=%s)===\n' "$FETCH_EXIT"
+cat "$TMP/fetch.out"
+printf '\n'
+
+for s in local_state stashes worktrees merged_brs open_prs gh_assigned stale_claude_files gcp_projects; do
+    [ -f "$TMP/$s.exit" ] && emit "$s"
+done

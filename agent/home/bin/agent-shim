@@ -1,0 +1,179 @@
+#!/bin/sh
+# agent-shim — times one toolchain binary and records the call (#625).
+#
+# Installed once; each shimmed tool is a symlink to it in ~/.claude/bin/shims/,
+# which the SessionStart hook puts ahead of the real binaries on PATH. The tool
+# is the name this was invoked as.
+#
+# For each call it runs the real tool, then spools
+#   agent-telemetry event shim <tool> duration_ms= exit_code= via= blocked_ms=
+# `via` is git-hook when an ancestor process is git or pre-commit, else direct
+# (unknown where there is no /proc). `blocked_ms` is the time spent waiting on
+# the deferred toolchain install (--toolchain=background, #631): a tool not on
+# PATH yet, in a container that deferred its toolchain, waits for that install
+# through toolchain-start rather than failing as absent. 0 everywhere else.
+# Metadata only: no argument, path or output is recorded.
+#
+# `git` is shimmed only to see the first commit of a session: every other git
+# command is exec'd straight through, untimed and unrecorded.
+#
+# The tool runs in the FOREGROUND, not as `tool & wait`. A non-interactive
+# shell starts background jobs with stdin on /dev/null and SIGINT/SIGQUIT
+# ignored, and an ignored signal cannot be un-ignored downstream, so Ctrl-C
+# would stop reaching the tool. In the foreground stdin, the terminal and
+# group-wide signals all reach it unchanged. The cost: a signal sent to this
+# shim's pid alone is not forwarded (TERM and HUP kill the shim and leave the
+# tool running, exactly as they would a shell running it).
+#
+# THE TOOL'S BEHAVIOUR NEVER DEPENDS ON TELEMETRY. Recording happens after the
+# tool exits, in a detached subshell with stdio on /dev/null, and its failure
+# changes nothing: the exit code is the tool's, and nothing is printed.
+
+tool=${0##*/}
+case "$0" in */*) shim_dir=${0%/*} ;; *) shim_dir=. ;; esac
+
+# The real tool: the first executable of this name on PATH that is not this
+# shim. Skipping by identity (-ef) as well as by directory is what stops a
+# second route to the shim dir (a symlinked copy of it on PATH) recursing.
+resolve_real() {
+    real=""
+    _ifs=$IFS
+    # nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- deliberate colon IFS to walk PATH below, restored to _ifs right after.
+    IFS=:
+    set -f
+    for _d in $PATH; do
+        [ -n "$_d" ] || _d=.
+        [ "$_d" = "$shim_dir" ] && continue
+        _c="$_d/$tool"
+        if [ -f "$_c" ] && [ -x "$_c" ] && ! [ "$_c" -ef "$0" ]; then
+            real=$_c
+            break
+        fi
+    done
+    set +f
+    # nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- restores the IFS saved in _ifs before the PATH walk.
+    IFS=$_ifs
+}
+resolve_real
+
+blocked_ms=0
+if [ -z "$real" ]; then
+    # Not installed YET is different from not installed: a container that
+    # deferred its toolchain is still installing it. Wait for that, bounded
+    # under an agent's 120 s foreground timeout, then look again.
+    tc=${TOOLCHAIN_DIR:-$HOME/.agents/toolchain}
+    if [ "$tool" != git ] && [ -x "$tc/start" ] && [ -f "$tc/args" ]; then
+        echo "$tool: waiting for the background toolchain install ($tc/install.log)" >&2
+        blocked_ms=$(TOOLCHAIN_DIR=$tc "$tc/start" --wait "${TOOLCHAIN_WAIT_S:-75}" 2>/dev/null) || true
+        case "$blocked_ms" in '' | *[!0-9]*) blocked_ms=0 ;; esac
+        resolve_real
+        if [ -z "$real" ]; then
+            echo "$tool: not installed: the background toolchain install has not provided it (state: $(TOOLCHAIN_DIR=$tc "$tc/start" --status 2>/dev/null); manifest: $tc/manifest)" >&2
+            exit 127
+        fi
+    fi
+fi
+
+if [ -z "$real" ]; then
+    # What a shell says for a missing command, and its status.
+    echo "$tool: command not found" >&2
+    exit 127
+fi
+
+if [ "$tool" = git ]; then
+    # The subcommand is the first word that is not a global option. -C and -c
+    # take a separate value; every other global option is self-contained.
+    _skip=0
+    _sub=""
+    for _a in "$@"; do
+        if [ "$_skip" -eq 1 ]; then _skip=0; continue; fi
+        case "$_a" in
+            -C | -c) _skip=1 ;;
+            -*) ;;
+            *) _sub=$_a; break ;;
+        esac
+    done
+    [ "$_sub" = commit ] || exec "$real" "$@"
+fi
+
+# now_ms — sets T to a millisecond clock. /proc/uptime is read with a builtin,
+# because a `date` fork costs about as much as the whole rest of the shim; its
+# resolution is 10 ms, which is fine for waits that matter in seconds. date is
+# the fallback where there is no /proc.
+now_ms() {
+    if IFS=' .' read -r _up _cs _ < /proc/uptime 2> /dev/null; then
+        T=$((_up * 1000 + ${_cs#0} * 10))
+    else
+        T=$(date +%s 2> /dev/null)000
+    fi
+}
+
+# via: walk the ancestors through /proc with builtins only (no fork per level).
+via=unknown
+if [ -r "/proc/$$/stat" ]; then
+    via=direct
+    _p=$PPID
+    _n=0
+    while [ "$_p" -gt 1 ] 2> /dev/null && [ "$_n" -lt 32 ]; do
+        IFS= read -r _st < "/proc/$_p/stat" 2> /dev/null || break
+        _comm=${_st#*(}
+        _comm=${_comm%)*}
+        case "$_comm" in
+            git | pre-commit) via=git-hook; break ;;
+        esac
+        _rest=${_st##*) }
+        _rest=${_rest#* }
+        _p=${_rest%% *}
+        _n=$((_n + 1))
+    done
+fi
+
+# A handler rather than the default, so a Ctrl-C to the whole group leaves this
+# shim alive to collect the tool's status. Handlers reset to default across
+# exec, so the tool still receives the signal normally.
+_sig=""
+trap '_sig=INT' INT
+trap '_sig=QUIT' QUIT
+
+# From here the shim's own stderr is /dev/null and the tool gets the real one
+# through fd 4. dash reports a child killed by a signal ("Terminated") on
+# whatever its stderr is when it gets round to it, which can be after a
+# command's own redirection has been undone, so only a shim whose stderr stays
+# closed off keeps that line out of the tool's output. The subshell is what
+# keeps the tool's redirection out of the shim's process; exec makes it the
+# tool rather than a second waiting shell.
+exec 4>&2 2> /dev/null
+now_ms
+t0=$T
+(exec "$real" "$@" 2>&4 4>&-)
+rc=$?
+now_ms
+t1=$T
+
+(
+    trap '' HUP INT QUIT
+    state="${AGENT_TELEMETRY_HOME:-$HOME/.agents/telemetry}/shims"
+    mkdir -p "$state/first-use" 2> /dev/null || exit 0
+    # Epoch seconds at the call's start, for the first-use stamps. Off the
+    # caller's path, so the fork costs nothing.
+    _s=$(($(date +%s) - (t1 - t0) / 1000))
+    if [ "$tool" = git ]; then
+        [ "$rc" -ne 0 ] || [ -f "$state/first-commit" ] || echo "$_s" > "$state/first-commit"
+        exit 0
+    fi
+    [ -f "$state/first-use/$tool" ] || echo "$_s" > "$state/first-use/$tool"
+    helper="$shim_dir/../agent-telemetry"
+    [ -x "$helper" ] || exit 0
+    "$helper" event shim "$tool" duration_ms=$((t1 - t0)) exit_code="$rc" via="$via" blocked_ms="$blocked_ms"
+) < /dev/null > /dev/null 2>&1 4>&- &
+
+# A tool killed by the signal makes the shim exit the same way, so a caller
+# that checks for "killed by SIGINT" (a shell, make, pre-commit) still sees it.
+# A tool that caught it and exited normally keeps its own status.
+case "$_sig:$rc" in
+    INT:130 | QUIT:131)
+        trap - "$_sig"
+        kill "-$_sig" $$
+        ;;
+esac
+exit "$rc"

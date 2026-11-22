@@ -1,0 +1,751 @@
+#!/bin/sh
+# agent-telemetry — spool metadata about an agent session locally, and ship it
+# to the telemetry ingest (ADR 026 in the private infrastructure repository)
+# when one is configured.
+#
+#   event <source> <name> [key=value ...]
+#       Append one JSON line to the spool. Keys must be in ALLOWED_KEYS below;
+#       anything else is dropped with one stderr line. This allowlist is the
+#       metadata-only guarantee skill step records (#629) rely on: no free text
+#       gets in by naming a new key, and values are charset-restricted and
+#       length-capped, so a prompt cannot be smuggled through a permitted one.
+#       Costs a few milliseconds: one jq, no per-value forks.
+#   record <kind> <file>
+#       Append a file to the spool under <kind>. A key=value file (the
+#       bootstrap manifest, the session marker) becomes ONE record with a
+#       "fields" object; a file of JSON objects becomes one record per line.
+#       For our own metadata files only: unlike `event`, nothing filters it.
+#   session-end [key=value ...]
+#       The end-session record: `event`, plus the fields a model should not be
+#       trusted to recompute (duration, cache verdict, degraded capabilities,
+#       read from the session marker and the bootstrap manifest), preceded by
+#       a `session-shape` snapshot, then a final `ship`.
+#   session-shape
+#       One `session shape` event: cache verdict, session source, entrypoint,
+#       bootstrap sha and duration (from the session marker), and seconds from session
+#       start to the first commit and to each shimmed tool's first use (from
+#       agent-shim's state). A snapshot: it is emitted again at each throttled
+#       Stop and at session-end, and the latest one per session is the answer.
+#   ship [--background]
+#       Send unsent spool lines to /v1/records/<kind>. A byte offset in
+#       shipped.offset advances ONLY on a 2xx, so re-running after success
+#       sends nothing. 429/503: honour Retry-After and stop. Network error:
+#       stop silently; the next ship resumes.
+#   upload-transcript <path> [--background]
+#       Incrementally upload the tail of a session transcript. A reclaimed
+#       container never runs end-session, so an upload only at the end mostly
+#       never happens; instead each call sends [offset, size) as its own object
+#       through a signed URL and advances the offset only on success.
+#       Reassembly is concatenation in object-name order.
+#   status
+#       Spool size, offsets, last ship result, whether a URL and credential are
+#       configured. Never prints a secret.
+#
+# IT NEVER FAILS OR SLOWS ITS CALLER. Every error is swallowed after one stderr
+# line, and every subcommand exits 0 unless its arguments are invalid (2). With
+# no TELEMETRY_INGEST_URL it spools and ships nothing, silently: that is the
+# state until the environment is configured, and it is not an error.
+#
+# Configuration
+#   TELEMETRY_INGEST_URL   base URL of the ingest. Else the first line of
+#                          ~/.config/claude/telemetry/url.
+#   TELEMETRY_INGEST_KEY   how the write key reaches the request:
+#                            proxy-injected  send NO auth header; the
+#                                            environment's egress proxy attaches
+#                                            the key. The container never holds
+#                                            it (Claude cloud).
+#                            <anything else> the key itself, an environment
+#                                            secret (Codex cloud).
+#                            unset           the key in
+#                                            ~/.config/claude/telemetry/key,
+#                                            mode 0600 (local machines).
+#                          With none of these there is no credential and
+#                          nothing is shipped.
+#
+# THE KEY NEVER REACHES ARGV, STDOUT OR A LOG. It travels in a mode-0600 curl
+# --config file, as does the signed upload URL, which is a credential for its
+# 15-minute life. Process listings are readable by anything running as the same
+# user.
+#
+# State lives under ~/.agents/telemetry/ (override: AGENT_TELEMETRY_HOME).
+
+set -u
+
+PROG=agent-telemetry
+
+STATE="${AGENT_TELEMETRY_HOME:-$HOME/.agents/telemetry}"
+SPOOL="$STATE/spool.jsonl"
+SHIPPED="$STATE/shipped.offset"
+TRANSCRIPT_STATE="$STATE/transcript.offset"
+LAST_SHIP="$STATE/last-ship"
+LAST_UPLOAD="$STATE/last-upload"
+RETRY_UNTIL="$STATE/retry-until"
+MARKER="${AGENT_TELEMETRY_MARKER:-$HOME/.agents/.session-marker}"
+MANIFEST="${AGENT_TELEMETRY_MANIFEST:-$HOME/.agents/.bootstrap-manifest}"
+CONF_DIR="${AGENT_TELEMETRY_CONFIG:-$HOME/.config/claude/telemetry}"
+KEY_FILE="$CONF_DIR/key"
+URL_FILE="$CONF_DIR/url"
+
+# The ingest's per-request ceiling is 1 MiB; batches stay under it.
+BATCH_MAX=900000
+# One record file larger than this is not metadata and is not spooled.
+RECORD_MAX=524288
+# The spool stops growing here. An unset URL means nothing is ever shipped, and
+# a container that runs for weeks must not fill its disk with telemetry.
+SPOOL_MAX=33554432
+# The ingest's per-upload ceiling.
+UPLOAD_MAX=33554432
+HTTP_TIMEOUT=20
+CONNECT_TIMEOUT=5
+
+# Metadata-only. Adding a key here is the decision that something new may leave
+# the machine; it is deliberately a reviewed line, one block per consumer.
+ALLOWED_KEYS="phase step skill outcome result status duration_ms duration_s exit_code attempt count bytes lines files repo branch issue issues pr prs cache verdict kind tool ref sha profile tier mode version capability degraded surface"
+# Skill step records (#629): end-session steps and gather sections, and the
+# retrospective's run record. Counts and short tokens only.
+ALLOWED_KEYS="$ALLOWED_KEYS reason section sentinel prs_touched issues_closed issues_commented commits_pushed"
+ALLOWED_KEYS="$ALLOWED_KEYS proposals_total proposals_always_loaded proposals_description proposals_body proposals_addition proposals_removal proposals_amendment"
+ALLOWED_KEYS="$ALLOWED_KEYS issues_filed issues_filed_refs fixed_in_place journal_draft reviewed_open reviewed_completed reviewed_not_planned reviewed_reverted"
+# Watched wait time (#625): toolchain shim calls and the session shape. Times,
+# exit codes and tool names only; never an argument.
+ALLOWED_KEYS="$ALLOWED_KEYS via blocked_ms session_source bootstrap_duration_seconds first_commit_s first_use_s"
+# Which client started the session (#788): one of the fixed tokens
+# session-cache-verdict writes to the marker.
+ALLOWED_KEYS="$ALLOWED_KEYS entrypoint"
+
+umask 077
+
+TMPDIR_AT=""
+LOCK_HELD=""
+# Run by the traps below; ShellCheck reports it as unused regardless.
+# shellcheck disable=SC2329
+cleanup() {
+    [ -n "$TMPDIR_AT" ] && [ -d "$TMPDIR_AT" ] && rm -rf "$TMPDIR_AT"
+    [ -n "$LOCK_HELD" ] && rm -rf "$LOCK_HELD" 2> /dev/null
+    return 0
+}
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
+
+warn() { echo "$PROG: $*" >&2; }
+
+usage() {
+    cat >&2 <<'USAGE'
+usage:
+  agent-telemetry event <source> <name> [key=value ...]
+  agent-telemetry record <kind> <file>
+  agent-telemetry session-end [key=value ...]
+  agent-telemetry session-shape
+  agent-telemetry ship [--background]
+  agent-telemetry upload-transcript <path> [--background]
+  agent-telemetry status
+USAGE
+    exit 2
+}
+
+invalid() {
+    warn "$*"
+    exit 2
+}
+
+need_jq() {
+    command -v jq > /dev/null 2>&1 && return 0
+    warn "jq not found; nothing recorded"
+    return 1
+}
+
+now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ 2> /dev/null || echo unknown; }
+now_s() { date +%s 2> /dev/null || echo 0; }
+
+ensure_state() { mkdir -p "$STATE" 2> /dev/null; }
+
+# The session id the marker recorded, restricted to what the ingest accepts, or
+# _nosession. The ingest sanitises again; this keeps a bad value out of a header.
+session_id() {
+    _sid=$(sed -n 's/^session_id=//p' "$MARKER" 2> /dev/null | head -1)
+    case "$_sid" in
+        "" | unknown | *[!A-Za-z0-9-]*) echo _nosession ;;
+        *) printf '%s' "$_sid" | cut -c1-64 ;;
+    esac
+}
+
+# source and name are identifiers, not free text.
+valid_ident() {
+    case "$1" in
+        "" | [!a-z]* | *[!a-z0-9_.-]*) return 1 ;;
+    esac
+    [ "${#1}" -le 64 ]
+}
+
+# Kinds follow the ingest's rule (^[a-z][a-z0-9-]{0,31}$) and its reservations.
+valid_kind() {
+    case "$1" in
+        "" | [!a-z]* | *[!a-z0-9-]*) return 1 ;;
+        transcript | traces | metrics | logs) return 1 ;;
+    esac
+    [ "${#1}" -le 32 ]
+}
+
+# file_size <file> — bytes, or 0 when absent. Tested first because a failing
+# `< file` redirection is reported by the shell itself, before any 2>/dev/null
+# on the same command takes effect.
+file_size() {
+    if [ -f "$1" ]; then wc -c < "$1" | tr -d ' '; else echo 0; fi
+}
+
+spool_has_room() {
+    _sz=$(file_size "$SPOOL")
+    [ "$_sz" -lt "$SPOOL_MAX" ] && return 0
+    warn "spool is full ($SPOOL_MAX bytes); dropping"
+    return 1
+}
+
+# --- event --------------------------------------------------------------------
+
+# emit <kind> <source> <name> [key=value ...]  — shared by event and session-end.
+emit() {
+    _kind=$1
+    _src=$2
+    _name=$3
+    shift 3
+    need_jq || return 0
+    ensure_state || { warn "cannot create $STATE"; return 0; }
+    spool_has_room || return 0
+
+    # Rotate the arguments: keep allowlisted pairs as alternating key, value at
+    # the end of the positional list. Pure shell, so no fork per pair.
+    _n=$#
+    _i=0
+    _kept=0
+    while [ "$_i" -lt "$_n" ]; do
+        _kv=$1
+        shift
+        _i=$((_i + 1))
+        case "$_kv" in
+            *=*) ;;
+            *)
+                warn "ignoring '$_kv' (want key=value)"
+                continue
+                ;;
+        esac
+        _k=${_kv%%=*}
+        _v=${_kv#*=}
+        case " $ALLOWED_KEYS " in
+            *" $_k "*) ;;
+            *)
+                warn "dropped key '$_k' (not in the metadata allowlist)"
+                continue
+                ;;
+        esac
+        [ "$_kept" -lt 24 ] || { warn "dropped key '$_k' (more than 24 pairs)"; continue; }
+        set -- "$@" "$_k" "$_v"
+        _kept=$((_kept + 1))
+    done
+
+    # Values: unsafe characters become _, 120 characters at most, and a short
+    # integer is a number. Done in jq so it costs no extra process.
+    _line=$(jq -cn --arg kind "$_kind" --arg ts "$(now_iso)" --arg sid "$(session_id)" \
+        --arg src "$_src" --arg name "$_name" '
+        def clean: gsub("[^A-Za-z0-9._:/@+,#=-]"; "_") | .[0:120];
+        def val: clean | if test("^-?[0-9]{1,15}$") then tonumber else . end;
+        {kind: $kind, ts: $ts, session_id: $sid, source: $src, name: $name}
+        + ([$ARGS.positional as $p | range(0; $p | length; 2) | {($p[.]): ($p[. + 1] | val)}] | add // {})
+        ' --args "$@" 2> /dev/null) || { warn "could not build the record"; return 0; }
+    [ -n "$_line" ] || return 0
+    printf '%s\n' "$_line" >> "$SPOOL" 2> /dev/null || warn "could not write $SPOOL"
+    return 0
+}
+
+cmd_event() {
+    [ $# -ge 2 ] || usage
+    valid_ident "$1" || invalid "bad source '$1' (want [a-z][a-z0-9_.-]*, at most 64 characters)"
+    valid_ident "$2" || invalid "bad name '$2' (want [a-z][a-z0-9_.-]*, at most 64 characters)"
+    _s=$1
+    _nm=$2
+    shift 2
+    emit event "$_s" "$_nm" "$@"
+}
+
+# --- record -------------------------------------------------------------------
+
+cmd_record() {
+    [ $# -eq 2 ] || usage
+    valid_kind "$1" || invalid "bad kind '$1' (want ^[a-z][a-z0-9-]{0,31}\$, not transcript/traces/metrics/logs)"
+    _kind=$1
+    _file=$2
+    [ -r "$_file" ] && [ -f "$_file" ] || { warn "cannot read $_file; nothing recorded"; return 0; }
+    need_jq || return 0
+    ensure_state || { warn "cannot create $STATE"; return 0; }
+    spool_has_room || return 0
+    _sz=$(file_size "$_file")
+    if [ "$_sz" -gt "$RECORD_MAX" ]; then
+        warn "$_file is $_sz bytes, over the $RECORD_MAX limit; not spooled"
+        return 0
+    fi
+
+    _ts=$(now_iso)
+    _sid=$(session_id)
+    if grep -q '^[[:space:]]*{' "$_file" 2> /dev/null; then
+        # JSON objects, one per line. The kind is forced and stays first, which
+        # is what ship reads it from.
+        jq -c --arg kind "$_kind" --arg ts "$_ts" --arg sid "$_sid" \
+            'select(type == "object") | {kind: $kind, ts: $ts, session_id: $sid} + del(.kind)' \
+            "$_file" >> "$SPOOL" 2> /dev/null || warn "could not parse $_file as JSON lines"
+    else
+        # key=value lines folded into one record.
+        jq -cRn --arg kind "$_kind" --arg ts "$_ts" --arg sid "$_sid" '
+            {kind: $kind, ts: $ts, session_id: $sid, source: "record", name: $kind,
+             fields: ([inputs | capture("^(?<k>[A-Za-z_][A-Za-z0-9_]*)=(?<v>.*)$")? | {(.k): .v}] | add // {})}
+            ' "$_file" >> "$SPOOL" 2> /dev/null || warn "could not read $_file"
+    fi
+    return 0
+}
+
+# --- credentials and endpoint -------------------------------------------------
+
+BASE_URL=""
+AUTH_MODE=""   # proxy | key | none
+CURL_CONF=""
+
+# resolve_endpoint — sets BASE_URL and AUTH_MODE; returns 1 when shipping is not
+# configured, which is a normal state and not an error.
+resolve_endpoint() {
+    BASE_URL=${TELEMETRY_INGEST_URL:-}
+    if [ -z "$BASE_URL" ] && [ -r "$URL_FILE" ]; then
+        BASE_URL=$(head -1 "$URL_FILE" 2> /dev/null | tr -d '[:space:]')
+    fi
+    BASE_URL=${BASE_URL%/}
+    [ -n "$BASE_URL" ] || return 1
+
+    case "${TELEMETRY_INGEST_KEY:-}" in
+        proxy-injected) AUTH_MODE=proxy ;;
+        "")
+            if [ -r "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then AUTH_MODE=key; else AUTH_MODE=none; fi
+            ;;
+        *) AUTH_MODE=key ;;
+    esac
+    [ "$AUTH_MODE" != none ]
+}
+
+# make_curl_conf — a 0600 curl --config. Holds the Authorization header when this
+# helper sends the key itself, and is empty when the proxy attaches it.
+make_curl_conf() {
+    CURL_CONF="$TMPDIR_AT/curl.conf"
+    : > "$CURL_CONF"
+    [ "$AUTH_MODE" = key ] || return 0
+    if [ -n "${TELEMETRY_INGEST_KEY:-}" ]; then
+        _key=$TELEMETRY_INGEST_KEY
+    else
+        _key=$(head -1 "$KEY_FILE" 2> /dev/null | tr -d '[:space:]')
+    fi
+    # Tokens are hex, but refuse anything that could break out of the quoted value.
+    case "$_key" in
+        "" | *[!A-Za-z0-9_.~+/=-]*) warn "the configured key has characters a key never has; not shipping"; return 1 ;;
+    esac
+    printf 'header = "Authorization: Bearer %s"\n' "$_key" > "$CURL_CONF"
+    _key=""
+    return 0
+}
+
+# retry_after_from <header-file> — seconds, capped at a day, or 60.
+retry_after_from() {
+    _ra=$(sed -n 's/^[Rr]etry-[Aa]fter:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$1" 2> /dev/null | tail -1)
+    case "$_ra" in "" | *[!0-9]*) _ra=60 ;; esac
+    [ "$_ra" -le 86400 ] || _ra=86400
+    echo "$_ra"
+}
+
+set_retry_until() {
+    _until=$(( $(now_s) + $1 ))
+    printf '%s\n' "$_until" > "$RETRY_UNTIL" 2> /dev/null || true
+}
+
+backing_off() {
+    [ -r "$RETRY_UNTIL" ] || return 1
+    _u=$(head -1 "$RETRY_UNTIL" 2> /dev/null)
+    case "$_u" in "" | *[!0-9]*) return 1 ;; esac
+    [ "$(now_s)" -lt "$_u" ]
+}
+
+# Single-flight: two ships at once would send the same bytes twice. A lock is a
+# directory holding the owner's pid; a dead owner's lock is taken over.
+take_lock() { # take_lock <dir>
+    if mkdir "$1" 2> /dev/null; then
+        echo $$ > "$1/pid"
+        LOCK_HELD=$1
+        return 0
+    fi
+    _owner=$(cat "$1/pid" 2> /dev/null)
+    if [ -n "$_owner" ] && kill -0 "$_owner" 2> /dev/null; then
+        return 1
+    fi
+    rm -rf "$1" 2> /dev/null
+    mkdir "$1" 2> /dev/null || return 1
+    echo $$ > "$1/pid"
+    LOCK_HELD=$1
+}
+
+detach() { # detach <args to re-run this script with>
+    ( trap '' HUP; "$0" "$@" < /dev/null > /dev/null 2>&1 & ) > /dev/null 2>&1
+}
+
+# --- ship ---------------------------------------------------------------------
+
+write_offset() { # write_offset <file> <value>
+    printf '%s\n' "$2" > "$1.tmp" 2> /dev/null && mv "$1.tmp" "$1" 2> /dev/null
+}
+
+read_offset() {
+    _o=$(head -1 "$1" 2> /dev/null)
+    case "$_o" in "" | *[!0-9]*) echo 0 ;; *) echo "$_o" ;; esac
+}
+
+cmd_ship() {
+    _bg=0
+    for _a in "$@"; do
+        case "$_a" in
+            --background) _bg=1 ;;
+            *) invalid "ship: unknown argument '$_a'" ;;
+        esac
+    done
+    if [ "$_bg" -eq 1 ]; then
+        detach ship
+        return 0
+    fi
+
+    resolve_endpoint || return 0
+    need_jq || return 0
+    [ -s "$SPOOL" ] || return 0
+    ensure_state || return 0
+    backing_off && return 0
+
+    TMPDIR_AT=$(mktemp -d 2> /dev/null) || { warn "no temp directory"; return 0; }
+    take_lock "$STATE/ship.lock" || return 0
+    make_curl_conf || return 0
+
+    _size=$(wc -c < "$SPOOL" | tr -d ' ')
+    _off=$(read_offset "$SHIPPED")
+    if [ "$_off" -gt "$_size" ]; then
+        warn "shipped offset is past the end of the spool; starting over"
+        _off=0
+    fi
+    [ "$_off" -lt "$_size" ] || return 0
+
+    # Work on a snapshot of the unsent region, cut at the last complete line so
+    # a record being appended right now is left for the next run.
+    _region="$TMPDIR_AT/region"
+    tail -c +$((_off + 1)) "$SPOOL" 2> /dev/null | head -c $((_size - _off)) > "$_region"
+    if [ -s "$_region" ] && [ "$(tail -c 1 "$_region" | od -An -tx1 | tr -d ' \n')" != 0a ]; then
+        sed '$d' "$_region" > "$_region.cut" && mv "$_region.cut" "$_region"
+    fi
+    [ -s "$_region" ] || return 0
+
+    # Batches are runs of consecutive lines of one kind, each under BATCH_MAX,
+    # so each POST is one kind and the offset can advance one batch at a time.
+    LC_ALL=C awk -v dir="$TMPDIR_AT" -v max="$BATCH_MAX" '
+        {
+            kind = $0
+            sub(/^\{"kind":"/, "", kind)
+            sub(/".*/, "", kind)
+            if (kind !~ /^[a-z][a-z0-9-]*$/) kind = "invalid"
+            n = length($0) + 1
+            if (kind != cur || bytes + n > max) {
+                if (file != "") close(file)
+                idx++
+                file = sprintf("%s/b%05d.%s", dir, idx, kind)
+                bytes = 0
+                cur = kind
+            }
+            print $0 >> file
+            bytes += n
+        }' "$_region"
+
+    _sid=$(session_id)
+    for _b in "$TMPDIR_AT"/b[0-9][0-9][0-9][0-9][0-9].*; do
+        [ -f "$_b" ] || continue
+        _kind=${_b##*.}
+        _bytes=$(wc -c < "$_b" | tr -d ' ')
+
+        if [ "$_kind" = invalid ] || ! valid_kind "$_kind"; then
+            # No endpoint takes it, and retrying cannot change that. Skip past it
+            # rather than blocking everything behind it forever.
+            warn "dropping $_bytes bytes of records with an unusable kind"
+            _off=$((_off + _bytes))
+            write_offset "$SHIPPED" "$_off"
+            continue
+        fi
+
+        _code=$(curl -sS -o "$TMPDIR_AT/resp" -D "$TMPDIR_AT/hdr" -w '%{http_code}' \
+            --connect-timeout "$CONNECT_TIMEOUT" --max-time "$HTTP_TIMEOUT" \
+            --config "$CURL_CONF" -X POST "$BASE_URL/v1/records/$_kind" \
+            -H 'Content-Type: application/x-ndjson' -H "X-Session-Id: $_sid" \
+            --data-binary "@$_b" 2> "$TMPDIR_AT/err") || _code=000
+
+        case "$_code" in
+            2??)
+                _off=$((_off + _bytes))
+                write_offset "$SHIPPED" "$_off"
+                echo "$(now_iso) $_code $_kind $_bytes" > "$LAST_SHIP" 2> /dev/null
+                ;;
+            429 | 503)
+                _ra=$(retry_after_from "$TMPDIR_AT/hdr")
+                set_retry_until "$_ra"
+                echo "$(now_iso) $_code $_kind retry-after=$_ra" > "$LAST_SHIP" 2> /dev/null
+                return 0
+                ;;
+            400 | 413)
+                # The data itself is unacceptable; retrying it would block every
+                # record behind it.
+                warn "ingest refused $_bytes bytes of '$_kind' ($_code); dropping them"
+                _off=$((_off + _bytes))
+                write_offset "$SHIPPED" "$_off"
+                echo "$(now_iso) $_code $_kind dropped" > "$LAST_SHIP" 2> /dev/null
+                ;;
+            401)
+                warn "ingest rejected the credential (401); not shipping"
+                echo "$(now_iso) 401 $_kind" > "$LAST_SHIP" 2> /dev/null
+                return 0
+                ;;
+            000)
+                # Network error: stop quietly, the next ship resumes.
+                echo "$(now_iso) 000 $_kind network" > "$LAST_SHIP" 2> /dev/null
+                return 0
+                ;;
+            *)
+                echo "$(now_iso) $_code $_kind" > "$LAST_SHIP" 2> /dev/null
+                return 0
+                ;;
+        esac
+    done
+    return 0
+}
+
+# --- upload-transcript --------------------------------------------------------
+
+cmd_upload() {
+    [ $# -ge 1 ] || usage
+    _path=$1
+    shift
+    _bg=0
+    for _a in "$@"; do
+        case "$_a" in
+            --background) _bg=1 ;;
+            *) invalid "upload-transcript: unknown argument '$_a'" ;;
+        esac
+    done
+    if [ "$_bg" -eq 1 ]; then
+        detach upload-transcript "$_path"
+        return 0
+    fi
+
+    [ -f "$_path" ] && [ -r "$_path" ] || { warn "cannot read transcript $_path"; return 0; }
+    resolve_endpoint || return 0
+    need_jq || return 0
+    ensure_state || return 0
+    backing_off && return 0
+
+    TMPDIR_AT=$(mktemp -d 2> /dev/null) || { warn "no temp directory"; return 0; }
+    take_lock "$STATE/upload.lock" || return 0
+    make_curl_conf || return 0
+
+    # The state file names the transcript it counts, so a new session's
+    # transcript in the same container starts from zero instead of inheriting
+    # the previous one's offset.
+    _off=0
+    if [ "$(head -1 "$TRANSCRIPT_STATE" 2> /dev/null)" = "$_path" ]; then
+        _off=$(sed -n 2p "$TRANSCRIPT_STATE" 2> /dev/null)
+        case "$_off" in "" | *[!0-9]*) _off=0 ;; esac
+    fi
+
+    _size=$(wc -c < "$_path" | tr -d ' ')
+    [ "$_off" -le "$_size" ] || _off=0
+    _avail=$((_size - _off))
+    [ "$_avail" -gt 0 ] || return 0
+    [ "$_avail" -le "$UPLOAD_MAX" ] || _avail=$UPLOAD_MAX
+
+    _tail="$TMPDIR_AT/tail.bin"
+    tail -c +$((_off + 1)) "$_path" 2> /dev/null | head -c "$_avail" > "$_tail"
+
+    # Whole lines only, so the concatenated tails are exactly the transcript and
+    # a line still being written is picked up next time. A chunk with no newline
+    # at all is sent whole only when it is the size limit; otherwise wait.
+    if [ "$(tail -c 1 "$_tail" | od -An -tx1 | tr -d ' \n')" != 0a ]; then
+        if sed '$d' "$_tail" > "$_tail.cut" && [ -s "$_tail.cut" ]; then
+            mv "$_tail.cut" "$_tail"
+        elif [ "$_avail" -lt "$UPLOAD_MAX" ]; then
+            return 0
+        fi
+    fi
+    _len=$(wc -c < "$_tail" | tr -d ' ')
+    [ "$_len" -gt 0 ] || return 0
+
+    _sid=$(session_id)
+    _code=$(curl -sS -o "$TMPDIR_AT/resp" -D "$TMPDIR_AT/hdr" -w '%{http_code}' \
+        --connect-timeout "$CONNECT_TIMEOUT" --max-time "$HTTP_TIMEOUT" \
+        --config "$CURL_CONF" -X POST "$BASE_URL/v1/uploads" \
+        -H 'Content-Type: application/json' -H "X-Session-Id: $_sid" \
+        --data "{\"size\": $_len}" 2> "$TMPDIR_AT/err") || _code=000
+    case "$_code" in
+        200) ;;
+        429 | 503)
+            set_retry_until "$(retry_after_from "$TMPDIR_AT/hdr")"
+            echo "$(now_iso) $_code upload" > "$LAST_UPLOAD" 2> /dev/null
+            return 0
+            ;;
+        401)
+            warn "ingest rejected the credential (401); not uploading"
+            echo "$(now_iso) 401 upload" > "$LAST_UPLOAD" 2> /dev/null
+            return 0
+            ;;
+        *)
+            echo "$(now_iso) $_code upload" > "$LAST_UPLOAD" 2> /dev/null
+            return 0
+            ;;
+    esac
+
+    # The signed URL is a credential for its short life: it goes to curl in a
+    # 0600 config file, never in argv. The headers are part of its signature and
+    # must be sent exactly as issued.
+    _put_conf="$TMPDIR_AT/put.conf"
+    if ! jq -er --arg tail "$_tail" '
+            "url = \"\(.url)\"",
+            "request = \"PUT\"",
+            "upload-file = \"\($tail)\"",
+            (.headers | to_entries[] | "header = \"\(.key): \(.value)\"")
+        ' "$TMPDIR_AT/resp" > "$_put_conf" 2> /dev/null; then
+        warn "upload response was not understood"
+        return 0
+    fi
+    _code=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout "$CONNECT_TIMEOUT" \
+        --max-time 120 --config "$_put_conf" 2> "$TMPDIR_AT/err") || _code=000
+    case "$_code" in
+        2??)
+            printf '%s\n%s\n' "$_path" $((_off + _len)) > "$TRANSCRIPT_STATE.tmp" 2> /dev/null &&
+                mv "$TRANSCRIPT_STATE.tmp" "$TRANSCRIPT_STATE" 2> /dev/null
+            echo "$(now_iso) $_code upload $_len" > "$LAST_UPLOAD" 2> /dev/null
+            ;;
+        *)
+            echo "$(now_iso) $_code upload" > "$LAST_UPLOAD" 2> /dev/null
+            ;;
+    esac
+    return 0
+}
+
+# --- session-end --------------------------------------------------------------
+
+# epoch_of <iso8601-utc> — GNU date first, BSD second; empty if neither parses.
+epoch_of() {
+    date -d "$1" +%s 2> /dev/null || date -j -f %Y-%m-%dT%H:%M:%SZ "$1" +%s 2> /dev/null || true
+}
+
+cmd_session_end() {
+    _derived=""
+    _started=$(sed -n 's/^observed_at=//p' "$MARKER" 2> /dev/null | head -1)
+    if [ -n "$_started" ] && [ "$_started" != unknown ]; then
+        _e=$(epoch_of "$_started")
+        _now=$(now_s)
+        if [ -n "$_e" ] && [ "$_now" -gt "$_e" ]; then
+            _derived="duration_s=$((_now - _e))"
+        fi
+    fi
+    _cache=$(sed -n 's/^cache=//p' "$MARKER" 2> /dev/null | head -1)
+    [ -z "$_cache" ] || _derived="$_derived cache=$_cache"
+    _deg=$(sed -n 's/^degraded=//p' "$MANIFEST" 2> /dev/null | head -1 | tr -s ' ' ',' | sed 's/^,//; s/,$//')
+    [ -z "$_deg" ] || _derived="$_derived degraded=$_deg"
+    _stat=$(sed -n 's/^status=//p' "$MANIFEST" 2> /dev/null | head -1)
+    [ -z "$_stat" ] || _derived="$_derived status=$_stat"
+
+    # Caller-supplied pairs come last so an explicit value wins over a derived one
+    # in a reader that keeps the last duplicate; the allowlist applies to both.
+    # The shape first, so the session record stays the last thing shipped.
+    cmd_session_shape
+    # shellcheck disable=SC2086  # _derived is deliberately split into pairs
+    emit session end-session session $_derived "$@"
+    cmd_ship
+}
+
+# --- session-shape ------------------------------------------------------------
+
+marker_field() { sed -n "s/^$1=//p" "$MARKER" 2> /dev/null | head -1; }
+
+cmd_session_shape() {
+    _pairs=""
+    for _f in cache session_source entrypoint sha bootstrap_duration_seconds; do
+        _v=$(marker_field "$_f")
+        case "$_v" in "" | unknown) ;; *) _pairs="$_pairs $_f=$_v" ;; esac
+    done
+
+    # Offsets need a session start; without one there is nothing to measure from.
+    _start=$(marker_field observed_at)
+    _e=""
+    [ -z "$_start" ] || [ "$_start" = unknown ] || _e=$(epoch_of "$_start")
+    _shims="$STATE/shims"
+    if [ -n "$_e" ]; then
+        _fc=$(head -1 "$_shims/first-commit" 2> /dev/null)
+        case "$_fc" in
+            "" | *[!0-9]*) ;;
+            *) [ "$_fc" -lt "$_e" ] || _pairs="$_pairs first_commit_s=$((_fc - _e))" ;;
+        esac
+        # tool:seconds in order of first use. A stamp older than this session
+        # start is a previous session's, left by a container with no
+        # SessionStart hook to clear it.
+        _uses=$(for _u in "$_shims"/first-use/*; do
+            [ -f "$_u" ] || continue
+            _t=$(head -1 "$_u" 2> /dev/null)
+            case "$_t" in ("" | *[!0-9]*) continue ;; esac
+            [ "$_t" -ge "$_e" ] || continue
+            echo "$((_t - _e)) ${_u##*/}"
+        done | sort -n | awk '{ printf "%s%s:%s", (NR > 1 ? "," : ""), $2, $1 }')
+        [ -z "$_uses" ] || _pairs="$_pairs first_use_s=$_uses"
+    fi
+    # shellcheck disable=SC2086  # _pairs is deliberately split into pairs
+    emit event session shape $_pairs
+}
+
+# --- status -------------------------------------------------------------------
+
+cmd_status() {
+    _sz=$(file_size "$SPOOL")
+    _lines=0
+    [ ! -f "$SPOOL" ] || _lines=$(wc -l < "$SPOOL" | tr -d ' ')
+    _off=$(read_offset "$SHIPPED")
+    echo "spool:        $SPOOL"
+    echo "spool size:   $_sz bytes, $_lines lines"
+    echo "shipped:      $_off bytes ($((_sz - _off)) unsent)"
+    echo "last ship:    $(cat "$LAST_SHIP" 2> /dev/null || echo never)"
+    if backing_off; then echo "backing off:  until epoch $(head -1 "$RETRY_UNTIL")"; fi
+    _tpath=$(head -1 "$TRANSCRIPT_STATE" 2> /dev/null)
+    echo "transcript:   ${_tpath:-none} at offset $(sed -n 2p "$TRANSCRIPT_STATE" 2> /dev/null || echo 0)"
+    echo "last upload:  $(cat "$LAST_UPLOAD" 2> /dev/null || echo never)"
+    if resolve_endpoint; then
+        echo "endpoint:     configured"
+        echo "credential:   $AUTH_MODE"
+    elif [ -n "$BASE_URL" ]; then
+        echo "endpoint:     configured"
+        echo "credential:   none (nothing will be shipped)"
+    else
+        echo "endpoint:     not configured (spool only)"
+        echo "credential:   n/a"
+    fi
+    echo "session:      $(session_id)"
+    return 0
+}
+
+# --- dispatch -----------------------------------------------------------------
+
+[ $# -ge 1 ] || usage
+cmd=$1
+shift
+case "$cmd" in
+    event) cmd_event "$@" ;;
+    record) cmd_record "$@" ;;
+    session-end) cmd_session_end "$@" ;;
+    session-shape) cmd_session_shape ;;
+    ship) cmd_ship "$@" ;;
+    upload-transcript) cmd_upload "$@" ;;
+    status) cmd_status ;;
+    -h | --help | help) usage ;;
+    *) warn "unknown command '$cmd'"; usage ;;
+esac
+exit 0

@@ -1,0 +1,618 @@
+#!/usr/bin/env bash
+# start-session-gather-state — parallel read-only state gather for /start-session.
+#
+# Mirrors end-session-gather-state's shape: runs `git fetch` first, fans out
+# independent read-only queries in parallel, and collates results into a
+# single sectioned stdout stream that /start-session's Phase 1 consumes in
+# one tool call.
+#
+# Output protocol (stdout):
+#   ===<section> (exit=<N>)===
+#   <section stdout+stderr>
+#
+# Progress pings go to stderr so a human watching sees something move;
+# parseable data is stdout-only.
+#
+# Exit codes per section are preserved so the agent can distinguish silent
+# skips ("gh-unavailable") from real errors.
+
+set -uo pipefail
+
+progress() { printf '[gather] %s\n' "$*" >&2; }
+
+# --- Phase 0: resolve the repo ------------------------------------------
+# Everything below assumes a git repo, so this has to come before the fetch.
+#
+# "Not a repo" is not the same as "no repo": a container handed several repos
+# as siblings starts the session in their parent, so the repo being worked in
+# is one level down. session-repo-resolve does that lookup; this script only
+# acts on its verdict. A sibling helper rather than inline code because
+# end-session-gather-state needs the identical answer.
+RESOLVE_OUT=$("$(dirname "$0")/session-repo-resolve" 2>/dev/null)
+RESOLVE_STATE=$(printf '%s\n' "$RESOLVE_OUT" | sed -n 's/^state=//p' | head -1)
+
+# A container installed before session-repo-resolve existed has no helper to
+# run. Degrade to the old inline check rather than reporting every repo as
+# unresolvable.
+if [ -z "$RESOLVE_STATE" ]; then
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        RESOLVE_STATE=cwd
+    else
+        RESOLVE_STATE=none
+    fi
+fi
+
+RESOLVED_REPO=""
+case "$RESOLVE_STATE" in
+    cwd)
+        : # ordinary case: the session is already standing in the repo
+        ;;
+    resolved-child)
+        RESOLVED_REPO=$(printf '%s\n' "$RESOLVE_OUT" | sed -n 's/^repo=//p' | head -1)
+        cd "$RESOLVED_REPO" || {
+            printf '===not_a_git_repo (exit=1)===\n'
+            printf 'resolved %s but could not enter it — nothing to sync.\n\n' "$RESOLVED_REPO"
+            exit 1
+        }
+        ;;
+    ambiguous)
+        # Several candidates is the one case the script must not decide. It
+        # reports them and stops; the skill asks which.
+        printf '===repo_candidates (exit=2)===\n'
+        printf 'cwd=%s\n' "$(pwd)"
+        printf '%s\n' "$RESOLVE_OUT" | sed -n 's/^candidate=/candidate=/p'
+        printf '\n'
+        exit 2
+        ;;
+    *)
+        printf '===not_a_git_repo (exit=1)===\n'
+        printf '/start-session requires a git-backed repo — nothing to sync.\n\n'
+        exit 1
+        ;;
+esac
+
+TMP=$(mktemp -d -t start-session-gather.XXXXXX)
+trap 'rm -rf "$TMP"' EXIT
+
+# --- Phase 1: git fetch (blocks remote-aware sections below) ---
+# Capture local default-branch SHA *before* fetch so we can later compute the
+# delta of newly-merged commits (origin advanced; local hasn't pulled yet).
+PRE_FETCH_DEFAULT_SHA=$(git rev-parse main 2>/dev/null || git rev-parse master 2>/dev/null || echo "")
+progress "git fetch --all --prune --tags"
+git fetch --all --prune --tags >"$TMP/fetch.out" 2>&1
+FETCH_EXIT=$?
+progress "fetch exit=$FETCH_EXIT"
+
+# Resolve the repo's default branch once so subsequent sections can compare
+# against it. Fall back to main, then master, then leave empty.
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+if [ -z "$DEFAULT_BRANCH" ]; then
+    if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+        DEFAULT_BRANCH=main
+    elif git rev-parse --verify --quiet origin/master >/dev/null 2>&1; then
+        DEFAULT_BRANCH=master
+    else
+        DEFAULT_BRANCH=main
+    fi
+fi
+export DEFAULT_BRANCH
+
+# Owner/repo slug for explicit `gh -R` flags. gh normally infers the repo from
+# the git remote, but behind the cloud sandbox's egress proxy that inference is
+# unreliable (#257), and an explicit -R is deterministic on every surface —
+# which is the property this script exists to provide. Empty on a non-GitHub
+# remote, which makes the ${REPO_SLUG:+...} expansions below collapse to
+# nothing and gh fall back to its own inference.
+REPO_SLUG=$(git remote get-url origin 2>/dev/null | sed -n 's#.*github\.com[:/]##p' | sed 's#\.git$##')
+export REPO_SLUG
+
+# One repo-scoped auth probe for the gh sections below, run once. A surface
+# can have gh installed yet policy-blocked from repo data: the Claude cloud
+# sandbox proxy authenticates identity endpoints (user, rate_limit) but 403s
+# every repo-scoped API path — measured 2026-08-19 (#273, lane map on #257).
+# Without this probe each section fails with its own multi-line 403, which
+# reads as three separate problems; with it they emit one gh-unauthorized
+# sentinel that the skill maps to the same MCP recovery as gh-unavailable.
+# Costs one API round-trip on healthy surfaces.
+# The same response already carries the repo's archived flag, so select that
+# instead of .id and answer both questions in one round-trip. --jq printing
+# "false" does not change gh's exit code, so this is still as good a liveness
+# probe as .id was. Three states, never two: "unknown" whenever the probe could
+# not run at all (no gh, no slug, 403 behind the sandbox proxy), so an
+# unanswered question can never render as "not archived" (#415).
+#
+# The REST probe does not license the issue sections. `gh issue list` runs
+# over GraphQL, a separate lane: the Claude Code proxy blocks GraphQL for every
+# session while repo-scoped REST can pass, so a green REST probe alone sent the
+# sections into a 403. GH_ISSUES_API therefore probes GraphQL itself, once, and
+# only after REST passed — the archived answer stays on REST because it is real
+# wherever REST is.
+GH_REPO_API=unavailable
+GH_ISSUES_API=unavailable
+REPO_ARCHIVED=unknown
+if command -v gh >/dev/null 2>&1 && [ -n "$REPO_SLUG" ]; then
+    if probe=$(gh api "repos/$REPO_SLUG" --jq '.archived' 2>/dev/null); then
+        GH_REPO_API=ok
+        case "$probe" in
+            true) REPO_ARCHIVED=true ;;
+            false) REPO_ARCHIVED=false ;;
+        esac
+        if gh api graphql -f query='{viewer{login}}' >/dev/null 2>&1; then
+            GH_ISSUES_API=ok
+        fi
+    fi
+fi
+export GH_REPO_API GH_ISSUES_API REPO_ARCHIVED
+
+# --- Phase 2: parallel fan-out of independent reads ---
+
+run_section() {
+    local name=$1
+    shift
+    (
+        "$@" >"$TMP/$name.out" 2>&1
+        echo $? >"$TMP/$name.exit"
+    ) &
+}
+
+run_sh() {
+    local name=$1
+    local script=$2
+    (
+        sh -c "$script" >"$TMP/$name.out" 2>&1
+        echo $? >"$TMP/$name.exit"
+    ) &
+}
+
+# Shared preamble for the four gh issue sections, prepended to each script.
+# Each sentinel exits 1, so the skill's rule "exit=0 with content is data" can
+# never meet one. The issue-list call itself is captured before jq rather than
+# piped into it: in a pipe without pipefail gh's failure exit is masked by jq's
+# 0, and gh's error text then arrives as section content under exit=0. gh's
+# stderr goes to a temp file, not into $out, so a warning on a successful call
+# cannot corrupt the JSON. A failure after the probes passed is a real error,
+# so it prints gh's own message and exits non-zero instead of claiming a
+# sentinel.
+# shellcheck disable=SC2016
+GH_ISSUES_PREAMBLE='
+    if ! git remote get-url origin 2>/dev/null | grep -q "github.com"; then
+        echo "not-github"
+        exit 1
+    fi
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "gh-unavailable"
+        exit 1
+    fi
+    if [ "$GH_ISSUES_API" != "ok" ]; then
+        echo "gh-unauthorized"
+        exit 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "jq-unavailable"
+        exit 1
+    fi
+    errf=$(mktemp) || exit 1
+    trap '\''rm -f "$errf"'\'' EXIT
+'
+
+# Row shape shared by gh_ready and gh_assigned: #<number>|P<n>|<age>|<title>.
+# <age> is whole days since the issue was last updated ("-" if gh omits it), so
+# the brief can show which rows have gone untouched. Title stays the last field
+# because it is the only one that can itself contain a "|".
+# shellcheck disable=SC2016,SC2089  # A jq program: its quotes and backslashes are meant literally.
+GH_ROW_JQ='.[] | "#\(.number)|\([(.labels // [])[].name]
+          | map(select(test("^P[0-4]$"))) | first // "-")|\(
+          if .updatedAt then "\((now - (.updatedAt | fromdateiso8601)) / 86400 | floor)d"
+          else "-" end)|\(.title)"'
+# shellcheck disable=SC2090  # Expanded only quoted, as jq's program argument.
+export GH_ROW_JQ
+
+# shellcheck disable=SC2016  # Intentional single quotes: expansion happens inside `sh -c`.
+run_sh local_state '
+    echo "pwd=$(pwd)"
+    echo "branch=$(git branch --show-current)"
+    echo "default_branch=$DEFAULT_BRANCH"
+    echo "---status---"
+    git status --porcelain=v1 --branch
+    echo "---vs upstream (@{u})---"
+    if git rev-parse --verify --quiet "@{u}" >/dev/null 2>&1; then
+        ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null)
+        behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null)
+        echo "ahead=$ahead behind=$behind"
+        echo "upstream_status=alive"
+    else
+        # Distinguish "configured upstream but remote ref pruned" (gone) from
+        # "no upstream ever set" (none). The gone state is the canonical
+        # signal that a PR was merged and the remote branch auto-deleted.
+        upstream_ref=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || true)
+        if [ -n "$upstream_ref" ]; then
+            echo "(no upstream ref — pruned)"
+            echo "upstream_status=gone"
+        else
+            echo "(no upstream)"
+            echo "upstream_status=none"
+        fi
+    fi
+    echo "---vs origin/$DEFAULT_BRANCH---"
+    if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
+        ahead=$(git rev-list --count "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null)
+        behind=$(git rev-list --count "HEAD..origin/$DEFAULT_BRANCH" 2>/dev/null)
+        echo "ahead=$ahead behind=$behind"
+    else
+        echo "(no origin/$DEFAULT_BRANCH)"
+    fi
+    echo "---origin---"
+    git remote get-url origin 2>&1
+'
+
+# NOTE: main_ci was removed here deliberately (#273). Eager CI status cost
+# ~104K tokens via the MCP fallback (`actions_list` dumps every run unreduced
+# and overflows context), to answer "is the default branch red before I
+# branch?" — the least-actionable line in the brief, since a gated default
+# branch is rarely red and a push surfaces it anyway. CI is now queried
+# on-demand, scoped to the PR actually being worked, via the harness's GitHub
+# tools (a single PR's check runs, ~50-2500 tokens). See start-session.md
+# step 4 and docs/end-session-design.md.
+
+# shellcheck disable=SC2016
+run_sh gh_ready "$GH_ISSUES_PREAMBLE"'
+    # Ready work: open issues with no direct blocked-by relationship and no
+    # "needs:" label, per docs/github-issues-workflow.md. Note -is:blocked
+    # filters direct blocks only (no transitive query); the needs: issues are
+    # the gh_needs rows instead. Output: pipe-separated rows,
+    #   #<number>|P<n>|<age>|<title>
+    # (priority "-" when no P0-P4 label). Empty output = no ready work.
+    out=$(gh issue list ${REPO_SLUG:+-R "$REPO_SLUG"} \
+        --search "is:open -is:blocked -label:\"needs: local\" -label:\"needs: decision\"" --limit 10 \
+        --json number,title,labels,updatedAt 2>"$errf") || { cat "$errf"; exit 1; }
+    printf "%s\n" "$out" \
+      | jq -r "$GH_ROW_JQ"
+'
+
+# shellcheck disable=SC2016
+run_sh gh_assigned "$GH_ISSUES_PREAMBLE"'
+    # My active work: open issues assigned to me. Same row shape as gh_ready:
+    #   #<number>|P<n>|<age>|<title>
+    # Empty output = nothing in flight.
+    out=$(gh issue list ${REPO_SLUG:+-R "$REPO_SLUG"} --assignee @me --state open --limit 20 \
+        --json number,title,labels,updatedAt 2>"$errf") || { cat "$errf"; exit 1; }
+    printf "%s\n" "$out" \
+      | jq -r "$GH_ROW_JQ"
+'
+
+# shellcheck disable=SC2016
+run_sh gh_bundles "$GH_ISSUES_PREAMBLE"'
+    # Ready bundles: open issues that /bundle-issues wrote, identified by a
+    # "Bundle:" title prefix. Output: pipe-separated rows,
+    #   #<number>|<concern>
+    # where <concern> is the title with the prefix stripped. Empty = none.
+    #
+    # WHY A TITLE PREFIX AND NOT A LABEL: a label needs creating once per repo
+    # before it can be applied, and there is no route to create one from every
+    # surface this runs on. A prefix works in any repo with no setup.
+    #
+    # WHY `issue list` AND NOT `issue search`: search is eventually consistent,
+    # so a bundle created minutes ago can be missing from it. A session that
+    # just ran /bundle-issues and is told there are no bundles would be the
+    # one failure this section exists to prevent. Listing is consistent; the
+    # prefix filter happens here in jq.
+    out=$(gh issue list ${REPO_SLUG:+-R "$REPO_SLUG"} --state open --limit 100 \
+        --json number,title 2>"$errf") || { cat "$errf"; exit 1; }
+    printf "%s\n" "$out" \
+      | jq -r '\''
+          .[] | select(.title | startswith("Bundle:"))
+              | "#\(.number)|\(.title | sub("^Bundle:\\s*"; ""))"
+        '\''
+'
+
+# shellcheck disable=SC2016
+run_sh gh_needs "$GH_ISSUES_PREAMBLE"'
+    # Issues only one place can move: "needs: local" (the owner workstation)
+    # and "needs: decision" (an answer from the owner). Output: the gh_ready
+    # row shape with the label suffix in front, local rows first,
+    #   local|#<number>|P<n>|<age>|<title>
+    # Listed and filtered in jq, like gh_bundles, so a label applied minutes
+    # ago is not missed the way a search could miss it. Empty = none.
+    out=$(gh issue list ${REPO_SLUG:+-R "$REPO_SLUG"} --state open --limit 100 \
+        --json number,title,labels,updatedAt 2>"$errf") || { cat "$errf"; exit 1; }
+    for n in local decision; do
+        printf "%s\n" "$out" \
+          | jq -r --arg l "needs: $n" "map(select([(.labels // [])[].name] | index(\$l))) | $GH_ROW_JQ" \
+          | sed "s/^/$n|/"
+    done
+'
+
+# Deployed-config drift. Cheap (a cmp per file, and nothing else unless one
+# differs), and silent when everything is current. Lives in its own script
+# because the direction-of-drift logic does not belong inline in a `sh -c`.
+run_section claude_drift "$(dirname "$0")/start-session-claude-drift"
+# Container currency. The sibling of claude_drift: that asks "is deployed config
+# behind the repo?" on a workstation, this asks it of a container. A cloud
+# environment restores a filesystem snapshot and re-runs its setup script only
+# when the script text changes or the cache expires, so a sandbox can be running
+# week-old skills, policy and helpers with nothing in the session saying so
+# (#246).
+#
+# Silent when there is nothing to say, like claude_drift. A workstation has no
+# manifest and reports not-a-container, which is not a problem to solve.
+#
+# shellcheck disable=SC2016
+run_sh bootstrap_currency '
+    manifest="$HOME/.agents/.bootstrap-manifest"
+    # The manifest names the repository its sha is a commit of, so a container
+    # built from somewhere else is compared with that. One without the line
+    # predates it and was built from this default.
+    built_from=$(sed -n "s/^source=//p" "$manifest" 2>/dev/null)
+    repo="https://github.com/${built_from:-pmgledhill102/agentic-coding-config}"
+
+    if [ ! -f "$manifest" ]; then
+        # Either a workstation, or a container built before manifests existed.
+        # The second cannot be distinguished from here, and self-heals: once the
+        # snapshot expires, the next build writes one. It does NOT mean a
+        # crashed run — a failed bootstrap writes status=failed (#345).
+        if [ -d "$HOME/.agents/skills" ]; then
+            echo "state=no-manifest"
+        else
+            echo "state=not-a-container"
+        fi
+        exit 0
+    fi
+
+    status=$(sed -n "s/^status=//p" "$manifest")
+    degraded=$(sed -n "s/^degraded=//p" "$manifest")
+
+    # A run that died partway writes status=failed and stops. Nothing else in
+    # the brief means much until that is cleared, because the container holds
+    # an unknown subset of what it should, so it reports first and alone. A
+    # manifest with no status line predates the field and can only have come
+    # from a run that finished.
+    if [ "$status" = "failed" ]; then
+        echo "state=failed step=$(sed -n "s/^failed_step=//p" "$manifest")"
+        echo "exit_code=$(sed -n "s/^exit_code=//p" "$manifest")"
+        echo "failed_at=$(sed -n "s/^failed_at=//p" "$manifest")"
+        echo "log=$(sed -n "s/^log=//p" "$manifest")"
+        echo "remedy=re-run the bootstrap; it takes effect immediately and needs no restart"
+        exit 0
+    fi
+
+    ref=$(sed -n "s/^ref=//p" "$manifest")
+    kind=$(sed -n "s/^ref_kind=//p" "$manifest")
+    installed=$(sed -n "s/^sha=//p" "$manifest")
+    at=$(sed -n "s/^installed_at=//p" "$manifest")
+
+    # A pinned SHA cannot be behind — it is what the environment asked for.
+    # Saying so is still useful: it tells a reader the container is frozen by
+    # intent rather than by neglect.
+    if [ "$kind" != "ref" ]; then
+        echo "state=pinned ref=$ref sha=$installed installed_at=$at"
+    else
+        head=$(git ls-remote "$repo" "$ref" 2>/dev/null | head -1 | cut -f1)
+        if [ -z "$head" ]; then
+            echo "state=unknown ref=$ref installed_at=$at"
+        elif [ "$head" = "$installed" ]; then
+            echo "state=current ref=$ref installed_at=$at"
+        else
+            echo "state=behind ref=$ref installed=$installed head=$head installed_at=$at"
+            echo "remedy=re-run the bootstrap; it takes effect immediately and needs no restart"
+            # The re-run fixes THIS session and nothing else: the environment
+            # re-runs its setup script only when the script text changes, the
+            # allowed domains change, or roughly seven days pass, and REF=main
+            # never changes as a string. So the next session restores the same
+            # snapshot and lands here again. cloud/README.md:506 says to do
+            # both; only saying the first half is what makes this recur (#347).
+            echo "recurrence=re-running does NOT stop this returning — bump the Rev: line in the environment setup script (claude.ai -> environment settings) to force a rebuild for every future session"
+        fi
+    fi
+
+    # Orthogonal to every state above: a container can be perfectly current and
+    # still be missing a Tier 2 capability, so this is its own line rather than
+    # a state of its own (#346). The toolkit is present in all of these cases —
+    # a missing one is fatal and reports state=failed instead.
+    if [ -n "$degraded" ]; then
+        echo "degraded=$degraded"
+        echo "degraded_remedy=re-run the bootstrap to retry the missing capabilities"
+    fi
+
+    # Where the bootstrap put its commands, checked against THIS session PATH
+    # rather than the one the setup phase saw: an unprivileged runner installs
+    # under a prefix the bootstrap cannot add to PATH, and a tool that is
+    # installed but unreachable otherwise reads as one that never arrived.
+    bin_dir=$(sed -n "s/^bin_dir=//p" "$manifest")
+    if [ -n "$bin_dir" ]; then
+        case ":$PATH:" in
+            *":$bin_dir:"*) ;;
+            *) echo "bin_dir_off_path=$bin_dir" ;;
+        esac
+    fi
+
+    # How long the bootstrap took, and whether this session paid for it. Both
+    # come from files written before this script existed in any session, so an
+    # older container reports neither rather than lying about either (#430).
+    #
+    # Reported together because one is meaningless without the other: 68s of
+    # setup matters on a rebuild and is a historical note on a cache hit.
+    duration=$(sed -n "s/^duration_seconds=//p" "$manifest")
+    [ -n "$duration" ] && echo "bootstrap_seconds=$duration"
+    timings=$(sed -n "s/^timings=//p" "$manifest")
+    [ -n "$timings" ] && echo "timings=$timings"
+
+    marker="$HOME/.agents/.session-marker"
+    if [ -f "$marker" ]; then
+        verdict=$(sed -n "s/^cache=//p" "$marker")
+        method=$(sed -n "s/^method=//p" "$marker")
+        echo "cache=$verdict method=$method"
+    else
+        # The writer is a SessionStart hook. No marker means hooks were not
+        # installed, or this container predates the hook -- not that the
+        # session rebuilt. Saying which is the point: an unrun check must
+        # never read as a clean one.
+        echo "cache=unmeasured reason=no marker; SessionStart hook not installed or container predates it"
+    fi
+'
+
+
+# Platform conformance: do the behaviours this repo's decisions rest on still
+# hold here? The fast subset of the capability matrix, a few seconds with no
+# human and no approvals (#260, #653). The content carries the verdict on its
+# state= line, so the section always exits 0: a mismatch is information for the
+# brief, not a gather error.
+conformance_brief() {
+    helper="$(dirname "$0")/env-conformance"
+    if [ ! -x "$helper" ]; then
+        # A container bootstrapped before the helper existed. Saying so beats
+        # silence, which would read as "conformance checked and clean".
+        echo "state=absent reason=env-conformance not installed; container predates it"
+        return 0
+    fi
+    "$helper" --fast --brief
+    return 0
+}
+run_section conformance conformance_brief
+
+export PRE_FETCH_DEFAULT_SHA
+
+# shellcheck disable=SC2016
+run_sh recent_main_commits '
+    # Commits that landed on origin/$DEFAULT_BRANCH between the previous
+    # local default-branch tip and the freshly-fetched origin tip — i.e.,
+    # what merged since the last time this checkout pulled main. Output:
+    #   count=<N>
+    #   <short-sha> <subject>
+    # one per line, oldest-first (topmost line is the most recent merge).
+    # Empty (count=0) when nothing new — typical when /start-session ran
+    # recently. Capped at 10 lines to keep the brief one-screen.
+    if [ -z "$PRE_FETCH_DEFAULT_SHA" ]; then
+        echo "count=0"
+        exit 0
+    fi
+    if ! git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
+        echo "count=0"
+        exit 0
+    fi
+    log=$(git log "$PRE_FETCH_DEFAULT_SHA..origin/$DEFAULT_BRANCH" \
+        --first-parent --oneline -n 10 2>/dev/null)
+    if [ -z "$log" ]; then
+        echo "count=0"
+    else
+        n=$(printf "%s\n" "$log" | wc -l | tr -d " ")
+        echo "count=$n"
+        printf "%s\n" "$log"
+    fi
+'
+
+# shellcheck disable=SC2016
+run_sh unmerged_branches '
+    # Sibling sessions: remote branches pushed recently and not merged into
+    # origin/$DEFAULT_BRANCH, each with the files it touches (#436). Output:
+    #   count=<N>
+    #   <branch>|<age>|<n> files
+    #     <path>                      (up to 20 per branch, then "  +<k> more")
+    # newest first, up to 10 branches, then "more=<k>". count=0 = none.
+    #
+    # Recency is what keeps this short: an unmerged-branch list is noise in a
+    # repo with a backlog, while "pushed in the last 48h and not merged" is
+    # the handful another session is working right now. Merged = reachable
+    # from the default branch, which holds because merge commits are the only
+    # enabled merge method; a squash-merged branch would read as unmerged.
+    window=172800
+    now=$(date +%s)
+    base="origin/$DEFAULT_BRANCH"
+    if ! git rev-parse --verify --quiet "$base" >/dev/null 2>&1; then
+        echo "count=0"
+        exit 0
+    fi
+    own=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null)
+    cur="origin/$(git branch --show-current)"
+    git for-each-ref --sort=-committerdate \
+        --format="%(refname:short) %(committerdate:raw) %(committerdate:relative)" \
+        refs/remotes/origin | {
+        n=0
+        body=""
+        while read -r ref ts _tz age; do
+            [ $((now - ts)) -gt "$window" ] && break
+            case "$ref" in
+                origin|origin/HEAD|"$base"|"$own"|"$cur") continue ;;
+            esac
+            git merge-base --is-ancestor "$ref" "$base" 2>/dev/null && continue
+            n=$((n + 1))
+            [ "$n" -gt 10 ] && continue
+            files=$(git diff --name-only "$base...$ref" 2>/dev/null)
+            nf=$(printf "%s" "$files" | grep -c .)
+            body="$body${ref#origin/}|$age|$nf files
+$(printf "%s\n" "$files" | grep . | head -20 | sed "s/^/  /")
+"
+            [ "$nf" -gt 20 ] && body="$body  +$((nf - 20)) more
+"
+        done
+        echo "count=$n"
+        printf "%s" "$body"
+        [ "$n" -gt 10 ] && echo "more=$((n - 10))"
+        exit 0
+    }
+'
+
+# shellcheck disable=SC2016
+run_sh gcloud_auth '
+    # Whether this session can read live GCP state, asked at the start rather
+    # than ten calls into an investigation that then cannot finish (#406).
+    # Output: state=absent|live|expired.
+    #
+    # print-access-token is the cheapest non-interactive probe that actually
+    # exercises a refresh, and it fails fast instead of prompting -- which is
+    # the failure being observed, since an agent has no tty to reauth on. The
+    # token is discarded here and never printed: this is an internal liveness
+    # check, not a credential read, and the deny rule proposed in #440 has to
+    # keep that distinction or it breaks this section.
+    if ! command -v gcloud >/dev/null 2>&1; then
+        echo "state=absent"
+        exit 0
+    fi
+    if gcloud auth print-access-token >/dev/null 2>&1; then
+        echo "state=live"
+    else
+        echo "state=expired"
+    fi
+'
+
+wait
+progress "all sections complete"
+
+# --- Emit consolidated output ---
+emit() {
+    local name=$1
+    local exit_code
+    exit_code=$(cat "$TMP/$name.exit" 2>/dev/null || echo "n/a")
+    printf '===%s (exit=%s)===\n' "$name" "$exit_code"
+    cat "$TMP/$name.out" 2>/dev/null
+    printf '\n'
+}
+
+# Only present when the repo was not the one the caller was standing in —
+# there is nothing to report when cwd was already the repo, and the caller
+# needs to chdir here itself, since this script's own cd died with it.
+if [ -n "$RESOLVED_REPO" ]; then
+    printf '===repo_resolution (exit=0)===\n'
+    printf 'state=resolved-child\n'
+    printf 'repo=%s\n' "$RESOLVED_REPO"
+    printf 'name=%s\n' "$(basename "$RESOLVED_REPO")"
+    printf '\n'
+fi
+
+printf '===fetch (exit=%s)===\n' "$FETCH_EXIT"
+# Suppress verbose fetch output on success (it's normal "From <remote>..." chatter
+# that the model doesn't need); on failure, dump it so the agent can diagnose.
+if [ "$FETCH_EXIT" -ne 0 ]; then
+    cat "$TMP/fetch.out"
+fi
+printf '\n'
+
+# Always emitted, including "unknown". A silently absent section would read as
+# "not archived", which is the failure this section exists to prevent. Placed
+# straight after fetch because it changes what every line below it means.
+printf '===repo_archived (exit=0)===\n'
+printf 'state=%s\n' "$REPO_ARCHIVED"
+printf '\n'
+
+for s in local_state recent_main_commits unmerged_branches gh_ready gh_assigned gh_bundles gh_needs gcloud_auth claude_drift bootstrap_currency conformance; do
+    [ -f "$TMP/$s.exit" ] && emit "$s"
+done

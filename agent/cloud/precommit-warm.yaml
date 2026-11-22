@@ -1,0 +1,86 @@
+# The estate's standard hook set, pinned, so `pre-commit install-hooks -c` can
+# build its environments at BOOTSTRAP time instead of inside the first commit.
+#
+# This file is never run as a gate. It exists only to be handed to
+# `pre-commit install-hooks`, whose cache under ~/.cache/pre-commit is keyed on
+# (repo URL, rev) — so warming these pins warms every repo pinned to the same
+# ones. A repo on a different rev gets a partial warm and builds the rest on
+# first use; it is never a failure. See cloud/bootstrap.sh's cap_precommit_warm
+# and docs/cloud-sandbox-design.md §"Warming the pre-commit cache" (#441).
+#
+# WHY IT IS WORTH THE BYTES: the python and node hooks below build an
+# environment each, and every hook repo is cloned, on first use. Cold, that is
+# ~20 s, paid inside precommit-claude-hook's 120 s timeout on the first commit
+# of every fresh container. The setup script's filesystem is snapshotted and
+# reused for about seven days; the session's is not.
+#
+# NO HOOK HERE IS `language: golang`, and none should be. A golang hook compiles
+# from source on a cold cache (~30 s each for gitleaks and actionlint), which
+# is why the estate runs those two through their `-system` ids against binaries
+# the bootstrap installs (#609). A system hook has no environment to build, so
+# warming one only pre-clones its repo for the hook definition: ~1 s.
+#
+# ONE HOOK ID PER REPO IS ENOUGH. pre-commit keys an environment on the repo,
+# its rev, the language and any additional_dependencies — not on the hook id —
+# and none of these hooks declare extra dependencies, so every hook in a repo
+# shares the one environment. Naming a second id here would build nothing new
+# and give the pins a second place to drift.
+#
+# THIS FILE IS THE ESTATE'S REV SOURCE (#442). The setup-* skills stamp these
+# revs into a new repo instead of "the latest tag", so a new repo starts on
+# revs a container has already cached. tests/precommit-pins.py fails CI when a
+# skill snippet, or this repo's own .pre-commit-config.yaml, names one of these
+# hook repos at any other rev. To bump a hook: change it here, run the test,
+# and update every snippet it names, in the same change. An existing repo
+# moves to the new rev on its own schedule and warms partially until it does.
+repos:
+  # language: python — cheap, but free to warm alongside the rest.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+
+  # language: system — runs the gitleaks binary the bootstrap installs.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks-system
+
+  # language: system — runs the actionlint binary the bootstrap installs.
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint-system
+
+  # language: python — downloads the prebuilt shfmt binary.
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.14.1-1
+    hooks:
+      - id: shfmt
+
+  # language: node.
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.2
+    hooks:
+      - id: markdownlint-cli2
+
+  # language: node. Resolves its @cspell/dict-* tree at install time, so warming
+  # it also fixes which dictionaries the container has — the skew paul-context
+  # records in its own config.
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v10.3.0
+    hooks:
+      - id: cspell
+
+  # language: python.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+
+# semgrep is deliberately absent. It is provisioned as a system binary rather
+# than a pre-commit environment (#316): the upstream `language: python` hook
+# clones the whole semgrep monorepo and builds a venv in it — measured at 1.1 G
+# of a 1.2 G cache and ~190 s of a 197 s cold run. Warming that here would blow
+# the setup script's five-minute budget to cache something the estate has
+# decided not to use.

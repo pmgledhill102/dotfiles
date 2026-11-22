@@ -1,0 +1,388 @@
+#!/bin/sh
+# resolve-command-dir — sourced, not executed. Shared by precommit-claude-hook
+# and prepush-guard-claude-hook, which load it from lib/ next to themselves.
+# cloud/bootstrap.sh's hook fetch list installs it there in a sandbox.
+#
+# A PreToolUse hook fires BEFORE the command runs, so the payload's cwd is
+# where the shell already is -- not where `cd /other/clone && git commit` or
+# `git -C /other/clone push` is about to operate. Reading cwd blindly makes a
+# hook evaluate the wrong repository. This walks the command's segments in
+# order, following `cd`, `pushd` / `popd`, `git -C`, subshell scope
+# `( cd x && ... )`, `{ ...; }` groups and pipeline stages, to the directory
+# the git subcommand will actually run in.
+#
+# What an unresolvable directory means is the CALLER's decision, not this
+# file's: resolve_command_dir only reports it (status 2), because the right
+# response differs by hook -- see each caller where it handles that status.
+# Any shape this file cannot follow confidently must end in status 2, never
+# in a directory: a wrong directory is the defect these hooks exist to avoid.
+#
+# Not followed: anything a function or alias does. Those resolve as if the
+# function or alias were not there.
+#
+# Word splitting here always runs with globbing off (`set -f`, inside the
+# subshell functions below). With it on, `cd docs/*` would be expanded
+# against the HOOK's cwd before unsafe_path ever saw the `*`.
+
+# unsafe_path is true for a path that cannot be known before the command
+# runs: a variable, a command substitution, a glob, a quoted or ~-relative
+# path. Guessing at one is how a hook evaluates the wrong repository.
+unsafe_path() {
+    case "$1" in
+        '' | *'$'* | *'`'* | *'*'* | *'?'* | *'['* | *'"'* | *"'"* | '~'*) return 0 ;;
+    esac
+    return 1
+}
+
+# step_dir <dir> <path> prints where <path> leads from <dir>. Empty stands for
+# "unknown" both ways: an unsafe path makes the result unknown, and a relative
+# path from an unknown dir stays unknown. An absolute path recovers.
+step_dir() {
+    unsafe_path "$2" && return 0
+    case "$2" in
+        /*) printf '%s' "$2" ;;
+        *) [ -n "$1" ] && printf '%s/%s' "$1" "$2" ;;
+    esac
+    return 0
+}
+
+# segment_scan <segment> <dir> <subcommand> classifies one command segment,
+# given the directory the shell is in when it runs (empty: unknown). Prints
+# one of:
+#   cd:<dir>     a directory change (<dir> empty when it cannot be known)
+#   pushd:<dir>  the same, saving the old directory on the pushd stack
+#   popd         back to the directory pushd saved
+#   lost         the pushd stack can no longer be tracked
+#   hit:<dir>    a git invocation of <subcommand>, and where it runs
+# or nothing.
+#
+# Runs in a subshell so `set --`, `set -f` and IFS stay local.
+segment_scan() (
+    set -f
+    dir=$2
+    want=$3
+    IFS=' 	'
+    # shellcheck disable=SC2086  # deliberate: split the segment into words.
+    set -- $1
+    [ $# -gt 0 ] || return 0
+    case "$1" in
+        cd)
+            # -L / -P choose how symlinks resolve, not where cd goes, so the
+            # path after them still decides. `cd -` (OLDPWD), a bare `cd`
+            # ($HOME), any other option and any extra operand make the
+            # directory unknown: a flag is never joined into a path.
+            # Redirections (`cd x >/dev/null`, `cd x 2> log`) are not operands.
+            shift
+            cd_opts=1 cd_path='' cd_n=0 cd_bad=0
+            while [ $# -gt 0 ]; do
+                case "$1" in
+                    '>' | '>>' | '<' | '<>' | [0-9]'>' | [0-9]'>>' | [0-9]'<')
+                        shift
+                        [ $# -gt 0 ] && shift
+                        continue
+                        ;;
+                    '>'* | '<'* | [0-9]'>'* | [0-9]'<'*) ;;
+                    *)
+                        if [ "$cd_opts" -eq 1 ]; then
+                            case "$1" in
+                                --) cd_opts=0 ;;
+                                -L | -P | -LP | -PL) ;;
+                                -*) cd_bad=1 ;;     # `cd -`, `cd -e`, ...
+                                *) cd_opts=0; cd_n=1; cd_path=$1 ;;
+                            esac
+                        else
+                            cd_n=$((cd_n + 1))
+                            [ "$cd_n" -eq 1 ] && cd_path=$1
+                        fi
+                        ;;
+                esac
+                shift
+            done
+            if [ "$cd_bad" -eq 0 ] && [ "$cd_n" -eq 1 ]; then
+                printf 'cd:%s' "$(step_dir "$dir" "$cd_path")"
+            else
+                printf 'cd:'
+            fi
+            ;;
+        pushd)
+            # Bare `pushd` and `pushd +N` / `-N` rotate the stack rather than
+            # push a path; `-n` pushes without changing directory.
+            case "${2:-}" in
+                '' | [+-]*) printf 'lost' ;;
+                *) printf 'pushd:%s' "$(step_dir "$dir" "$2")" ;;
+            esac
+            ;;
+        popd)
+            if [ $# -eq 1 ]; then printf 'popd'; else printf 'lost'; fi
+            ;;
+        git)
+            shift
+            while [ $# -gt 0 ]; do
+                case "$1" in
+                    -C)
+                        [ $# -ge 2 ] || { dir=''; break; }
+                        dir=$(step_dir "$dir" "$2")
+                        shift 2
+                        ;;
+                    -c | --git-dir | --work-tree | --namespace)
+                        [ $# -ge 2 ] || break
+                        shift 2
+                        ;;
+                    -*) shift ;;
+                    *) break ;;
+                esac
+            done
+            [ "${1:-}" = "$want" ] && printf 'hit:%s' "$dir"
+            ;;
+    esac
+    return 0
+)
+
+# resolve_command_dir <command> <start-dir> <subcommand> prints the directory
+# the first `git <subcommand>` in <command> runs in.
+#
+# Status: 0 resolved; 1 no segment invokes <subcommand>; 2 the directory it
+# runs in cannot be determined statically -- a `cd`, `pushd` or `git -C` in
+# scope names an unknowable path, or the nesting could not be tracked. Only
+# segments up to the first hit are examined, so an unresolvable `cd` AFTER the
+# git call does not produce a 2, and nor does one inside a subshell that has
+# already closed.
+#
+# SCOPES. A `(` at command position opens a subshell scope: the directory and
+# pushd stack are saved, and restored by the matching `)`. A `{` word opens a
+# group scope, which restores nothing at its `}` -- a group runs in the
+# current shell -- but is tracked so the nesting stays known. Matching is only
+# attempted while a scope is open. At top level a stray paren or brace is
+# prose (a heredoc line, a quoted message), because an unquoted one there
+# would be a syntax error, so it changes nothing -- and that keeps commands
+# with no grouping resolving exactly as a walk without scope tracking would.
+# Inside a scope, parens in quotes or after a backslash are skipped and `$(`
+# / `((` pairs are matched off; a quote left open at the end of a segment
+# means a separator was split inside a string, the parens after it cannot be
+# trusted, and any later hit is reported as status 2 rather than as a guess.
+# A `)` that meets an open group, or a `}` that meets an open subshell, is a
+# mismatch and has the same effect.
+#
+# PIPELINES. Every stage of a pipeline runs in its own subshell (bash without
+# lastpipe, and dash), so a `cd` in one stage reaches neither the next stage
+# nor anything after the pipeline: each stage starts from the directory the
+# pipeline started in, and that directory is restored when it ends. Stages
+# are single segments here. A stage that opens or closes a scope spanning
+# other segments -- `{ cd x; make; } | tee log` -- cannot be bounded this way,
+# so it makes any later hit status 2. `||`, `|&` and `>|` are not pipes.
+resolve_command_dir() (
+    set -f
+    rcd_cmd=$1
+    dir=$2
+    want=$3
+    nl='
+'
+    us=$(printf '\037')
+    # pstack: pushd stack, top first, each entry terminated by $us.
+    # frames: open scopes, top first, each "<s|g>$us<dir>$us<pstack>" +
+    #         newline; s = subshell (restores), g = group (does not).
+    pstack=''
+    frames=''
+    inner=0   # unmatched non-scope opens inside the current scopes: $( ((
+    lost=0
+    in_pipe=0
+    pipe_dir='' pipe_pstack='' pipe_frames=''
+    # What the previous segment did to the scopes: frames before its leading
+    # scope words, after them, and at its end; whether it closed a group;
+    # and the directory it started in.
+    prev_before='' prev_lead='' prev_end='' prev_closed=0
+    prev_dir=$dir prev_pstack=''
+    IFS=$nl
+    # Mark the separators: lists (`;` `&` `&&` `||`) become newlines, and a
+    # pipe becomes a newline followed by `|`, so a segment starting with `|`
+    # is a pipeline stage after the first.
+    # shellcheck disable=SC2046,SC2086  # deliberate: split on the separators.
+    set -- $(printf '%s' "$rcd_cmd" |
+        sed -e 's/>|/>/g' -e 's/||/;/g' -e 's/|&/|/g' -e 's/&&/;/g' -e 's/|/;|/g' |
+        tr ';&' '\n')
+    for seg in "$@"; do
+        # Pipeline bookkeeping, before this segment runs: a stage boundary
+        # or the end of a pipeline puts the directory back where the
+        # pipeline started.
+        #
+        # A stage before a `|` must be the previous segment alone: one whose
+        # scopes balance within it (`( cd x ) | ...`), or that only opened
+        # scopes enclosing the pipeline (`( cd x | ...`). Anything else --
+        # a stage that closes a group or subshell opened in an earlier
+        # segment -- has a start this walk did not see.
+        case "$seg" in
+            '|'*)
+                seg=${seg#?}
+                if [ "$prev_closed" -eq 1 ]; then
+                    lost=1
+                elif [ "$in_pipe" -eq 1 ]; then
+                    [ "$prev_before" = "$pipe_frames" ] &&
+                        [ "$prev_end" = "$pipe_frames" ] || lost=1
+                elif [ "$prev_end" = "$prev_before" ]; then
+                    pipe_frames=$prev_before
+                elif [ "$prev_end" = "$prev_lead" ]; then
+                    pipe_frames=$prev_lead
+                else
+                    lost=1
+                fi
+                if [ "$in_pipe" -eq 0 ]; then
+                    pipe_dir=$prev_dir
+                    pipe_pstack=$prev_pstack
+                    in_pipe=1
+                fi
+                dir=$pipe_dir
+                pstack=$pipe_pstack
+                ;;
+            *)
+                # The last stage may span segments when it opened a scope
+                # (`... | ( cd x; make )`): the pipeline ends when the
+                # scopes are back where it started.
+                if [ "$in_pipe" -eq 1 ]; then
+                    if [ "$frames" = "$pipe_frames" ]; then
+                        dir=$pipe_dir
+                        pstack=$pipe_pstack
+                        in_pipe=0
+                    else
+                        case "$frames" in
+                            *"$nl$pipe_frames") ;;   # still inside the stage
+                            *)
+                                # A subshell enclosing the pipeline closed
+                                # with its last stage, `( a | cd x )`: the
+                                # close already restored the directory.
+                                if [ -n "$frames" ]; then
+                                    case "$pipe_frames" in
+                                        *"$nl$frames") ;;
+                                        *) lost=1 ;;
+                                    esac
+                                fi
+                                in_pipe=0
+                                ;;
+                        esac
+                    fi
+                fi
+                ;;
+        esac
+        prev_dir=$dir
+        prev_pstack=$pstack
+        prev_before=$frames
+        prev_closed=0
+
+        # Leading scope words: `(` opens a subshell, `{` a group, and `}`
+        # closes a group.
+        rest=$seg
+        while :; do
+            case "$rest" in
+                ' '* | '	'*) rest=${rest#?} ;;
+                '('*)
+                    frames="s$us$dir$us$pstack$nl$frames"
+                    rest=${rest#?}
+                    ;;
+                '{' | '{ '* | '{	'*)
+                    frames="g$us$dir$us$pstack$nl$frames"
+                    rest=${rest#?}
+                    ;;
+                '}' | '} '* | '}	'* | '})'* | '}>'* | '}<'*)
+                    case "$frames" in
+                        '') ;;                       # top level: prose
+                        g*) frames=${frames#*"$nl"}; prev_closed=1 ;;
+                        *) lost=1 ;;                 # `}` meets a subshell
+                    esac
+                    rest=${rest#?}
+                    ;;
+                *) break ;;
+            esac
+        done
+        prev_lead=$frames
+
+        # Inside a scope, find where the command ends (the first `)` that
+        # closes a scope) and how many scopes close in this segment.
+        body=$rest
+        closes=0
+        open_quote=0
+        if [ -n "$frames" ]; then
+            case "$rest" in
+                *'('* | *')'* | *'"'* | *"'"*)
+                    body=''
+                    q=''
+                    t=$rest
+                    while [ -n "$t" ]; do
+                        c=${t%"${t#?}"}
+                        t=${t#?}
+                        if [ "$q" = "'" ]; then
+                            [ "$c" = "'" ] && q=''
+                        elif [ "$q" = '"' ]; then
+                            case "$c" in
+                                '"') q='' ;;
+                                \\) [ "$closes" -eq 0 ] && body=$body$c
+                                    c=${t%"${t#?}"}
+                                    t=${t#?} ;;
+                            esac
+                        else
+                            case "$c" in
+                                "'" | '"') q=$c ;;
+                                \\) [ "$closes" -eq 0 ] && body=$body$c
+                                    c=${t%"${t#?}"}
+                                    t=${t#?} ;;
+                                '(') inner=$((inner + 1)) ;;
+                                ')')
+                                    if [ "$inner" -gt 0 ]; then
+                                        inner=$((inner - 1))
+                                    else
+                                        closes=$((closes + 1))
+                                    fi
+                                    ;;
+                            esac
+                        fi
+                        [ "$closes" -eq 0 ] && body=$body$c
+                    done
+                    [ -n "$q" ] && open_quote=1
+                    ;;
+            esac
+        fi
+
+        out=$(segment_scan "$body" "$dir" "$want")
+        case "$out" in
+            hit:*)
+                [ "$lost" -eq 0 ] && [ -n "${out#hit:}" ] || return 2
+                printf '%s' "${out#hit:}"
+                return 0
+                ;;
+        esac
+        # An open quote taints what FOLLOWS this segment; the segment's own
+        # command word came before it, so a hit above still stands.
+        [ "$open_quote" -eq 0 ] || lost=1
+        case "$out" in
+            cd:*) dir=${out#cd:} ;;
+            pushd:*)
+                pstack="$dir$us$pstack"
+                dir=${out#pushd:}
+                ;;
+            popd)
+                if [ -n "$pstack" ]; then
+                    dir=${pstack%%"$us"*}
+                    pstack=${pstack#*"$us"}
+                else
+                    dir=''   # saved before this command: unknowable here
+                fi
+                ;;
+            lost) lost=1 ;;
+        esac
+
+        while [ "$closes" -gt 0 ] && [ -n "$frames" ]; do
+            frame=${frames%%"$nl"*}
+            frames=${frames#*"$nl"}
+            case "$frame" in
+                s*)
+                    frame=${frame#*"$us"}
+                    dir=${frame%%"$us"*}
+                    pstack=${frame#*"$us"}
+                    ;;
+                *) lost=1 ;;   # `)` meets a group
+            esac
+            closes=$((closes - 1))
+        done
+        [ -n "$frames" ] || inner=0
+        prev_end=$frames
+    done
+    return 1
+)

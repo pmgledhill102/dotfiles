@@ -1,0 +1,78 @@
+#!/bin/sh
+# claude-prune-retired — remove files retired from agentic-coding-config's
+# home/ that chezmoi left behind at ~/.claude/.
+#
+# chezmoi only adds and updates target files; it never removes a target whose
+# source was deleted. A retired slash command therefore survives at
+# ~/.claude/commands/ on every machine that ever applied a version containing
+# it, and Claude Code keeps listing it. This script closes that gap by
+# deleting an explicit list of retired paths (~/.claude/retired-paths).
+#
+# Why a list rather than `exact = true` on the externals: exact would prune
+# anything not in the archive, including files added by hand on one machine
+# that nobody remembers. The list is more tiresome to maintain but its blast
+# radius is exactly what is written down.
+#
+# Invoked by dotfiles after each `chezmoi apply` (pmgledhill102/dotfiles#371);
+# safe to run by hand at any time. Idempotent — a path already gone is a
+# no-op, so repeated runs converge and never error.
+#
+# Usage: claude-prune-retired [-n|--dry-run]
+# Exit: 0 always, unless the list itself is unreadable. Never fails an apply
+#       over a single bad entry — it warns and moves on.
+
+set -eu
+
+CLAUDE_DIR="${CLAUDE_DIR:-$HOME/.claude}"
+LIST="$CLAUDE_DIR/retired-paths"
+dry_run=0
+
+case "${1:-}" in
+    -n|--dry-run) dry_run=1 ;;
+    '') ;;
+    *) echo "usage: $(basename "$0") [-n|--dry-run]" >&2; exit 2 ;;
+esac
+
+# No list means nothing has been retired yet, or this machine predates the
+# mechanism. Either way there is nothing to do.
+[ -f "$LIST" ] || exit 0
+
+pruned=0
+while IFS= read -r line || [ -n "$line" ]; do
+    # Strip trailing whitespace; skip blanks and comments.
+    path=$(printf '%s' "$line" | sed 's/[[:space:]]*$//')
+    case "$path" in
+        '' | '#'*) continue ;;
+    esac
+
+    # Refuse anything that could escape ~/.claude/. A typo here would
+    # otherwise delete an arbitrary file on every machine, every apply.
+    case "$path" in
+        /* | *..*)
+            echo "claude-prune-retired: refusing unsafe entry: $path" >&2
+            continue
+            ;;
+    esac
+
+    target="$CLAUDE_DIR/$path"
+    [ -e "$target" ] || continue
+
+    # Directories are out of scope: the retired set is individual commands and
+    # scripts, and a stray directory entry should be looked at by a human.
+    if [ -d "$target" ]; then
+        echo "claude-prune-retired: skipping directory: $path" >&2
+        continue
+    fi
+
+    if [ "$dry_run" -eq 1 ]; then
+        echo "would prune $target"
+    else
+        rm -f "$target"
+        echo "pruned $target"
+    fi
+    pruned=$((pruned + 1))
+done < "$LIST"
+
+# $(( )) returns exit 1 when the result is 0, which would trip `set -e` on the
+# last increment — hence the explicit exit.
+exit 0

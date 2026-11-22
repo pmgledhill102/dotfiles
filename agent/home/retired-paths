@@ -1,0 +1,184 @@
+# Files retired from this repo's home/ that must also be removed from
+# ~/.claude/ on every machine.
+#
+# WHY THIS FILE EXISTS: chezmoi only adds and updates target files. It never
+# removes a target whose source was deleted. So deleting home/commands/foo.md
+# leaves ~/.claude/commands/foo.md in place on every machine that ever applied
+# a version containing it — and Claude Code goes on offering /foo as a slash
+# command. See the README, "Deleting a file here does not delete it on
+# machines".
+#
+# HOW IT IS CONSUMED: ~/.claude/bin/claude-prune-retired reads this file and
+# removes each listed path. dotfiles invokes that script after each
+# `chezmoi apply` (pmgledhill102/dotfiles#371).
+#
+# FORMAT: one path per line, relative to ~/.claude/. Blank lines and lines
+# starting with # are ignored. Absolute paths and paths containing .. are
+# refused by both the pruner and CI.
+#
+# TO RETIRE A FILE: delete it from home/ and add its ~/.claude/-relative path
+# here, in the same PR. CI fails if an entry here still exists in home/, so a
+# premature or mistyped entry can't ship.
+#
+# Entries are permanent. Removing a line once the file is gone everywhere is
+# not worth the risk — a machine that hasn't been applied to in a year still
+# needs it. Group by retirement with a dated comment.
+#
+# THIS FILE HAS TWO SECTIONS. Everything above the UNDEPLOYED marker below is
+# retired: gone from home/, gone from every machine. Everything below it is
+# still in home/ — for some reason other than being deployed — but is no longer
+# delivered to ~/.claude/. The pruner treats both the same way and needs no
+# knowledge of the distinction; CI is what tells them apart, and it asserts
+# the OPPOSITE condition for each. See the marker comment for the rules.
+
+# 2026-07-18 (d7a3f6d) — beads tracker retired in favour of GitHub Issues (#123)
+commands/bd-enable-server-mode.md
+commands/bd-import-github-issues.md
+commands/bd-modernize.md
+bin/bd-push-safe
+
+# 2026-08-18 — policy files replaced by composed profiles (ADR-0018, #249)
+#
+# home/CLAUDE.md used to pull these in with Claude's @import syntax, so both
+# had to exist at ~/.claude/ as separate files. Composition inlines them into
+# the generated CLAUDE.md instead, so the standalone copies are now dead text
+# that no longer matches the fragments they came from. Their content lives in
+# context/fragments/{ephemeral-first,env-workstation}.md.
+ephemeral-first.md
+local-machine.md
+
+# 2026-08-26 — the plugin channel withdrawn (#312)
+#
+# hooks.json declared the same five hooks a third time, and only for a plugin:
+# every command was "${CLAUDE_PLUGIN_ROOT}/bin/plugin-hook-dispatch <script>",
+# which expands to nothing outside one. plugin-hook-dispatch existed to stand
+# down when ~/.claude/bin/<hook> was present, so a plugin-enabled workstation
+# ran each hook once rather than twice. With no plugin there is nothing to
+# stand down from. Both deployed to ~/.claude/ via the archive external, so
+# both need pruning. The hooks themselves are untouched: home/settings.json
+# declares them for a workstation and `bootstrap.sh --with-hooks` merges them
+# into a sandbox's settings.json, and the five scripts in home/bin/ stay.
+hooks/hooks.json
+bin/plugin-hook-dispatch
+
+# 2026-08-26 — the home/commands/ twins retired (#313)
+#
+# Every one of these also exists as home/skills/<name>/SKILL.md, from the same
+# source: the 15 setup-* and repo-review are hand-maintained pairs, and
+# start-session, end-session and retrospective compose to both forms from
+# context/skills/. Claude Code registers a skill as the same /name a command
+# gives, so a machine carrying both offered one slash command backed by two
+# identical bodies that could drift apart.
+#
+# The twins were to go at the #48 plugin cutover. That cutover was declined
+# (#311) and #48 closed, so the duplication was judged on its own merits
+# instead. Both cloud profiles have shipped skills/ and no commands/ since
+# ADR-0018, with /start-session resolving to the skill and behaving the same —
+# the precedent this follows.
+#
+# home/commands/gcp-credentials.md is NOT here. It has no skill counterpart in
+# home/skills/, so on a workstation it is the only interface to the credential
+# client; retiring it would remove /gcp-credentials from every machine.
+commands/end-session.md
+commands/promote-journal-inbox.md
+commands/repo-review.md
+commands/retrospective.md
+commands/setup-common.md
+commands/setup-docker.md
+commands/setup-dotnet.md
+commands/setup-go.md
+commands/setup-java.md
+commands/setup-markdown.md
+commands/setup-node.md
+commands/setup-php.md
+commands/setup-python.md
+commands/setup-repo.md
+commands/setup-ruby.md
+commands/setup-rust.md
+commands/setup-shell.md
+commands/setup-terraform.md
+commands/setup-typescript.md
+commands/start-session.md
+
+# 2026-09-09 — the last piece of beads surface (#131)
+#
+# The migration tool outlived the 2026-07-18 retirement above deliberately:
+# #123 kept it "until the last repo is migrated, then delete in a follow-up",
+# because deleting it earlier would have stranded any un-migrated repo, and it
+# was the only thing that also tore down the beads pre-commit hook. There are
+# no repos left on beads, so the condition ADR-0013 set for its retirement is
+# met.
+#
+# ~1,000 lines of Python that has been deploying to ~/.claude/bin/ on every
+# machine since the migration finished. docs/beads-migration-runbook.md goes
+# with it — repo-meta, never deployed, so it needs no entry here.
+bin/bd-migrate-to-github
+
+# 2026-09-18 — /start-sweep-session retired before it was ever run (#456)
+#
+# It shipped in #455 as one skill that triaged the backlog and then worked it.
+# #456 split those apart, because triage wants maximum context and execution
+# wants none: /bundle-issues now reads every open issue body and writes Bundle
+# Issues, and start-session surfaces them.
+#
+# That left this skill with exactly one thing of its own — working several
+# bundles concurrently in git worktrees. Everything else it did had moved into
+# the Bundle Issue (the files, the gates, the stop rule, re-verify first) or
+# was already standing policy (branch, gates, PR with Closes #n). And the one
+# remaining thing optimises the wrong constraint: the skill's own 3-bundle cap
+# was justified by "the binding constraint is review load, not execution",
+# which is equally an argument that parallel execution buys little.
+#
+# So a Bundle Issue is picked up like any other issue. If parallel sweeping
+# turns out to be wanted repeatedly, it comes back on evidence (#446).
+skills/start-sweep-session/SKILL.md
+
+# 2026-10-20 — the neutral AGENTS.md beside CLAUDE.md retired (#310)
+#
+# It was core + ephemeral-first with no environment fragment, so it told a
+# reader the policy but not the machine. In ~/.claude/ no agent but Claude
+# reads it, and Claude reads the complete CLAUDE.md — possibly this file as
+# well, loading the portable core twice (#596). A non-Claude agent is served
+# by its own composed profile instead.
+AGENTS.md
+
+# === UNDEPLOYED: still in home/, no longer deployed to ~/.claude/ ===
+#
+# WHY A SECOND SECTION: a path can need to stay in home/ for some reason other
+# than being deployed, while still having to leave ~/.claude/ on machines that
+# already have it — because chezmoi never deletes a target it has stopped
+# managing. Such a path cannot be deleted from home/ the way a retired file is.
+# Same pruner, opposite precondition.
+#
+# The case that created this section was home/ doubling as the plugin root
+# (#48): a path moving to the plugin channel could not be deleted from home/
+# without removing it from the plugin too. The plugin was withdrawn (#312), so
+# that case is gone and no other has appeared. The section is kept because the
+# distinction is real and the guard below is what makes it safe.
+#
+# CI RULE: an entry below this marker MUST still exist in home/. If it doesn't,
+# it isn't undeployed — it's retired, and belongs above the marker. That
+# inversion is the guard: neither section can silently absorb the other's
+# mistakes, and moving the marker without moving the entries fails the build.
+#
+# ORDERING, AND WHY THIS SECTION IS EMPTY: an entry here is only correct once
+# the chezmoi external has stopped deploying that path — which is a change to
+# the `include` filter in pmgledhill102/dotfiles, not something this repo can
+# make. Listing a path while chezmoi still deploys it makes every `chezmoi
+# apply` write the file and the post-apply pruner immediately delete it again.
+# That converges on the right end state, but it is churn masquerading as
+# working. So: dotfiles narrows the include FIRST, then the paths land here.
+#
+# AND IT WILL NOT (#311). dotfiles declined the plugin cutover — it keeps both
+# existing channels, the chezmoi archive external and cloud/bootstrap.sh, and
+# will not narrow the include (pmgledhill102/dotfiles#392, closed as not
+# planned). So commands/, skills/, hooks/ and bin/ are NOT candidates for this
+# section: chezmoi is still their delivery route on personal machines, and an
+# entry here would produce exactly the write-then-delete churn described above,
+# on every apply. There is no longer a platform where that would sit harmless
+# either — the pruner now has a PowerShell sibling for native Windows
+# (pmgledhill102/dotfiles#407).
+#
+# The mechanism stays for a genuine undeployment: a path that must still exist
+# in home/ for some other reason but must leave ~/.claude/. Nothing meets that
+# description today, which is why the section is empty.

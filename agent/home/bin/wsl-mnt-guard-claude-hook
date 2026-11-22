@@ -1,0 +1,42 @@
+#!/bin/sh
+# wsl-mnt-guard-claude-hook — Claude Code SessionStart hook.
+#
+# On WSL, the Windows host is mounted at /mnt/<drive>, and the policy is that
+# an agent works only on the distro's own filesystem (env-wsl fragment, #569).
+# A session that starts with its working directory under /mnt/<drive> gets one
+# line of context saying so, and asking it to check with the user before doing
+# any work there. A SessionStart hook's stdout lands in the agent's context,
+# which is the whole mechanism.
+#
+# THIS IS A GUARDRAIL, NOT A SECURITY BOUNDARY. It warns once, at the start; it
+# does not stop a later `cd /mnt/c` or a Write there. A PreToolUse block on
+# Write|Edit was considered and deliberately not built: it would also block a
+# write the user asked for (#569).
+#
+# A no-op on every other surface, so it ships in the one settings.json every
+# surface reads: the /proc/version test comes first and costs nothing beyond
+# the process spawn off WSL. macOS has no /proc at all; a Linux kernel that is
+# not Microsoft's says so in the same file.
+#
+# Fail-open and exit 0 unconditionally: no jq, an unreadable payload or a
+# missing cwd prints nothing. A SessionStart hook that fails is a session that
+# starts with an error, for a check that only ever advises.
+#
+# WSL_MNT_GUARD_PROC_VERSION overrides the kernel-identity file, so the test
+# can drive the WSL branch from any machine.
+
+set -u
+
+proc_version=${WSL_MNT_GUARD_PROC_VERSION:-/proc/version}
+[ -r "$proc_version" ] || exit 0
+grep -qi microsoft "$proc_version" 2>/dev/null || exit 0
+
+command -v jq >/dev/null 2>&1 || exit 0
+cwd=$(jq -r '.cwd // empty' 2>/dev/null) || exit 0
+
+case "$cwd" in
+    /mnt/[a-z] | /mnt/[a-z]/*)
+        printf '%s\n' "This session started in $cwd, which is the Windows host filesystem, not WSL's own. Work under ~/dev on the Linux filesystem: do not clone, edit, commit or build under /mnt/<drive>. Ask the user what they want before doing anything here."
+        ;;
+esac
+exit 0

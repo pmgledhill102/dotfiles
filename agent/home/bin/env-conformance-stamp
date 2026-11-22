@@ -1,0 +1,50 @@
+#!/bin/sh
+# env-conformance-stamp — set measured=<date> on named capability-matrix entries.
+#
+# The scheduled conformance run (#655) uses this after a clean run, so that a
+# stanza's measured= says when the claim was last observed to hold rather than
+# when a human last looked. It is separate from env-conformance on purpose:
+# the runner writes nothing, and that is a property tests hold it to. This is
+# the one thing in the suite that writes, and it writes only the matrix file
+# it is given, only measured= lines, only in the stanzas it is named.
+#
+# Usage: env-conformance-stamp <matrix> <YYYY-MM-DD> <id>...
+#
+# All or nothing: an id the matrix does not hold is an error, and nothing is
+# written. A stamp that silently skipped a typo would leave that entry's date
+# stale with a clean exit saying otherwise.
+#
+# Exit: 0 stamped, 1 unknown id or unwritable matrix, 64 usage.
+
+set -u
+
+[ $# -ge 3 ] || { echo "usage: env-conformance-stamp <matrix> <YYYY-MM-DD> <id>..." >&2; exit 64; }
+MATRIX=$1
+DATE=$2
+shift 2
+
+case "$DATE" in
+    [0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]) ;;
+    *) echo "env-conformance-stamp: not a YYYY-MM-DD date: $DATE" >&2; exit 64 ;;
+esac
+[ -r "$MATRIX" ] && [ -w "$MATRIX" ] || { echo "env-conformance-stamp: cannot read and write $MATRIX" >&2; exit 1; }
+
+missing=
+for id in "$@"; do
+    grep -qxF "[$id]" "$MATRIX" || missing="$missing $id"
+done
+[ -z "$missing" ] || { echo "env-conformance-stamp: no such entries:$missing" >&2; exit 1; }
+
+# Beside the matrix, not in /tmp, so the final mv is a rename on one
+# filesystem rather than a copy that can be interrupted halfway.
+tmp="$MATRIX.stamp.$$"
+trap 'rm -f "$tmp"' EXIT INT TERM
+
+awk -v date="$DATE" -v ids=" $* " '
+    /^\[[^]]+\][[:space:]]*$/ { id = $0; gsub(/^\[|\][[:space:]]*$/, "", id); sel = index(ids, " " id " ") > 0 }
+    sel && /^measured=/ { print "measured=" date; next }
+    { print }
+' "$MATRIX" > "$tmp" || exit 1
+
+mv "$tmp" "$MATRIX" || exit 1
+for id in "$@"; do echo "stamped $id measured=$DATE"; done

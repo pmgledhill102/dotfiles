@@ -1,0 +1,353 @@
+#!/bin/sh
+# estate-report — open work across the estate, in one pass.
+#
+# WHY THIS EXISTS. Three tools cover pieces of the estate and none answers
+# "where is the work": repo-audit.sh checks settings, repo-review checks one
+# repo's drift, bundle-issues triages one backlog. Choosing which repo to open
+# was guesswork, and guesswork defaults to whichever repo was open last.
+#
+# WHY IT IS A SCRIPT AND NOT SKILL PROSE. Every number here is arithmetic
+# against a threshold -- "5+ bot PRs with the oldest over 14 days" is a
+# function, not a judgement. An agent evaluating that forty times will drift,
+# and nothing announces it when one comes out wrong. Two further reasons: the
+# forty repos of issue JSON never enter an agent's context, only the rendered
+# table does (#425 was three tool-result overflows in one session); and the
+# same input always produces the same table, so two runs can be diffed.
+#
+# The judgement stays with the agent -- which repo to actually open, and why.
+# That is what the skill is for. This only ever produces evidence.
+#
+# WHY jq DOES THE DATES. `date` is the sharpest BSD/GNU split in this estate:
+# `date -d` is GNU, `date -j -f` is BSD, and a script that picks one works on
+# the machine it was written on and fails on the other. jq's fromdateiso8601
+# is the same everywhere, so no age arithmetic here goes near `date` at all.
+#
+# OUTPUT IS EVIDENCE. It names private repos and what is wrong in them. Print
+# it, pipe it, keep it in a scratch directory -- never commit it, and never
+# paste a real run into the skill or an issue as an "example". The estate's
+# standing line is standard public, evidence private.
+#
+# Usage:
+#   estate-report                 render the table
+#   estate-report --json          emit the aggregate, for another renderer
+#   estate-report --owner NAME    default: pmgledhill102
+#   estate-report --repos a,b,c   skip enumeration, use this list
+#   estate-report --exclude a,b   skip these, on top of the built-in list
+#
+# Exit: 0 report produced (possibly with unchecked repos, which are named),
+#       1 no usable token, 2 enumeration produced nothing.
+
+set -u
+
+OWNER=pmgledhill102
+FORMAT=table
+REPO_LIST=""
+
+# Repos that keep their backlog in Issues but are not engineering work --
+# lifeos and its sandbox are a personal to-do list. Counted like any other repo
+# they arrive with a large backlog and an `untriaged` flag, because life tasks
+# will never carry P0-P4 labels, and they then outrank real engineering work on
+# volume and sit at the top of the table permanently. That trains you to ignore
+# the top of the table, which is the one thing this design cannot survive.
+#
+# A default rather than a flag because the common invocation is the bare
+# command, and an exclusion you have to remember to pass is one you will forget.
+# If this list ever reaches about five, move the rule to a GitHub topic on the
+# repos themselves -- see #503 for why that is not the starting point.
+EXCLUDE="lifeos lifeos-sandbox"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --json)   FORMAT=json ;;
+        --owner)  shift; OWNER="${1:-}" ;;
+        --repos)  shift; REPO_LIST="${1:-}" ;;
+        --exclude)
+            shift
+            EXCLUDE="$EXCLUDE $(echo "${1:-}" | tr ',' ' ')" ;;
+        -h|--help)
+            sed -n '/^# Usage:/,/^#       2 enum/p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0 ;;
+        *) echo "estate-report: unknown option $1" >&2; exit 1 ;;
+    esac
+    shift
+done
+
+command -v jq > /dev/null 2>&1 || { echo "estate-report: needs jq" >&2; exit 1; }
+
+# --- token -----------------------------------------------------------------
+# Three sources in descending convenience. A missing token must fail loudly:
+# an unauthenticated call still returns 200 with public data only, so a silent
+# fallback would print a confident, wrong, half-empty estate.
+TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+if [ -z "$TOKEN" ] && command -v gh > /dev/null 2>&1; then
+    TOKEN=$(gh auth token 2> /dev/null || true)
+fi
+if [ -z "$TOKEN" ]; then
+    echo "estate-report: no token. Set GH_TOKEN or GITHUB_TOKEN, or run 'gh auth login'." >&2
+    exit 1
+fi
+
+API=https://api.github.com
+WORK=$(mktemp -d) || exit 1
+trap 'rm -rf "$WORK"' EXIT INT TERM
+
+# get <path> <outfile> -- one page. Prints the HTTP status on stdout so the
+# caller can tell "empty because there is nothing" from "empty because it
+# failed", which is the distinction that decides unchecked versus clean.
+get() {
+    curl -sS --max-time 30 -o "$2" -w '%{http_code}' \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "$API$1" 2> /dev/null || echo 000
+}
+
+# One repo's row, from the single /issues response. Every age is computed by
+# jq rather than `date`, for the portability reason in the header.
+cat > "$WORK/row.jq" <<'JQ'
+def age: (now - fromdateiso8601) / 86400 | floor;
+def prio: [.labels[].name] | map(select(test("^P[0-4]$"))) | (first // "none");
+def bot: .user.login | endswith("[bot]");
+
+{ issues: map(select(has("pull_request") | not)),
+  prs:    map(select(has("pull_request"))) }
+| {
+    repo:         $repo,
+    open:         (.issues | length),
+    p0:           (.issues | map(select(prio == "P0")) | length),
+    p1:           (.issues | map(select(prio == "P1")) | length),
+    p24:          (.issues | map(select(prio | test("^P[234]$"))) | length),
+    untriaged:    (.issues | map(select(prio == "none")) | length),
+    human:        (.prs | map(select(bot | not)) | length),
+    bot:          (.prs | map(select(bot)) | length),
+    oldest_human: (.prs | map(select(bot | not) | .created_at | age) | max // 0),
+    oldest_bot:   (.prs | map(select(bot) | .created_at | age) | max // 0),
+    push_age:     ($meta[0].pushed_at | age),
+    exceptions:   (.issues | map(select(prio | test("^P[01]$"))
+                                 | {p: prio, n: .number, t: .title}))
+  }
+JQ
+
+# --- 1. enumerate ----------------------------------------------------------
+# Keep forks. This is deliberately NOT repo-audit.sh's rule, which drops them
+# because upstream owns their settings -- settings-scoped reasoning. A fork
+# under this account can carry its own issues and PRs, and that is work.
+#
+# Filter on owner. /user/repos also returns org repos the token can see, and
+# desertfoxclan is explicitly not part of this estate.
+: > "$WORK/excluded"
+
+# Whether this run covers the estate or a chosen subset. A scoped run is a
+# supported mode, not a degraded one -- a cloud session with four or five
+# deliberately attached repos gives a genuinely useful report. What it must
+# never do is render identically to a whole-estate run, because then a table
+# that omits thirty-five repos looks exactly like one that omits none.
+SCOPED=no
+
+if [ -n "$REPO_LIST" ]; then
+    # An explicit list is an instruction, so the exclusions do not apply to it:
+    # naming an excluded repo here is how you deliberately look at one.
+    echo "$REPO_LIST" | tr ',' '\n' | sed '/^$/d' > "$WORK/repos"
+    SCOPED=yes
+else
+    page=1
+    : > "$WORK/repos"
+    while [ "$page" -le 10 ]; do
+        code=$(get "/user/repos?per_page=100&affiliation=owner&page=$page" "$WORK/page.json")
+        if [ "$code" != "200" ]; then
+            # A 403 here is usually not about the credential. An agent sandbox
+            # binds a session to its configured repositories and refuses every
+            # GitHub path that reaches wider -- /user/repos and
+            # /installation/repositories alike -- upstream of the token, so no
+            # token at any scope changes it. Saying "your token is too narrow"
+            # sends the reader hunting for a better PAT that cannot exist.
+            # `grep -q` rather than a jq parse: the body is the proxy's, not
+            # GitHub's, so it is not guaranteed to be JSON at all.
+            if [ "$code" = "403" ] &&
+                grep -q "bound to their configured repositories" "$WORK/page.json" 2> /dev/null; then
+                echo "estate-report: this session is bound to its configured repositories," >&2
+                echo "  so the estate cannot be enumerated here. This is the sandbox's session" >&2
+                echo "  binding, not the token -- no credential changes it." >&2
+                echo "" >&2
+                echo "  For a scoped report, pass the repos this session has: --repos a,b,c" >&2
+                echo "  For the whole estate, run on a workstation." >&2
+                exit 2
+            fi
+            echo "estate-report: repo list failed (HTTP $code)" >&2
+            break
+        fi
+        count=$(jq 'length' "$WORK/page.json")
+        jq -r --arg o "$OWNER" \
+            '.[] | select(.archived | not) | select(.owner.login == $o) | .name' \
+            "$WORK/page.json" >> "$WORK/repos"
+        [ "$count" -eq 100 ] || break
+        page=$((page + 1))
+    done
+
+    # Drop the excluded repos, recording which were actually present. Only a
+    # name that was really there is reported, so a stale entry in the list does
+    # not appear as though it excluded something.
+    # shellcheck disable=SC2086  # deliberate word splitting: EXCLUDE is a list
+    for name in $EXCLUDE; do
+        grep -qxF "$name" "$WORK/repos" || continue
+        echo "$name" >> "$WORK/excluded"
+        grep -vxF "$name" "$WORK/repos" > "$WORK/kept" || true
+        mv "$WORK/kept" "$WORK/repos"
+    done
+fi
+
+REPO_COUNT=$(wc -l < "$WORK/repos" | tr -d ' ')
+if [ "$REPO_COUNT" -eq 0 ]; then
+    if [ -s "$WORK/excluded" ]; then
+        # Distinct from the token case below, and saying the wrong one sends
+        # someone debugging credentials over a list they wrote themselves.
+        echo "estate-report: every repo found for '$OWNER' is excluded." >&2
+        echo "  excluded: $(tr '\n' ' ' < "$WORK/excluded")" >&2
+        exit 2
+    fi
+    echo "estate-report: no repositories found for owner '$OWNER'." >&2
+    echo "  A repo-scoped token (a sandbox installation token) cannot list an account's" >&2
+    echo "  repositories. Pass --repos a,b,c, or run where a user token is available." >&2
+    exit 2
+fi
+
+# --- 2. gather -------------------------------------------------------------
+# One call per repo: REST /issues returns issues AND pull requests, split by
+# the `pull_request` key. The GraphQL-backed tooling needs two calls for the
+# same thing, so this halves the run.
+: > "$WORK/rows.jsonl"
+: > "$WORK/unchecked"
+
+while IFS= read -r repo; do
+    [ -n "$repo" ] || continue
+
+    code=$(get "/repos/$OWNER/$repo" "$WORK/meta.json")
+    if [ "$code" != "200" ]; then
+        echo "$repo	repo metadata (HTTP $code)" >> "$WORK/unchecked"
+        continue
+    fi
+
+    page=1
+    echo '[]' > "$WORK/all.json"
+    failed=""
+    while [ "$page" -le 10 ]; do
+        code=$(get "/repos/$OWNER/$repo/issues?state=open&per_page=100&page=$page" "$WORK/iss.json")
+        if [ "$code" != "200" ]; then
+            failed="HTTP $code"
+            break
+        fi
+        count=$(jq 'length' "$WORK/iss.json")
+        jq -s '.[0] + .[1]' "$WORK/all.json" "$WORK/iss.json" > "$WORK/merged.json" \
+            && mv "$WORK/merged.json" "$WORK/all.json"
+        [ "$count" -eq 100 ] || break
+        page=$((page + 1))
+    done
+
+    if [ -n "$failed" ]; then
+        echo "$repo	issues ($failed)" >> "$WORK/unchecked"
+        continue
+    fi
+
+    jq -c --arg repo "$repo" --slurpfile meta "$WORK/meta.json" -f "$WORK/row.jq" \
+        "$WORK/all.json" >> "$WORK/rows.jsonl" 2> /dev/null \
+        || echo "$repo	aggregation" >> "$WORK/unchecked"
+done < "$WORK/repos"
+
+# --- 3. derive and render --------------------------------------------------
+# Flags are ordered and exclusive: a repo gets the first that matches, and the
+# table sorts by that order, so the top rows are the answer to "what now".
+#
+# A repo matching none is UNFLAGGED, and that is a real state rather than a
+# gap -- a large backlog being actively worked is exactly the case these flags
+# exist not to raise. Do not add a seventh flag to fill it.
+cat > "$WORK/render.jq" <<'JQ'
+def pad($n): tostring as $s | $s + ((" " * ($n - ($s | length))) // "");
+def rpad($n): tostring as $s | ((" " * ($n - ($s | length))) // "") + $s;
+# Repo names run past any width worth reserving, and one long name shifts every
+# column on every other row. Truncate rather than let the table break.
+def trunc($n): tostring | if length > $n then .[0:$n - 1] + "~" else . end;
+
+def flag:
+  if   .p0 > 0                                   then "P0"
+  elif .human > 0 and .oldest_human > 7          then "blocked"
+  elif .bot >= 5 and .oldest_bot > 14            then "automation"
+  elif .p1 > 0 and .push_age > 30                then "stalled"
+  elif .untriaged > 5                            then "untriaged"
+  elif .open == 0 and (.human + .bot) == 0       then "quiet"
+  else "" end;
+
+def rank:
+  {"P0": 0, "blocked": 1, "automation": 2,
+   "stalled": 3, "untriaged": 4, "": 5, "quiet": 6}[.flag] // 5;
+
+def row:
+  (.repo | trunc(23) | pad(24))
+  + (.open | rpad(5))
+  + (.p0 + .p1 | rpad(6))
+  + (.p24 | rpad(6))
+  + (.untriaged | rpad(7))
+  + (("\(.human) / \(.bot)") | rpad(11))
+  + (("\(.push_age)d") | rpad(7))
+  + "  " + .flag;
+
+map(. + {flag: flag}) as $rows
+| ($rows | map(select(.flag != "quiet")) | sort_by(rank, -.open)) as $active
+| ($rows | map(select(.flag == "quiet")) | map(.repo) | sort)     as $quiet
+| ($rows | map(.exceptions[] + {repo: .repo}) | sort_by(.p, .repo)) as $exc
+| [ "estate — \($rows | length) repos, as of \($now)"
+    + (if $scoped == "yes"
+       then "  (SCOPED: --repos, not the whole estate)" else "" end),
+    "",
+    "P0 / P1 across the estate (\($exc | length))",
+    ""
+  ]
+  + ($exc | map("  \(.p)  \(.repo)#\(.n)  \(.t)"))
+  + [ "", "",
+      ("repo" | pad(24)) + ("open" | rpad(5)) + ("P0-1" | rpad(6))
+        + ("P2-4" | rpad(6)) + ("untri" | rpad(7)) + ("you/bot" | rpad(11))
+        + ("push" | rpad(7)) + "  flag",
+      ("-" * 74)
+    ]
+  + ($active | map(row))
+  + (if ($quiet | length) > 0
+     then ["", "quiet (\($quiet | length)): \($quiet | join(", "))"]
+     else [] end)
+| .[]
+JQ
+
+NOW=$(date -u +%Y-%m-%dT%H:%MZ)
+
+if [ "$FORMAT" = json ]; then
+    jq -s --arg now "$NOW" --arg owner "$OWNER" --arg scoped "$SCOPED" \
+        --rawfile exc "$WORK/excluded" \
+        '{generated_at: $now, owner: $owner,
+          scoped: ($scoped == "yes"),
+          excluded: ($exc | split("\n") | map(select(length > 0))),
+          repos: .}' "$WORK/rows.jsonl"
+else
+    jq -s -r --arg now "$NOW" --arg scoped "$SCOPED" \
+        -f "$WORK/render.jq" "$WORK/rows.jsonl"
+fi
+
+# --- 3a. exclusions --------------------------------------------------------
+# Say what was left out, every time. The report already refuses to drop a repo
+# silently -- an unreachable one reports as `not checked`, never as clean --
+# and a silently excluded repo has the same defect and is worse for being
+# permanent. An exclusion nobody can see is a blind spot nobody can audit.
+if [ -s "$WORK/excluded" ] && [ "$FORMAT" != json ]; then
+    echo ""
+    echo "excluded ($(wc -l < "$WORK/excluded" | tr -d ' ')): $(tr '\n' ',' < "$WORK/excluded" | sed -e 's/,$//' -e 's/,/, /g')"
+fi
+
+# --- 4. unchecked ----------------------------------------------------------
+# Never silent. A repo dropped without a word is indistinguishable from a
+# healthy one, which is the exact failure this report exists to catch.
+if [ -s "$WORK/unchecked" ]; then
+    echo ""
+    echo "not checked ($(wc -l < "$WORK/unchecked" | tr -d ' ')) — these are UNKNOWN, not clean:"
+    while IFS="	" read -r repo reason; do
+        echo "  $repo — $reason"
+    done < "$WORK/unchecked"
+fi
+
+exit 0

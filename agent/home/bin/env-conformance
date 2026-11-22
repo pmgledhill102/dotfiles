@@ -1,0 +1,448 @@
+#!/bin/sh
+# shellcheck disable=SC2329 # probe_* are called indirectly; see the probes section
+# env-conformance — re-measure the platform behaviours this repo rests on.
+#
+# Every capability decision here (which egress lane works, whether a
+# container-written settings.json is honoured, which tools the image ships)
+# was measured once against a vendor environment that changes without notice,
+# and each one fails silently when it does. This reads the capability matrix,
+# probes each entry, and says which claims still hold (#260, #653).
+#
+# Usage: env-conformance [--fast | --agent [--answer KEY=VALUE]...] [--brief] [--matrix FILE]
+#
+#   --fast    only mode=fast entries: a few seconds, no human, no approvals
+#   --agent   only mode=agent entries: claims no script can see, such as "is
+#             the composed policy in my context". The agent reports what it
+#             observed with --answer, and this compares that against the file
+#             on disk. Driven by the env-conformance skill
+#   --answer  KEY=VALUE, one per agent observation; KEY is the one the probe
+#             names. VALUE `absent` means "not in my context"
+#   --brief   the start-session gather format: one state= line, then only
+#             the entries that did not pass
+#   --matrix  defaults to ../conformance/matrix.conf beside this script, which
+#             is where both chezmoi and the bootstrap put it
+#
+# Statuses:
+#   pass      observed what the claim predicts, and the negative control did
+#             not, so the probe is known to be able to fail
+#   FAIL      observed something else; the claim, and what depends on it, no
+#             longer hold
+#   unproven  observed the expectation, but so did the control (or the
+#             control could not run). The probe cannot be shown to tell the
+#             two apart, so the pass means nothing
+#   unknown   the probe could not run (no network, no gh, no session id).
+#             Never a failure: an unanswered question is not a broken claim
+#
+# Brief state=: ok, mismatch, unproven, unknown (nothing applicable could be
+# asked), not-applicable (nothing in the matrix is for this surface), invalid.
+#
+# Exit: 0 nothing failed, 1 a FAIL, 2 unproven but no FAIL, 3 the matrix is
+# unreadable or an entry is malformed, 64 usage.
+#
+# WRITES NOTHING. Every probe is a read: an HTTP request, a lookup, a file
+# read. A conformance suite that leaves debris in every container it checks is
+# worse than none, and tests/env-conformance-test.sh holds it to that.
+
+set -u
+set -f # probe arguments are URLs and paths, never globs
+
+FAST=0
+AGENT=0
+BRIEF=0
+ANSWERS=
+MATRIX=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --fast) FAST=1 ;;
+        --agent) AGENT=1 ;;
+        --answer)
+            [ $# -ge 2 ] || { echo "env-conformance: --answer needs KEY=VALUE" >&2; exit 64; }
+            case "$2" in
+                [a-z]*=*) ;;
+                *) echo "env-conformance: --answer wants KEY=VALUE, got: $2" >&2; exit 64 ;;
+            esac
+            ANSWERS="$ANSWERS$2
+"
+            shift
+            ;;
+        --brief) BRIEF=1 ;;
+        --matrix)
+            [ $# -ge 2 ] || { echo "env-conformance: --matrix needs a file" >&2; exit 64; }
+            MATRIX=$2
+            shift
+            ;;
+        -h | --help)
+            sed -n '3,/^$/s/^# \{0,1\}//p' "$0"
+            exit 0
+            ;;
+        *) echo "env-conformance: unknown argument: $1" >&2; exit 64 ;;
+    esac
+    shift
+done
+
+SELF_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+[ -n "$MATRIX" ] || MATRIX="$SELF_DIR/../conformance/matrix.conf"
+
+# Per-request ceiling. The fast subset runs inside start-session's gather, so a
+# hung proxy must cost seconds, not the session's patience.
+TIMEOUT=${CONFORMANCE_TIMEOUT:-4}
+
+# Which surface the expectations are compared on. The matrix records where
+# each was measured; an entry for another surface is skipped rather than
+# failed, because a workstation having ssh is not drift.
+if [ -n "${CONFORMANCE_SURFACE:-}" ]; then
+    SURFACE=$CONFORMANCE_SURFACE
+elif [ "${CLAUDE_CODE_REMOTE:-}" = true ]; then
+    SURFACE=claude-cloud
+else
+    SURFACE=other
+fi
+
+# --- probes -------------------------------------------------------------------
+#
+# Each prints exactly one observation word. "unknown" is reserved for "could
+# not ask", and is never what a probe says when it asked and got an answer it
+# did not like.
+#
+# They are reached only through run_probe's "probe_$fn" dispatch, which the
+# linter cannot follow: hence the file-wide SC2329 disable under the shebang.
+
+bounded() { # run a command under the timeout where `timeout` exists (not macOS)
+    if command -v timeout > /dev/null 2>&1; then
+        timeout "$TIMEOUT" "$@"
+    else
+        "$@"
+    fi
+}
+
+probe_os() { # os <os-release file> -> <ID>-<VERSION_ID> | none
+    [ -r "${1:-}" ] || { echo none; return; }
+    _id=$(sed -n 's/^ID=//p' "$1" | tr -d '"')
+    _ver=$(sed -n 's/^VERSION_ID=//p' "$1" | tr -d '"')
+    if [ -n "$_id" ]; then echo "$_id-$_ver"; else echo none; fi
+}
+
+probe_sh_impl() { # sh_impl <path> -> basename of what it resolves to | none
+    [ -e "${1:-}" ] || { echo none; return; }
+    _real=$(readlink -f "$1" 2> /dev/null || echo "$1")
+    basename "$_real"
+}
+
+probe_tool() { # tool <name> -> present | absent
+    if command -v "${1:-}" > /dev/null 2>&1; then echo present; else echo absent; fi
+}
+
+probe_env_set() { # env_set <VAR> -> set | unset. Only the state is ever printed:
+    # the variable this exists for holds a bearer token.
+    case "${1:-}" in
+        '' | [!A-Za-z_]* | *[!A-Za-z0-9_]*) echo unknown; return ;;
+    esac
+    eval "_val=\${$1:-}"
+    # shellcheck disable=SC2154 # assigned by the eval above
+    if [ -n "$_val" ]; then echo set; else echo unset; fi
+    _val=
+}
+
+probe_egress() { # egress <url> -> reached | blocked | unknown
+    command -v curl > /dev/null 2>&1 || { echo unknown; return; }
+    # A ranged GET with no redirect-following: one byte at most, and reaching
+    # the host is the question, not what it serves. The egress proxy refuses a
+    # host at CONNECT with a 403, which curl reports as http_connect, distinct
+    # from any status the origin itself returns inside the tunnel.
+    _out=$(curl -s -o /dev/null -r 0-0 --max-time "$TIMEOUT" \
+        -w '%{http_code} %{http_connect}' "${1:-}" 2> /dev/null)
+    _code=${_out%% *}
+    _connect=${_out##* }
+    if [ "$_connect" = 403 ]; then
+        echo blocked
+    elif [ -n "$_code" ] && [ "$_code" != 000 ]; then
+        echo reached
+    else
+        # DNS failure, refused connection, timeout: no network to ask, which
+        # is not the same as the proxy saying no.
+        echo unknown
+    fi
+}
+
+origin_slug() {
+    git remote get-url origin 2> /dev/null | sed -n 's#.*github\.com[:/]##p' | sed 's#\.git$##'
+}
+
+probe_gh_lane() { # gh_lane rest <owner/repo|@origin> | gh_lane graphql -> ok | blocked | missing | unknown
+    command -v gh > /dev/null 2>&1 || { echo unknown; return; }
+    case "${1:-}" in
+        rest)
+            _slug=${2:-}
+            [ "$_slug" = @origin ] && _slug=$(origin_slug)
+            [ -n "$_slug" ] || { echo unknown; return; }
+            _err=$(bounded gh api "repos/$_slug" --jq .id 2>&1 > /dev/null) && { echo ok; return; }
+            ;;
+        graphql)
+            _err=$(bounded gh api graphql -f query='{viewer{login}}' 2>&1 > /dev/null) && { echo ok; return; }
+            ;;
+        *) echo unknown; return ;;
+    esac
+    # gh ends its error with "(HTTP <status>)". Anything without a status is a
+    # failure to ask -- no auth, no network -- rather than an answer.
+    case "$_err" in
+        *"HTTP 403"*) echo blocked ;;
+        *"HTTP 404"*) echo missing ;;
+        *) echo unknown ;;
+    esac
+}
+
+probe_hook_fired() { # hook_fired <marker> <settings.json> <hook> -> this-session | other-session | absent | unknown
+    # A hook that writes a marker makes "do hooks fire?" readable after the
+    # fact. The marker must name THIS session: one restored with a cached
+    # snapshot proves only that a hook fired for somebody once.
+    [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] || { echo unknown; return; }
+    # Not configured is a choice the environment made (--with-hooks), not the
+    # platform ignoring a hook, so it is no answer either way.
+    grep -q -- "${3:-}" "${2:-}" 2> /dev/null || { echo unknown; return; }
+    [ -f "${1:-}" ] || { echo absent; return; }
+    _sid=$(sed -n 's/^session_id=//p' "$1" | head -1)
+    if [ "$_sid" = "$CLAUDE_CODE_SESSION_ID" ]; then echo this-session; else echo other-session; fi
+}
+
+# --- agent observations -------------------------------------------------------
+#
+# Some claims only the agent can check: whether a container-written policy file
+# reached its context, whether container-written skills reached its skill list.
+# The agent quotes the opening words of something it can see, without reading
+# any file, and the quote is compared with the file it should have come from.
+# Opening words rather than a yes/no, because "do you have policy?" invites a
+# confident yes; a verbatim quote of text the agent was not otherwise shown
+# cannot be produced from expectation.
+
+answer_for() { # answer_for <key> -> "=<value>" if answered, nothing if not
+    printf '%s' "$ANSWERS" | while IFS= read -r _l; do
+        case "$_l" in
+            "$1="*) printf '=%s' "${_l#*=}"; break ;;
+        esac
+    done
+}
+
+normalise() { # lowercase, no punctuation, single spaces: a quote may drop a comma
+    printf '%s' "$1" | tr -d '[:punct:]' | tr '[:upper:]' '[:lower:]' |
+        tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//'
+}
+
+heading_paragraph() { # heading_paragraph <file> <heading text> -> first paragraph under it
+    [ -r "$1" ] || return 0
+    awk -v want="$2" '
+        found && /^[[:space:]]*$/ { if (para != "") exit; next }
+        found { para = para (para == "" ? "" : " ") $0; next }
+        /^#+[[:space:]]/ { h = $0; sub(/^#+[[:space:]]+/, "", h); sub(/[[:space:]]+$/, "", h); if (h == want) found = 1 }
+        END { print para }
+    ' "$1"
+}
+
+skill_description() { # skill_description <SKILL.md> -> its frontmatter description
+    [ -r "$1" ] || return 0
+    sed -n '2,/^---$/s/^description:[[:space:]]*//p' "$1" | head -1 |
+        sed "s/^['\"]//; s/['\"]\$//"
+}
+
+probe_agent() { # agent policy <key> <file> <heading...> | agent skill <key> <SKILL.md>
+    #  -> present | absent | wrong | unknown
+    _kind=${1:-}
+    _key=${2:-}
+    _file=${3:-}
+    shift 3 2> /dev/null || { echo unknown; return; }
+    _got=$(answer_for "$_key")
+    [ -n "$_got" ] || { echo unknown; return; }
+    _got=${_got#=}
+    case "$_kind" in
+        policy) _truth=$(heading_paragraph "$_file" "$*") ;;
+        skill) _truth=$(skill_description "$_file") ;;
+        *) echo unknown; return ;;
+    esac
+    _na=$(normalise "$_got")
+    if [ "$_na" = absent ]; then
+        echo absent
+        return
+    fi
+    # Nothing on disk to compare with, yet the agent quoted something: a claim
+    # of presence that cannot be true. Reported as present so that, on a
+    # negative control, the runner calls the whole check unproven -- an agent
+    # that sees what is not there cannot be trusted when it sees what is.
+    [ -n "$_truth" ] || { echo present; return; }
+    _nt=$(normalise "$_truth")
+    # Five words is past what a lucky guess gets right, and short enough that
+    # a listing which truncates a description still shows it.
+    # shellcheck disable=SC2086 # splitting into words is the point: count them
+    set -- $_na
+    _prefix=no
+    case "$_nt " in "$_na "*) _prefix=yes ;; esac
+    if [ $# -ge 5 ] && [ "$_prefix" = yes ]; then
+        echo present
+    else
+        echo wrong
+    fi
+}
+
+KNOWN_PROBES=" os sh_impl tool env_set egress gh_lane hook_fired agent "
+
+# run_probe <probe expression> -- split, expand ~/, dispatch.
+run_probe() {
+    # shellcheck disable=SC2086 # word splitting is the argument format
+    set -- $1
+    _fn=$1
+    shift
+    _args=
+    for _a in "$@"; do
+        # shellcheck disable=SC2088 # a literal ~/ from the matrix, expanded here
+        case "$_a" in
+            "~/"*) _a="$HOME/${_a#\~/}" ;;
+        esac
+        _args="$_args $_a"
+    done
+    # shellcheck disable=SC2086 # re-split the expanded arguments
+    "probe_$_fn" $_args
+}
+
+# --- the matrix ---------------------------------------------------------------
+
+[ -r "$MATRIX" ] || {
+    if [ "$BRIEF" -eq 1 ]; then
+        echo "state=invalid reason=matrix not readable: $MATRIX"
+    else
+        echo "env-conformance: matrix not readable: $MATRIX" >&2
+    fi
+    exit 3
+}
+
+US=$(printf '\037')
+# One record per stanza, fields in a fixed order, separated by the unit
+# separator: a non-whitespace IFS character, so an empty field survives `read`
+# instead of collapsing into its neighbour.
+records() {
+    awk -v us="$US" '
+        function flush() {
+            if (id != "") print id us f["mode"] us f["surface"] us f["probe"] us \
+                f["expect"] us f["control"] us f["measured"] us f["claim"] us f["depends"]
+            split("", f)
+        }
+        /^[[:space:]]*(#|$)/ { next }
+        /^\[[^]]+\][[:space:]]*$/ { flush(); id = $0; gsub(/^\[|\][[:space:]]*$/, "", id); next }
+        { k = $0; sub(/=.*/, "", k); v = $0; sub(/^[^=]*=/, "", v); f[k] = v }
+        END { flush() }
+    ' "$MATRIX"
+}
+
+PASS=0
+FAIL=0
+UNPROVEN=0
+UNKNOWN=0
+SKIPPED=0
+INVALID=0
+REPORT=
+
+note() { REPORT="$REPORT$1
+"; }
+
+while IFS=$US read -r id mode surface probe expect control measured claim depends; do
+    # Malformed entries are reported, never skipped: a stanza that silently
+    # drops out of the run is an assertion nobody is making any more.
+    missing=
+    for pair in "mode:$mode" "surface:$surface" "probe:$probe" "expect:$expect" \
+        "control:$control" "measured:$measured" "claim:$claim" "depends:$depends"; do
+        [ -n "${pair#*:}" ] || missing="$missing ${pair%%:*}"
+    done
+    pfn=${probe%% *}
+    cfn=${control%% *}
+    if [ -n "$missing" ]; then
+        INVALID=$((INVALID + 1))
+        note "invalid  $id  missing:$missing"
+        continue
+    fi
+    case "$KNOWN_PROBES" in
+        *" $pfn "*) ;;
+        *) INVALID=$((INVALID + 1)); note "invalid  $id  unknown probe function '$pfn'"; continue ;;
+    esac
+    # A control through a different function proves that function can fail,
+    # which says nothing about the one under test.
+    if [ "$pfn" != "$cfn" ]; then
+        INVALID=$((INVALID + 1))
+        note "invalid  $id  control uses '$cfn', probe uses '$pfn'; they must match"
+        continue
+    fi
+    # Agent entries need answers, so they run only when asked for, and then
+    # alone; a plain run would report every one of them unknown.
+    if [ "$surface" != "$SURFACE" ] ||
+        { [ "$AGENT" -eq 1 ] && [ "$mode" != agent ]; } ||
+        { [ "$AGENT" -eq 0 ] && [ "$mode" = agent ]; } ||
+        { [ "$FAST" -eq 1 ] && [ "$mode" != fast ]; }; then
+        SKIPPED=$((SKIPPED + 1))
+        continue
+    fi
+
+    observed=$(run_probe "$probe")
+    if [ "$observed" = unknown ]; then
+        UNKNOWN=$((UNKNOWN + 1))
+        note "unknown  $id  probe could not run (no network, tool or session to ask)"
+    elif [ "$observed" = "$expect" ]; then
+        controlled=$(run_probe "$control")
+        if [ "$controlled" = unknown ] || [ "$controlled" = "$expect" ]; then
+            UNPROVEN=$((UNPROVEN + 1))
+            note "unproven $id  observed=$observed but control observed=$controlled; the probe is not shown able to fail"
+        else
+            PASS=$((PASS + 1))
+            [ "$BRIEF" -eq 1 ] || note "pass     $id  observed=$observed (control=$controlled)"
+        fi
+    else
+        FAIL=$((FAIL + 1))
+        note "FAIL     $id  observed=$observed expected=$expect (last measured $measured)
+         claim: $claim
+         invalidates: $depends"
+    fi
+done << EOF
+$(records)
+EOF
+
+if [ "$INVALID" -gt 0 ]; then
+    STATE=invalid
+    RC=3
+elif [ "$FAIL" -gt 0 ]; then
+    STATE=mismatch
+    RC=1
+elif [ "$UNPROVEN" -gt 0 ]; then
+    STATE=unproven
+    RC=2
+elif [ "$PASS" -eq 0 ] && [ "$UNKNOWN" -gt 0 ]; then
+    # Everything applicable went unanswered -- typically no network. Not ok:
+    # nothing was confirmed. Not a failure: nothing was contradicted either.
+    STATE=unknown
+    RC=0
+elif [ "$PASS" -eq 0 ]; then
+    # Nothing in the matrix applies here: a workstation, or another vendor's
+    # sandbox. Silence, not a clean bill of health.
+    STATE=not-applicable
+    RC=0
+else
+    STATE=ok
+    RC=0
+fi
+
+COUNTS="pass=$PASS fail=$FAIL unproven=$UNPROVEN unknown=$UNKNOWN skipped=$SKIPPED"
+
+if [ "$BRIEF" -eq 1 ]; then
+    echo "state=$STATE surface=$SURFACE $COUNTS"
+    printf '%s' "$REPORT"
+    exit "$RC"
+fi
+
+# The environment the run observed, so a later failure can be dated against
+# the last known-good run rather than against memory.
+manifest="$HOME/.agents/.bootstrap-manifest"
+echo "env-conformance $(date -u +%Y-%m-%dT%H:%M:%SZ 2> /dev/null)"
+echo "surface=$SURFACE os=$(probe_os /etc/os-release) kernel=$(uname -r 2> /dev/null)" \
+    "claude_code=${CLAUDE_CODE_VERSION:-unknown}" \
+    "bootstrap_sha=$(sed -n 's/^sha=//p' "$manifest" 2> /dev/null | head -1)"
+if [ "$AGENT" -eq 1 ]; then RUN_MODE=agent; elif [ "$FAST" -eq 1 ]; then RUN_MODE=fast; else RUN_MODE=full; fi
+echo "matrix=$MATRIX mode=$RUN_MODE"
+echo
+printf '%s' "$REPORT"
+echo
+echo "state=$STATE $COUNTS"
+exit "$RC"

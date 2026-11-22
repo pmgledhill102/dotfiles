@@ -1,0 +1,270 @@
+#!/bin/sh
+# precommit-claude-hook — Claude Code PreToolUse(Bash) hook.
+#
+# Runs the pre-commit framework on the `git commit` / `git push` commands
+# Claude makes through its Bash tool, blocking (exit 2 — the only PreToolUse
+# exit code that both stops the tool call AND feeds stderr back to Claude)
+# when linting fails. SILENT ON SUCCESS: all output is captured and emitted
+# only on failure, so passing checks add nothing to the transcript or to
+# Claude's context.
+#
+# Two stages:
+#   git commit -> lint the staged delta (commit-stage semantics; fast). A
+#                 `git commit -a`/`--all` stages files AFTER this hook fires,
+#                 so the staged set is incomplete -> fall back to --all-files.
+#   git push   -> lint the whole tree (--all-files): a last gate before CI
+#                 that also covers manual / --no-verify commits the commit
+#                 stage never saw.
+#
+# Replaces the per-repo hooks that init.templatedir git-templates used to
+# install. Going vanilla-git removed those templates; this global hook is
+# the single thing layered on top.
+#
+# Scope/limits: only governs commands Claude runs via its Bash tool — manual
+# terminal commits/pushes are CI-backed. Reads the payload as JSON on stdin;
+# needs `jq` (no jq -> no-op).
+
+set -u
+
+# --- Read payload; degrade gracefully without jq. -------------------------
+command -v jq >/dev/null 2>&1 || exit 0
+payload=$(cat)
+cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty')
+cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty')
+
+# --- Classify the command. ------------------------------------------------
+# This hook fires on EVERY Bash call, so the common not-a-commit/push case
+# must exit immediately. Honour the standard --no-verify / -n escape hatch
+# (caveat: a message literally containing " --no-verify"/" -n " also skips —
+# a false skip, not a false block; CI still covers it).
+#
+# Matched by *position*, not by substring. `*"git commit"*` matched any command
+# merely containing the phrase, so writing it into a notes file or an issue body
+# triggered a whole pre-commit cycle -- harmless, but it costs the latency of
+# the full run on a call that was never going to commit anything.
+
+# git_subcommand prints the git subcommand a segment invokes, or nothing.
+# Skips git's own global options so `git -C path commit` still classifies.
+# Subshell parens are not part of a word: `(git commit -m x)` and the
+# `git push)` that ends `(cd x && git push)` classify as commit and push.
+git_subcommand() {
+    gs_seg=$1
+    while :; do
+        case "$gs_seg" in
+            ' '* | '	'* | '('*) gs_seg=${gs_seg#?} ;;
+            *) break ;;
+        esac
+    done
+    gs_ifs=$IFS
+    # nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- deliberate IFS for the word split below, restored to gs_ifs right after.
+    IFS=' 	)'
+    # shellcheck disable=SC2086  # deliberate: split the segment into words.
+    set -- $gs_seg
+    # nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- restores the IFS saved in gs_ifs before the split.
+    IFS=$gs_ifs
+    [ "${1:-}" = "git" ] || return 0
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -C | -c | --git-dir | --work-tree | --namespace)
+                [ $# -ge 2 ] || return 0
+                shift 2
+                ;;
+            -*) shift ;;
+            *)
+                printf '%s' "$1"
+                return 0
+                ;;
+        esac
+    done
+}
+
+# Split on shell separators, so `cd x && git commit -m ...` still matches while
+# `echo "git commit"` does not.
+#
+# Globbing is off while the command is split into words: `git -C docs/* commit`
+# would otherwise expand against this hook's cwd, and the extra words would
+# shift a filename into the subcommand position.
+stage=""
+stages_itself=""
+set -f
+cls_ifs=$IFS
+# nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- deliberate newline-only IFS for the split below, restored to cls_ifs right after.
+IFS='
+'
+# shellcheck disable=SC2046,SC2086  # deliberate: split on the inserted newlines.
+set -- $(printf '%s' "$cmd" | tr ';&|' '\n')
+# nosemgrep: bash.lang.security.ifs-tampering.ifs-tampering -- restores the IFS saved in cls_ifs just above the word split.
+IFS=$cls_ifs
+for seg in "$@"; do
+    case "$(git_subcommand "$seg")" in
+        add) stages_itself=1 ;;
+        commit)
+            stage="pre-commit"
+            break
+            ;;
+        push) [ -n "$stage" ] || stage="pre-push" ;;
+    esac
+done
+set +f
+[ -n "$stage" ] || exit 0
+
+# Honour --no-verify / -n against the whole command, as before.
+case "$stage" in
+  "pre-commit")
+    case "$cmd" in
+      *" --no-verify "*|*" --no-verify"|*" -n "*|*" -n") exit 0 ;;
+    esac ;;
+  "pre-push")
+    case "$cmd" in
+      *" --no-verify "*|*" --no-verify") exit 0 ;;
+    esac ;;
+esac
+
+# --- Move into the repo the command targets. ------------------------------
+# The payload's cwd is where the shell IS, not where `cd /other/clone && git
+# commit` or `git -C /other/clone commit` will run. Linting cwd checks a tree
+# nobody is committing to, and because this hook is silent on success, a pass
+# there is indistinguishable from a pass on the right tree. The walk over `cd`
+# and `git -C` lives in lib/resolve-command-dir, shared with
+# prepush-guard-claude-hook.
+#
+# UNRESOLVABLE PATH -> NOT CHECKED, SAID ALOUD. When a `cd`, `pushd` or `git -C`
+# in scope at the commit/push names a path that cannot be known statically (a
+# variable, substitution, glob, quoted or ~ path), or nesting the lib cannot
+# follow, the hook lints nothing, says so on stderr, and exits 0. The
+# alternatives are worse for a lint gate:
+#   - falling back to the payload cwd (--all-files or not) lints the wrong
+#     tree, which is the defect itself: a pass that checked nothing relevant,
+#     or a block on findings in a repo nobody is committing to;
+#   - blocking (exit 2) rejects the whole Bash call, destroying any heredoc or
+#     file write earlier in it, to demand a rewrite of a legitimate command.
+# Not checked is backstopped by the native git hook where one is installed and
+# by CI; it must never be silent, so it gets the same "Not checked" wording as
+# a tool-absent failure below. The push guard makes the same skip for its own
+# reason (a false denial costs the whole tool call).
+#
+# A missing lib is reported the same way, never as exit 2: dash exits 2 on a
+# failed `.`, and 2 is the code that blocks.
+rcd_lib="$(dirname -- "$0")/lib/resolve-command-dir"
+if [ ! -r "$rcd_lib" ]; then
+  printf 'pre-commit (%s): not checked -- %s is missing.\n' "$stage" "$rcd_lib" >&2
+  exit 0
+fi
+# shellcheck source=/dev/null  # lib/resolve-command-dir, resolved at run time
+. "$rcd_lib"
+
+case "$stage" in
+  pre-commit) want=commit ;;
+  *) want=push ;;
+esac
+start=${cwd:-$PWD}
+target=$(resolve_command_dir "$cmd" "$start" "$want")
+case $? in
+  0) ;;
+  2)
+    printf 'pre-commit (%s): not checked -- the command changes directory to a path that cannot be resolved before it runs (variable, substitution, glob, quoted or ~ path, or subshell/pushd nesting it cannot follow). Use a literal path to have it linted.\n' "$stage" >&2
+    exit 0
+    ;;
+  *) target=$start ;;  # unreachable: classification above found the segment
+esac
+root=$(git -C "$target" rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root" || exit 0
+
+# --- Nothing to do without a config or without pre-commit installed. ------
+[ -f .pre-commit-config.yaml ] || exit 0
+command -v pre-commit >/dev/null 2>&1 || exit 0
+
+# --- Choose file scope per stage. -----------------------------------------
+if [ "$stage" = "pre-push" ]; then
+  scope="--all-files"
+else
+  scope=""
+  case "$cmd" in
+    *" -a"*|*" --all"*) scope="--all-files" ;;
+  esac
+fi
+
+# This hook runs BEFORE the command does, so `... && git add -A && git commit`
+# is linted against the staged set as it stood before that `git add`. A fix made
+# earlier in the same command (a sed, a dictionary word) is not in it, so the
+# block can be for a problem the command has already fixed. Widening this run to
+# --all-files would hide that by turning a commit-stage check into a whole-tree
+# one; the hint says it instead, and costs nothing unless the hook blocks.
+hint=""
+if [ "$stage" = "pre-commit" ] && [ -n "$stages_itself" ]; then
+    hint='This command stages files itself, but the hook ran before it, so it checked the previously staged set. Stage in a separate call, then commit.'
+fi
+
+# --- Run it. Block (exit 2) on failure; silent on success. ----------------
+# shellcheck disable=SC2086
+out=$(pre-commit run --hook-stage "$stage" $scope 2>&1) && exit 0
+
+# A hook that could not RUN is not a finding. The push stage deliberately runs
+# the whole suite --all-files, so on any surface missing an optional toolchain
+# it fails hooks whose binary is simply absent: terraform, tflint and checkov
+# are not installed in a cloud sandbox, so a Go-and-Markdown-only commit hit
+# four exit-127 failures and had to be pushed with --no-verify. Five times out
+# of five, which is what turns a considered bypass into the muscle-memory
+# ending of every push command -- and the next time the hook blocks for a real
+# reason, --no-verify is already typed.
+#
+# So split the failures. Genuine findings still block exactly as before;
+# tool-absent ones are reported as not checked and let the push through. The
+# classification is deliberately tight -- a signature of the tool being missing,
+# not merely of the hook failing -- because the costly direction of error is
+# waving through a real finding.
+classify_failures() {
+    awk '
+        function flush() {
+            if (name != "" && failed) {
+                if (absent) unavail = unavail (unavail ? " " : "") name
+                else real = real (real ? " " : "") name
+            }
+            name = ""; failed = 0; absent = 0
+        }
+        # pre-commit prints one status line per hook: the name, dot padding,
+        # then the verdict. Skips carry "(no files to check)" before it.
+        /\.\.\./ && /(Passed|Failed|Skipped)$/ {
+            flush()
+            idx = index($0, "...")
+            name = substr($0, 1, idx - 1)
+            failed = ($0 ~ /Failed$/)
+            next
+        }
+        failed {
+            if ($0 ~ /exit code: 127/ ||
+                $0 ~ /command not found/ ||
+                $0 ~ /[Ee]xecutable .* not found/ ||
+                $0 ~ /binary could be found/ ||
+                $0 ~ /not found in .?PATH/) absent = 1
+        }
+        END { flush(); print "unavailable=" unavail; print "real=" real }
+    '
+}
+
+verdict=$(printf '%s\n' "$out" | classify_failures 2>/dev/null)
+unavailable=$(printf '%s\n' "$verdict" | sed -n 's/^unavailable=//p')
+real=$(printf '%s\n' "$verdict" | sed -n 's/^real=//p')
+
+# No awk, or output this parser did not recognise: fall back to blocking. An
+# unreadable result must not become a free pass.
+if [ -z "$verdict" ]; then
+    printf 'pre-commit (%s) failed — blocked. Fix these and re-run:\n\n%s\n' "$stage" "$out" >&2
+    [ -n "$hint" ] && printf '\n%s\n' "$hint" >&2
+    exit 2
+fi
+
+if [ -n "$real" ]; then
+    printf 'pre-commit (%s) failed — blocked. Fix these and re-run:\n\n%s\n' "$stage" "$out" >&2
+    [ -n "$unavailable" ] &&
+        printf '\nNot checked (tool not installed): %s\n' "$unavailable" >&2
+    [ -n "$hint" ] && printf '\n%s\n' "$hint" >&2
+    exit 2
+fi
+
+# Only tool-absent failures. Say what went unchecked -- "not checked" must
+# never be silently indistinguishable from "passed" -- and allow the command.
+printf 'pre-commit (%s): allowed. Not checked, tool not installed: %s\n' \
+    "$stage" "$unavailable" >&2
+exit 0

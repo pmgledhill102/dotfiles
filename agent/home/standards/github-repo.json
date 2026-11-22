@@ -1,0 +1,345 @@
+{
+  "version": 1,
+  "standard": "home/standards/github-standards.md",
+  "read_from": [
+    "$HOME/.claude/standards/github-repo.json",
+    "https://raw.githubusercontent.com/pmgledhill102/agentic-coding-config/main/home/standards/github-repo.json"
+  ],
+  "field_names": "GitHub REST response shape: `repository` keys are GET /repos/{owner}/{repo} fields, `ruleset` is a POST /repos/{owner}/{repo}/rulesets payload. No translation layer between this file, the applier and the audit.",
+  "file_matching": "A `files` key is an fnmatch glob, matched against every path in the repo's git tree — not a filename list. `dependabot*merge*.y*ml` covers the three spellings the estate has used and the fourth nobody has invented yet. A `pattern` is a Python `re` regular expression, searched (not matched) over the file's decoded text.",
+  "tier_axis": "consequence — what happens if a dependency in the repo is compromised. Not activity, not visibility, not repo kind. Assignments are private and live in paul-context.",
+  "tiers": {
+    "baseline": {
+      "applies_to": "Every repository, archived ones included where the write succeeds. Merge behaviour and the security block: idempotent calls, never wrong. Merge-commits-only is estate policy stated universally rather than per tier, so it is asserted here where every tier inherits it -- a repo nobody has judged yet defaults to baseline, and the nine assigned it were previously compared for no merge field at all (#428).",
+      "extends": null,
+      "repository": {
+        "allow_merge_commit": true,
+        "allow_squash_merge": false,
+        "allow_rebase_merge": false,
+        "delete_branch_on_merge": true,
+        "merge_commit_title": "PR_TITLE",
+        "merge_commit_message": "PR_BODY"
+      },
+      "security": {
+        "dependency_graph": true,
+        "vulnerability_alerts": true,
+        "security_updates": true
+      },
+      "labels_required": [
+        "P0", "P1", "P2", "P3", "P4",
+        "type: epic", "type: feature", "type: task", "type: bug",
+        "needs: local", "needs: decision",
+        "review: title", "review: description", "review: diff"
+      ],
+      "labels_why": {
+        "needs: local": "A step needs the owner's workstation: a credential or tool no cloud sandbox has. Without it a cloud session's start-session brief offers the issue as ordinary work, the session picks it and stops; with it the cloud brief counts it aside and a workstation brief lists it first, the one place it moves. A where, not a how-urgent: priority stays on the P label.",
+        "needs: decision": "Blocked on a choice only the owner can make, with the question named in the body or a comment. Without it the issue reads as workable and a session stalls on it; with it start-session surfaces it as 'answer these and they unblock'. Not a third label for big design work: that is this plus type: epic or the P label.",
+        "review: title": "ADR-0025: the pull request proposes that the owner read the title and trust CI. Merging without changing the label records that he accepted that depth, so without the label the history cannot tell a change that was read from one that was waved through.",
+        "review: description": "ADR-0025: the pull request proposes that the owner read the title and the description.",
+        "review: diff": "ADR-0025: the pull request proposes that the owner read the diff. Always proposed for Terraform, IAM, CI workflows and anything that handles secrets."
+      },
+      "files": {
+        ".github/dependabot.yml": {
+          "why": "checked wherever the file exists rather than required, because whether every repo should have one is a separate question (paul-context#140). A repo without the file is not this check's business; a repo with one that nobody can see is.",
+          "must_match": [
+            {
+              "id": "assigns-a-human",
+              "pattern": "assignees:",
+              "why": "Dependabot pull requests are authored by app/dependabot and match none of the GitHub mobile app's filters (created/assigned/mentions/review-requested/involved), so an unassigned one is invisible until somebody reconstructs an author: search by hand. One such pull request, in a private repository, was a patch bump on an automerge-tier repo, open five months, with nothing surfacing it. Note reviewers is not the key: GitHub removed it from the Dependabot options reference, while assignees is documented for both version and security updates."
+            }
+          ]
+        }
+      }
+    },
+    "protected": {
+      "applies_to": "Deployed or reachable: the code runs somewhere, or something else depends on it.",
+      "extends": "baseline",
+      "ruleset": {
+        "name": "default-branch",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": ["~DEFAULT_BRANCH"],
+            "exclude": []
+          }
+        },
+        "rules": [
+          { "type": "deletion" },
+          { "type": "non_fast_forward" },
+          {
+            "type": "pull_request",
+            "parameters": {
+              "required_approving_review_count": 0,
+              "dismiss_stale_reviews_on_push": false,
+              "require_code_owner_review": false,
+              "require_last_push_approval": false,
+              "required_review_thread_resolution": false
+            }
+          },
+          {
+            "type": "required_status_checks",
+            "parameters": {
+              "strict_required_status_checks_policy": true,
+              "required_status_checks": []
+            }
+          }
+        ]
+      },
+      "rules_required": ["deletion", "non_fast_forward", "pull_request"],
+      "rules_when_ci": ["required_status_checks"],
+      "classic_branch_protection": "none"
+    },
+    "automerge": {
+      "applies_to": "Protected, and the CI proves something. Auto-merge on a repo whose checks are a formality is a slower way of not reading the diff.",
+      "extends": "protected",
+      "repository": {
+        "allow_auto_merge": true
+      },
+      "rules_required": ["required_status_checks"],
+      "dependabot_secrets": ["AUTOMERGE_PAT"],
+      "actions_secrets": ["AUTOMERGE_PAT"],
+      "files": {
+        ".github/workflows/dependabot*merge*.y*ml": {
+          "required": true,
+          "why": "the tier's entire behaviour is this file. dfc-gaming reached zero settings drift while carrying a workflow that could not function, so settings compliance is not evidence the tier works (paul-context#137).",
+          "must_match": [
+            {
+              "id": "approves-with-the-pat",
+              "pattern": "secrets\\.AUTOMERGE_PAT",
+              "why": "GITHUB_TOKEN may not approve a pull request, and a merge performed with it triggers no workflow that runs on push to the default branch (agentic-coding-config#351)."
+            },
+            {
+              "id": "gates-on-the-pr-author",
+              "pattern": "github\\.event\\.pull_request\\.user\\.login",
+              "why": "github.actor is whoever caused the run, so the job skips silently whenever a human touches the PR. Three of dfc-gaming's open Dependabot PRs skipped this way."
+            },
+            {
+              "id": "majors-are-gated",
+              "pattern": "steps\\.metadata\\.outputs\\.update-type",
+              "why": "a major version bump must never auto-merge. Three of the five automerge repos had no update-type gate at all."
+            },
+            {
+              "id": "pre-1.0-is-gated",
+              "pattern": "steps\\.pre_release\\.outputs\\.blocked\\s*==\\s*'false'",
+              "why": "majors-are-gated does not cover a pre-1.0 dependency. fetch-metadata's calculateUpdateType compares version positions literally with no 0.x case, so its major branch is unreachable below 1.0.0 and a breaking 0.x release reports semver-minor, matching the approve gate. Below 1.0.0 the minor position is the breaking one, so the check refuses a 0.x bump that moves it while still auto-merging one that moves only the patch position. The approve step must be conditioned on that check (agentic-coding-config#394)."
+            },
+            {
+              "id": "pre-1.0-check-covers-the-whole-group",
+              "pattern": "updated-dependencies-json",
+              "why": "the pre-1.0 check must scan every updated dependency rather than the previous-version output. fetch-metadata derives update-type from the largest jump across a group but previous-version from updatedDependencies[0] alone, so a guard reading previous-version passes a 0.x dependency whenever a 1.x one sorts first -- and grouped pull requests are the normal shape in this estate (agentic-coding-config#394)."
+            },
+            {
+              "id": "merges-not-squashes",
+              "pattern": "gh pr merge[^\\n]*--merge",
+              "why": "merge-commit is the estate default; squash drops commit trailers, silently leaving `Closes #N` issues open (agentic-coding-config#348)."
+            },
+            {
+              "id": "fails-loud-on-a-missing-pat",
+              "pattern": "::error::",
+              "why": "a missing PAT must fail the job, not fall back to GITHUB_TOKEN, or the failure is a silently skipped merge."
+            },
+            {
+              "id": "missing-metadata-is-left-for-a-human",
+              "pattern": "steps\\.metadata\\.outcome\\s*==\\s*'failure'",
+              "why": "a grouped bump whose commit message exceeds 64 KiB has its metadata block truncated away, and fetch-metadata fails. Without continue-on-error and this branch the job reports red on a healthy PR, which trains the eye to ignore red checks."
+            }
+          ],
+          "must_not_match": [
+            {
+              "id": "squashes",
+              "pattern": "gh pr merge[^\\n]*--squash",
+              "why": "the other half of merges-not-squashes: a workflow carrying both is still wrong."
+            },
+            {
+              "id": "approves-with-the-actions-token",
+              "pattern": "GH_TOKEN:\\s*\\$\\{\\{\\s*secrets\\.GITHUB_TOKEN\\s*\\}\\}",
+              "why": "GitHub refuses an Actions-token approval outright. Naming it as GH_TOKEN is the pre-#351 shape."
+            }
+          ]
+        },
+        ".github/workflows/update-auto-merge-prs.y*ml": {
+          "required": true,
+          "why": "the strict up-to-date rule makes every open PR stale the moment another merges, and arming auto-merge does not update a branch. This workflow merges the base into each armed PR so it lands without anyone clicking Update branch (agentic-coding-config#568, trialled under #588).",
+          "must_match": [
+            {
+              "id": "pushes-with-the-pat",
+              "pattern": "secrets\\.AUTOMERGE_PAT",
+              "why": "a push made with GITHUB_TOKEN triggers no pull_request workflow, so the required checks never run on the updated head and auto-merge waits forever."
+            },
+            {
+              "id": "fails-loud-on-a-missing-pat",
+              "pattern": "::error::",
+              "why": "a missing PAT must fail the run, not fall back to GITHUB_TOKEN, or every armed PR stalls with nothing red anywhere."
+            },
+            {
+              "id": "names-the-missing-repo-cause",
+              "pattern": "selected-repositories list",
+              "why": "a PR listing that fails with a non-empty AUTOMERGE_PAT is almost always the repo missing from the token's selected repositories; without this guard the run ends in a bare 'gh: Not Found (HTTP 404)' (agentic-coding-config#618)."
+            },
+            {
+              "id": "runs-when-a-pr-is-armed",
+              "pattern": "auto_merge_enabled",
+              "why": "without it, a PR armed while already behind waits for the next push to the default branch before anything updates it."
+            },
+            {
+              "id": "updates-only-armed-prs",
+              "pattern": "auto_merge\\s*!=\\s*null",
+              "why": "arming is the owner's approval. Updating an unarmed PR spends a CI run nobody approved, and merges the base into a branch someone may be rewriting."
+            },
+            {
+              "id": "skips-fork-heads",
+              "pattern": "head\\.repo\\.full_name",
+              "why": "the PAT can push only to this repository; a fork's branch is its author's to update."
+            },
+            {
+              "id": "pins-the-head-it-compared",
+              "pattern": "expected_head_sha",
+              "why": "a push to the PR between the compare and the update must make the update fail, not merge the base over a head nobody compared."
+            },
+            {
+              "id": "retries-only-a-head-mismatch",
+              "pattern": "\\*\"expected head sha\"\\*\\)",
+              "why": "a stale PR head record makes update-branch refuse with 422 'expected head sha didn't match', and without a retry from the branch's real head one such PR fails every run (agentic-coding-config#719). The retry keys on that message, not on HTTP 422: a conflicted PR is also a 422, and must keep the run red."
+            },
+            {
+              "id": "runs-are-serialised",
+              "pattern": "cancel-in-progress:\\s*false",
+              "why": "a cancelled run can stop between PRs; serialised runs each see every armed PR, and never race each other on the same head."
+            }
+          ],
+          "must_not_match": [
+            {
+              "id": "pushes-with-the-actions-token",
+              "pattern": "GH_TOKEN:\\s*\\$\\{\\{\\s*secrets\\.GITHUB_TOKEN\\s*\\}\\}",
+              "why": "the other half of pushes-with-the-pat: the shape that updates the branch and then never runs CI."
+            },
+            {
+              "id": "rebases-the-branch",
+              "pattern": "update-branch[^\\n]*--rebase",
+              "why": "merge commits only (agentic-coding-config#348): a rebase rewrites the author's commits and invalidates their checkout."
+            }
+          ]
+        },
+        ".github/dependabot.yml": {
+          "why": "the automerge tier re-declares this glob, so baseline's rule is repeated here (the fold replaces per glob); see agentic-coding-config#547.",
+          "must_match": [
+            {
+              "id": "assigns-a-human",
+              "pattern": "assignees:",
+              "why": "Dependabot pull requests are authored by app/dependabot and match none of the GitHub mobile app's filters (created/assigned/mentions/review-requested/involved), so an unassigned one is invisible until somebody reconstructs an author: search by hand. One such pull request, in a private repository, was a patch bump on an automerge-tier repo, open five months, with nothing surfacing it. Note reviewers is not the key: GitHub removed it from the Dependabot options reference, while assignees is documented for both version and security updates."
+            },
+            {
+              "id": "has-a-cooldown",
+              "pattern": "(?m)^\\s+cooldown:",
+              "why": "auto-merge without a cooldown ships a compromised release as soon as CI is green (paul-context registry/dependabot-standard.md rule 4). Anchored and multiline because the content check is re.search(pattern, content) with no flags and repos carry comments mentioning cooldown. Limit: passes a file with a cooldown on only some ecosystems; it catches the no-cooldown case all five 2026-10-03 repos had (agentic-coding-config#547)."
+            }
+          ]
+        }
+      }
+    }
+  },
+  "invariants": [
+    {
+      "id": "no-linear-history",
+      "holds": "No tier's ruleset contains a required_linear_history rule, and no classic protection enables it.",
+      "because": "It forbids merge commits on the branch regardless of allow_merge_commit, and the failure surfaces at merge time on a green, approved PR."
+    },
+    {
+      "id": "auto-merge-needs-a-gate",
+      "holds": "Any tier asserting allow_auto_merge: true requires a required_status_checks rule with at least one context.",
+      "because": "Without a required check, `gh pr merge --auto` merges immediately. The wait for CI comes from the ruleset, not the flag."
+    },
+    {
+      "id": "merge-commit-available",
+      "holds": "Any tier asserting merge methods has allow_merge_commit: true and allow_rebase_merge: false.",
+      "because": "Merge is the estate default; rebase is never. Disabling squash alone returns 422 because GitHub requires one method to remain, so a change here is one combined call."
+    },
+    {
+      "id": "empty-bypass",
+      "holds": "The ruleset's bypass_actors is empty.",
+      "because": "That is what enforce_admins bought under classic protection: the rules bind admin tokens and coding agents too."
+    },
+    {
+      "id": "automerge-actually-merges",
+      "holds": "On an automerge-tier repo, no Dependabot pull request the gate would approve stays open beyond one update cycle.",
+      "because": "The workflow, the secret and the ruleset can all be correct while nothing has merged for months, because fixing an auto-merge workflow does not re-run it: the trigger is pull_request, and editing a file, adding a secret or rotating a token is not a pull_request event. So a repair applies to the next pull request raised, never to the queue the breakage accumulated. One, in a private repository, was a patch bump open five months on a repo passing every settings and file assertion. Defined by what the gate would approve rather than by semver, so a major -- or a pre-1.0 minor, which agentic-coding-config#394 deliberately holds -- is correctly waiting for a human rather than stuck."
+    },
+    {
+      "id": "no-private-workflow-references",
+      "holds": "A repo's workflows must not `uses:` another repository of the same owner that is private.",
+      "because": "Dependabot on a personal account cannot resolve a reference into a private repository -- the github_actions full scan fails outright, while targeted per-dependency updates keep succeeding, so the stream looks alive and the reference that decides what CI runs is the one thing that can never be updated automatically. Stated by visibility rather than by name deliberately: a denylist of private repository names in a public standard would leak exactly what it exists to protect. Shared workflows therefore live in a public repository carrying no estate detail, with repo-specific values passed as inputs."
+    },
+    {
+      "id": "referenced-labels-exist",
+      "holds": "Every label named in a repo's dependabot.yml exists in that repo.",
+      "because": "Dependabot does not create labels it is told to use, and naming an absent one risks it applying none at all. The failure is silent: the pull requests still arrive, unlabelled, and nothing reports it. dfc-gaming named dependencies, github-actions, terraform and docker, and had none of them, on the automerge tier."
+    },
+    {
+      "id": "no-fake-contexts",
+      "holds": "The spec's required_status_checks list is empty; contexts are filled per repo from a real completed run.",
+      "because": "A context string that never reports blocks every PR forever. The spec must not be able to ship one."
+    }
+  ],
+  "prohibited": [
+    {
+      "id": "automerge-apparatus-needs-the-tier",
+      "applies_below_tier": "automerge",
+      "match": [
+        { "file": ".github/workflows/dependabot*merge*.y*ml" },
+        { "file": ".github/workflows/update-auto-merge-prs.y*ml" },
+        { "setting": "allow_auto_merge", "value": true }
+      ],
+      "because": "auto-merge is a safety control, not hardening. Ungated it merges immediately, and the wait for CI comes from the ruleset the automerge tier requires, not the flag. cloud-coop (protected) carried the workflow, the flag and no required checks; paul-context (baseline) carried a workflow that was simply dead. Neither was drift under a spec that only says what a tier must have."
+    }
+  ],
+  "prohibitions_are_narrow": "`applies_below_tier` is resolved through `extends`, not by name: a repo is below a tier when that tier is not in its own tier's extends chain. Each prohibition carries its own `because` because the distinction is hardening versus safety control — a dependabot.yml on a dormant repo is beneficial coverage, an ungated auto-merge is not. A blanket \"nothing above your tier\" would erode the permissive defaults of principles/repos.md and must not be written.",
+  "terraform": {
+    "applies_to": "Every repository whose git tree contains a `*.tf` file, whatever its tier. Rationale in github-standards.md#terraform-versions.",
+    "pin": "1.16.3",
+    "pin_why": "The one version CI and the cloud sandbox run, on the current stable minor line. Declared here once: cloud/bootstrap.sh's TF_VER is asserted equal to it by tests/github-repo-standard.py, and each repo's workflow pin is a copy the sweep compares against it. Move it as one change with every repo's CI, because a newer Terraform writes state an older one cannot read back.",
+    "floor": "1.11",
+    "floor_why": "What /setup-terraform declares as required_version for a new repo when nothing older is known to be needed: the oldest line with write-only arguments, which the private infrastructure repository's secret handling (its ADR 023) relies on, and the highest floor any repo declares. It is not a minimum existing repos must raise to -- a repo's floor is its own feature requirement, and raising one to track the pin locks out older local binaries for no benefit.",
+    "stable_release": "^\\d+\\.\\d+\\.\\d+$",
+    "stable_release_why": "Anchored at both ends so 1.17.0-beta1 and 1.17.0-rc1 are not read as 1.17.0. HashiCorp's index lists every pre-release beside the final.",
+    "latest_from": "https://releases.hashicorp.com/terraform/index.json",
+    "required_version": "required_version\\s*=\\s*\"([^\"]*)\"",
+    "floor_shape": "^>=\\s*(\\d+\\.\\d+(?:\\.\\d+)?)$",
+    "ci_pin": "terraform[-_]version:[ \\t]*['\"]?([^'\"\\s#]+)",
+    "ci_pin_default": "(?m)^([ \\t]+)terraform-version:[ \\t]*\\n(?:\\1[ \\t]+.*\\n)*?\\1[ \\t]+default:[ \\t]*['\"]?([^'\"\\s#]+)",
+    "ci_pin_why": "ci_pin reads a version off one line: hashicorp/setup-terraform's `terraform_version` input, or the `terraform-version` a caller passes to a reusable workflow. It captures whatever follows rather than only a version, so `latest` is reported instead of skipped. A value starting `${{` is indirection, not drift: the version is then the caller's input or, where the caller passes none, the reusable workflow's declared default, which ci_pin_default reads (group 2) from the `inputs:` block. A `.terraform-version` file is a copy too. A workflow that runs setup-terraform with no version at all gets whatever the action resolves today, and is drift.",
+    "checks": [
+      {
+        "id": "floor-is-a-bare-lower-bound",
+        "holds": "Every required_version in the repo matches floor_shape: one `>=`, no `~>`, no `<`.",
+        "because": "An upper bound turns every pin move into a sweep of required_version edits, and a pessimistic constraint is an upper bound in disguise. Provider constraints are a separate axis and are not checked here."
+      },
+      {
+        "id": "pin-at-or-above-floor",
+        "holds": "pin >= floor, and pin >= every floor a repo declares.",
+        "because": "A repo whose floor is above the pin cannot init in CI or the sandbox. The sandbox shipped 1.9.8 against roots declaring >= 1.11 and terraform_validate failed in all sixteen, blocking every push that touched a .tf file (agentic-coding-config#369)."
+      },
+      {
+        "id": "ci-runs-the-pin",
+        "holds": "Every version a repo's .github/workflows/ resolves to -- each ci_pin match that is not an expression, each ci_pin_default, and a `.terraform-version` file if one exists -- equals pin, and no workflow that uses hashicorp/setup-terraform leaves the version unset.",
+        "because": "With cloud/bootstrap.sh asserted to the pin in this repo's CI, this is what makes sandbox == CI hold. Read the workflow, not the state: Terraform rewrites a state object's terraform_version only when it persists state, so a no-op apply leaves the old label and an intentionally empty root reads 1.7.0 forever."
+      },
+      {
+        "id": "pin-on-current-minor",
+        "holds": "pin's major.minor equals that of the newest version in latest_from matching stable_release.",
+        "because": "pin >= floor and sandbox == CI both hold indefinitely with the estate frozen on an old line. HashiCorp publishes no support policy and backports per fix at its discretion; observed, the previous line stops receiving patches once the next opens. Is there a newer stable minor is one request, so standing still is reported rather than tolerated. A failure here is a prompt to move CI and the sandbox together, never to move one."
+      }
+    ],
+    "method": "List repositories and read their files. GitHub code search returned one hit across nine Terraform repos for required_version, and is not usable for this sweep."
+  },
+  "unspecified": {
+    "allow_forking": "Not settable on a personal account: PATCH with allow_forking:false returns 422 (org-owned private repos only). Fork control is one of the arguments for an organisation, not a value this spec can carry.",
+    "actions_allowed": "Decision pending in paul-context (#114): `all` vs `selected`, sequenced with SHA-pinning (#44).",
+    "has_wiki, has_projects, has_discussions, has_issues": "Decision pending in paul-context (#19). setup-repo currently turns wiki and projects off; that is the skill's choice, not yet the standard's.",
+    "default_workflow_permissions, can_approve_pull_request_reviews": "Not stated by the standard. The audit collects both; nothing asserts them.",
+    "allow_update_branch": "setup-repo enables it; the standard is silent.",
+    "squash_merge_commit_title, squash_merge_commit_message": "Not stated, because squash merging is disabled (agentic-coding-config#348). Setting either would require passing --enable-squash-merge in the same gh repo edit call, which re-enables the button the standard just turned off.",
+    "required_status_checks contexts": "Per repo, deliberately, until the checks-and-CI section of the standard is settled."
+  }
+}

@@ -1,0 +1,75 @@
+#!/bin/sh
+# session-repo-resolve — answer "which repo is this session working in?" for
+# the session gather scripts.
+#
+# The session's working directory is not always a repo. A cloud container is
+# handed several repos as siblings under one parent (agentic-coding-config,
+# paul-context, gcp-org-management), and the session starts in the parent —
+# so a bare `git rev-parse --is-inside-work-tree` fails while the repo the
+# session is plainly working in sits one level down.
+#
+# Both gather scripts need the identical answer, so it lives here once rather
+# than in two scripts or, worse, in per-surface skill fragments (ADR-0018
+# principle 8, step 0: absorb the difference in a script before splitting
+# content).
+#
+# Output protocol (stdout), one `key=value` per line:
+#
+#   state=cwd               repo=<toplevel>          exit 0
+#   state=resolved-child    repo=<path> name=<base>  exit 0
+#   state=ambiguous         candidate=<path> ...     exit 2
+#   state=none                                       exit 1
+#
+# Callers chdir to `repo=` themselves. This script only reports; it never
+# changes anything, so it is safe to run twice.
+
+set -u
+
+# Already inside a work tree: nothing to resolve. This is the overwhelmingly
+# common case and costs one git call.
+if toplevel=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n "$toplevel" ]; then
+    printf 'state=cwd\n'
+    printf 'repo=%s\n' "$toplevel"
+    exit 0
+fi
+
+# Not in a repo. Look one level down, at the immediate children of cwd only.
+# A child counts when it is itself a repo *root* — `--show-toplevel` resolving
+# back to the child is what distinguishes a repo from a plain directory that
+# merely sits beneath one. Deeper recursion is deliberately not attempted: it
+# would turn a cheap check into a filesystem walk and start matching vendored
+# checkouts and fixtures.
+#
+# The `*/` glob skips dotted directories, which is wanted — ~/.claude and
+# friends are infrastructure, not the session's work.
+count=0
+candidates=
+for child in ./*/; do
+    [ -d "$child" ] || continue
+    child_abs=$(cd "$child" 2>/dev/null && pwd) || continue
+    child_top=$(git -C "$child_abs" rev-parse --show-toplevel 2>/dev/null) || continue
+    [ "$child_top" = "$child_abs" ] || continue
+    count=$((count + 1)) || true
+    candidates="$candidates$child_abs
+"
+done
+
+if [ "$count" -eq 0 ]; then
+    printf 'state=none\n'
+    exit 1
+fi
+
+if [ "$count" -eq 1 ]; then
+    repo=$(printf '%s' "$candidates" | head -1)
+    printf 'state=resolved-child\n'
+    printf 'repo=%s\n' "$repo"
+    printf 'name=%s\n' "$(basename "$repo")"
+    exit 0
+fi
+
+printf 'state=ambiguous\n'
+printf '%s' "$candidates" | while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    printf 'candidate=%s\n' "$c"
+done
+exit 2

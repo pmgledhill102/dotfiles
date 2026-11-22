@@ -1,0 +1,58 @@
+#!/bin/sh
+# dockerd-start-claude-hook — Claude Code SessionStart hook.
+#
+# A Claude Code cloud sandbox ships dockerd, containerd and runc but starts no
+# daemon, so `docker info` fails until someone starts one (#683). This starts it
+# once per session and again after a resume: the process does not survive a
+# worker restart, though /var/lib/docker (images, build cache) does.
+#
+# Two facts shape the daemon config, both measured in a sandbox:
+#   - Docker Hub answers 429 to the sandbox's shared egress IP on anonymous
+#     pulls, so base images come through mirror.gcr.io instead.
+#   - dockerd inherits HTTPS_PROXY from the shell that starts it. Image pulls
+#     and `ADD <url>` then go through the agent proxy with the system trust
+#     store, which is why this must start from the session's own environment.
+# Build and run containers have no egress of their own; see the sandbox-docker
+# skill for the flags that route them through the proxy.
+#
+# A no-op everywhere that is not a cloud sandbox, so it ships in the one
+# settings.json every surface reads: it exits 0 unless CLAUDE_CODE_REMOTE=true,
+# the user is root, and both dockerd and docker are on PATH. A daemon that is
+# already reachable is left alone, which makes the hook idempotent.
+#
+# Prints nothing (a SessionStart hook's stdout reaches the agent's context) and
+# exits 0 unconditionally: a session must not fail to start over a daemon.
+#
+# Test seams: DOCKERD_START_UID overrides the root check, DOCKERD_START_CONFIG_DIR
+# overrides /etc/docker, DOCKERD_START_LOG overrides the daemon log, and
+# DOCKERD_START_WAIT is the seconds to wait for the daemon (default 10).
+
+set -u
+
+[ "${CLAUDE_CODE_REMOTE:-}" = true ] || exit 0
+[ "${DOCKERD_START_UID:-$(id -u)}" = 0 ] || exit 0
+command -v dockerd >/dev/null 2>&1 || exit 0
+command -v docker >/dev/null 2>&1 || exit 0
+
+docker info >/dev/null 2>&1 && exit 0
+
+config_dir=${DOCKERD_START_CONFIG_DIR:-/etc/docker}
+log=${DOCKERD_START_LOG:-/var/log/dockerd-sandbox.log}
+
+# Written only when absent: an existing daemon.json is somebody's choice.
+if [ ! -e "$config_dir/daemon.json" ]; then
+    mkdir -p "$config_dir" 2>/dev/null \
+        && printf '%s\n' '{"registry-mirrors": ["https://mirror.gcr.io"]}' >"$config_dir/daemon.json" 2>/dev/null
+fi
+
+# setsid so the daemon outlives this hook, which the harness reaps.
+setsid nohup dockerd >"$log" 2>&1 </dev/null &
+
+wait_s=${DOCKERD_START_WAIT:-10}
+i=0
+while [ "$i" -lt "$wait_s" ]; do
+    docker info >/dev/null 2>&1 && exit 0
+    sleep 1
+    i=$((i + 1))
+done
+exit 0
