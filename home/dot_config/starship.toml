@@ -1,0 +1,187 @@
+# Starship configuration
+
+# Raise command timeout from 500ms default to avoid Python/Go version check warnings
+command_timeout = 2000
+
+# Inserts a blank line between shell prompts
+add_newline = true
+
+# Set the format of the prompt
+format = """${env_var.MACHINE_LABEL}$os$username$directory$git_branch$git_status$nodejs$golang$julia$python$ruby$rust\
+$line_break$character"""
+
+# Right Prompt Configuration
+right_format = """$cmd_duration$shell$battery$time"""
+
+# Optional machine badge, first in the prompt, so a remote server can't be
+# mistaken for a local tab. Renders nothing unless MACHINE_LABEL is set, which
+# is done per machine in ~/.zshrc.local (or $env:MACHINE_LABEL in PowerShell),
+# never committed here. Starship doesn't expand variables in `style`, so the
+# colour is fixed.
+[env_var.MACHINE_LABEL]
+variable = "MACHINE_LABEL"
+format = "[ $env_value ]($style) "
+style = "bold fg:#FFFFFF bg:#C62828"
+
+[os]
+format = "[$symbol]($style) "
+style = "fg:#26C6DA"
+disabled = false
+
+[os.symbols]
+Windows = ""
+Ubuntu = ""
+SUSE = "SUSE"
+Raspbian = ""
+Mint = ""
+Macos = ""
+Manjaro = ""
+Linux = ""
+Gentoo = ""
+Fedora = ""
+Debian = ""
+CentOS = ""
+Arch = ""
+Alpine = ""
+Amazon = ""
+Android = ""
+
+[username]
+style_user = "fg:#1951c9"
+style_root = "fg:#ffff66"
+format = "[$user]($style) "
+disabled = false
+show_always = true
+
+[directory]
+style = "fg:#20b664"
+format = "[$path]($style)[$read_only]($read_only_style) "
+truncation_length = 3
+truncation_symbol = "…/"
+# Show the path from cwd, not from the git-repo root, so sibling checkouts of
+# the same repo name (e.g. ~/dev/dotfiles vs /tmp/jacks-dot/.dotfiles) are
+# distinguishable in the prompt. With truncation_length=3 this gives:
+#   ~/dev/dotfiles               → ~/dev/dotfiles
+#   /tmp/jacks-dot/.dotfiles     → …/tmp/jacks-dot/.dotfiles
+#   ~/dev/some/deep/nested/path  → …/some/deep/nested/path
+truncate_to_repo = false
+
+[git_branch]
+symbol = ""
+style = "fg:#fffb38"
+format = "[$symbol $branch]($style) "
+
+[git_status]
+style = "fg:#fffb38"
+format = '([$all_status$ahead_behind]($style)) '
+conflicted = "=${count}"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked = "?${count}"
+stashed = "${count}"
+modified = "!${count}"
+staged = "+${count}"
+renamed = "»${count}"
+deleted = "✘${count}"
+
+[character]
+success_symbol = "[󰄾](bold green)"
+error_symbol = "[󰄾](bold red)"
+vicmd_symbol = "[❮](bold green)"
+
+[nodejs]
+format = "[ $version](fg:#6CA35E) "
+detect_files = ["package.json", ".node-version"]
+detect_folders = ["node_modules"]
+
+[golang]
+format = "[ $version](fg:#8ED1F7) "
+
+[julia]
+format = "[ $version](fg:#4063D8) "
+
+[python]
+format = "[ $version](fg:#FFDE57) "
+pyenv_version_name = true
+
+[ruby]
+format = "[ $version](fg:#AE1401) "
+
+[rust]
+format = "[ $version](fg:#CE412B) "
+
+# gh_issues / gh_prs are rendered only by cship (statusline passthrough) —
+# the prompt `format` above deliberately omits $custom so the shell prompt
+# never runs them. Counts come from a cached helper; see gh-statusline-counts.
+[custom.gh_issues]
+command = "~/.local/bin/gh-statusline-counts issues"
+when = "~/.local/bin/gh-statusline-counts issues"
+shell = ["sh"]
+symbol = " "
+style = "fg:#e0af68"
+format = "[$symbol$output]($style) "
+
+[custom.gh_prs]
+command = "~/.local/bin/gh-statusline-counts prs"
+when = "~/.local/bin/gh-statusline-counts prs"
+shell = ["sh"]
+symbol = " "
+style = "fg:#bb9af7"
+format = "[$symbol$output]($style) "
+
+#[aws]
+#symbol = ""
+#format = '[$symbol ($profile@$region)]($style) '
+#style = "fg:#FFA400"
+#
+#[azure]
+#disabled = false
+#format = "[ﴃ $subscription]($style) "
+#style = "blue"
+
+[cmd_duration]
+min_time = 1000
+format = "[$duration]($style) "
+style = "fg:#83769c"
+show_milliseconds = true
+
+[shell]
+format = "[$indicator]($style) "
+zsh_indicator = "zsh"
+powershell_indicator = "pwsh"
+bash_indicator = "bash"
+disabled = false
+style = "fg:#0077c2"
+
+[battery]
+full_symbol = "🔋"
+charging_symbol = "⚡️"
+discharging_symbol = "💀"
+
+[[battery.display]]
+threshold = 10
+style = "bold red"
+
+[[battery.display]]
+threshold = 30
+style = "bold yellow"
+
+[[battery.display]]
+threshold = 100
+style = "bold green"
+
+[time]
+disabled = false
+format = "[$time]($style) "
+style = "fg:#2e9599"
+use_12hr = false
+
+#[gcloud]
+#format = "on [ $project]($style) "
+#style = "fg:#d83cbe"
+#
+#[kubernetes]
+#format = 'on [ﴱ $context(::$namespace)]($style) '
+#style = "fg:#d83cbe"
+#disabled = false

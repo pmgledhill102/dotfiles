@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# Install Homebrew packages from Brewfile on first run
+# Subsequent updates are handled manually via 'brewup'
+
+set -e
+
+{{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping brew bundle install (fast CI mode)"
+exit 0
+{{- end }}
+
+# macOS, plus personal Linux machines (ADR-0017). .chezmoiignore keeps this
+# script off work and minimal Linux, so reaching the Linux arm means personal.
+case "$(uname -s)" in
+  Darwin*) BREW_BIN=/opt/homebrew/bin/brew ;;
+  Linux*) BREW_BIN=/home/linuxbrew/.linuxbrew/bin/brew ;;
+  *) BREW_BIN= ;;
+esac
+
+case "$BREW_BIN" in
+  ?*)
+    if [ ! -x "$BREW_BIN" ]; then
+      echo "Warning: Homebrew not found at $BREW_BIN, skipping brew bundle"
+      exit 0
+    fi
+    # Ensure Homebrew is in PATH
+    eval "$("$BREW_BIN" shellenv)"
+
+    BREWFILE="$HOME/Brewfile"
+
+    # Homebrew 6 refuses to load formulae/casks from non-official taps unless
+    # trusted via 'brew trust' (HOMEBREW_REQUIRE_TAP_TRUST defaults on).
+    # Declaring a tap in the Brewfile IS the trust decision, so trust each one
+    # here. This must run BEFORE the 'brew bundle check' guard below: an
+    # untrusted tap makes the check itself fail, which would fall through to
+    # the install path on every apply. Guarded for older brews without 'trust'.
+    if [ -f "$BREWFILE" ] && brew trust --help >/dev/null 2>&1; then
+      grep '^tap "' "$BREWFILE" | awk -F'"' '{print $2}' | while read -r tap_name; do
+        brew trust --tap "$tap_name" || true
+      done
+    fi
+
+    if [ ! -f "$BREWFILE" ]; then
+      echo "Warning: Brewfile not found at $BREWFILE, skipping brew bundle"
+    elif brew bundle check --no-upgrade --file "$BREWFILE" >/dev/null 2>&1; then
+      # This is a run_once script, keyed by chezmoi on its content hash — so any
+      # edit to this file makes chezmoi re-run it on the next 'chezmoi apply'.
+      # Since 'dotup' calls 'chezmoi update' (= pull + apply), an unguarded
+      # install here would fire during dotup, breaking ADR-0005's rule that
+      # dotup never touches packages ('brewup' owns that).
+      #
+      # --no-upgrade is load-bearing: without it 'brew bundle check' returns
+      # non-zero when any package is merely OUTDATED (not just missing), so a
+      # fully-provisioned machine with stale packages would fail the guard and
+      # fall through to install — silently upgrading everything during dotup.
+      # With --no-upgrade the guard tests presence only: a provisioned machine
+      # passes and stays a no-op. Only a genuinely fresh machine (missing
+      # formulae) falls through to the install below.
+      echo "Homebrew packages already satisfy Brewfile — skipping (use 'brewup' to update)."
+    else
+      echo "Installing Homebrew packages from Brewfile..."
+      # HOMEBREW_NO_ASK=1: Homebrew 6 defaults to ask-mode confirmation prompts.
+      # HOMEBREW_BUNDLE_NO_UPGRADE=1: install missing formulae only, leave
+      # already-present-but-outdated packages alone — 'brewup' owns upgrades
+      # (ADR-0005), so even the fresh-install path must not upgrade.
+      # No HOMEBREW_BUNDLE_JOBS here: Homebrew removed the parallel bundle
+      # installer in Homebrew/brew#23659 (6.0.18–6.0.22). 'brew bundle install'
+      # now batches plain formula entries into a single 'brew install', so the
+      # lock races that forced the sequential pin (dotfiles#368) can't happen;
+      # the variable is ignored and download parallelism is now governed by
+      # HOMEBREW_DOWNLOAD_CONCURRENCY. HOMEBREW_BUNDLE_NO_LOCK is gone from
+      # Homebrew entirely, so it went with it.
+      HOMEBREW_NO_ASK=1 HOMEBREW_BUNDLE_NO_UPGRADE=1 \
+        brew bundle install --file "$BREWFILE"
+    fi
+    ;;
+  *)
+    echo "No Homebrew on this OS — skipping Brewfile install"
+    ;;
+esac

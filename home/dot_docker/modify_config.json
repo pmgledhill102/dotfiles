@@ -1,0 +1,21 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  macOS only (see .chezmoiignore). Homebrew installs docker-compose and
+  docker-buildx into its own lib/docker/cli-plugins, which the docker CLI
+  does not search by default, so `docker compose` / `docker buildx` would be
+  "not a docker command" without this key (ADR-0018).
+
+  A modify-template rather than a managed file: Docker and Colima write
+  their own keys here (auths, credsStore, currentContext), and those must
+  survive. Only cliPluginsExtraDirs is owned by chezmoi.
+*/ -}}
+{{- $cfg := dict -}}
+{{- if trim .chezmoi.stdin -}}
+{{-   $cfg = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- $prefix := "/opt/homebrew" -}}
+{{- if ne .chezmoi.arch "arm64" -}}
+{{-   $prefix = "/usr/local" -}}
+{{- end -}}
+{{- $_ := set $cfg "cliPluginsExtraDirs" (list (printf "%s/lib/docker/cli-plugins" $prefix)) -}}
+{{ toPrettyJson $cfg -}}

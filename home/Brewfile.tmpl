@@ -1,0 +1,192 @@
+# Brewfile — managed by chezmoi
+# To add/remove packages, edit this file directly
+
+{{- if eq .machine_type "personal" }}
+tap "atlassian/acli"
+
+brew "actionlint"
+brew "aria2"
+brew "atlassian/acli/acli"
+brew "aws-sam-cli"
+brew "awscli"
+# Homebrew moved azure-cli from a formula to a cask in October 2026 (#464).
+# The cask covers macOS and Linux, so it stays out of the darwin-only block.
+cask "azure-cli"
+brew "bat"
+brew "bitwarden-cli"
+brew "chafa"
+brew "checkov"
+brew "cspell"
+brew "dotnet"
+brew "eza"
+brew "fd"
+brew "fzf"
+brew "gh"
+brew "github-mcp-server"
+brew "git"
+brew "git-delta"
+brew "git-filter-repo"
+brew "gitleaks"
+brew "go-task"
+brew "go"
+brew "golangci-lint"
+brew "gradle"
+brew "ffmpeg"
+brew "hadolint"
+brew "hugo"
+brew "imagemagick"
+brew "jq"
+brew "lazygit"
+brew "lychee"
+brew "markdownlint-cli2"
+brew "maven"
+# ADR-0020 exception (3 Well regarded): Homebrew builds it from a small fork
+# since the original was archived. Earns it: aligns piped Markdown tables,
+# which mdc relies on (#511).
+brew "mdcat"
+# Node and Java versions, and npm CLIs (ADR-0021)
+brew "mise"
+brew "nano"
+brew "ocrmypdf"
+brew "openssl"
+brew "pandoc"
+brew "poppler"
+brew "pre-commit"
+brew "prettier"
+brew "ripgrep"
+brew "semgrep"
+brew "shellcheck"
+brew "starship"
+brew "tenv"
+brew "trivy"
+brew "typst"
+brew "uv"
+brew "watch"
+# ADR-0020 exception (5 No duplicates): overlaps curl. Earns it: small, well
+# known, and what many install instructions assume (#511).
+brew "wget"
+brew "yq"
+brew "zoxide"
+
+{{- if eq .chezmoi.os "darwin" }}
+
+# macOS only. Personal Linux machines also run this Brewfile (ADR-0017), so
+# everything below is either macOS-only upstream (xcodes, xcodegen, tart,
+# fastlane's Xcode tooling, every cask) or has a different owner on Linux:
+# Docker from Docker's apt repo (ADR-0018). PowerShell is Windows-only
+# (winget), per #514.
+tap "openai/tools"
+tap "terraform-linters/tap"
+
+# Docker without Docker Desktop (ADR-0018): Colima runs the engine in a
+# headless VM; the CLI plugins are wired up by ~/.docker/config.json.
+brew "colima"
+brew "docker"
+brew "docker-buildx"
+brew "docker-compose"
+brew "fastlane"
+brew "openai/tools/tart"
+brew "xcodegen"
+brew "xcodes"
+
+cask "bitwarden"
+cask "bruno"
+cask "chatgpt"
+cask "claude"
+cask "claude-code@latest"
+cask "codex"
+cask "discord"
+cask "font-jetbrains-mono-nerd-font"
+cask "ghostty"
+cask "gimp"
+cask "google-chrome"
+cask "gcloud-cli"
+cask "inkscape"
+cask "logi-options+"
+cask "microsoft-office"
+cask "private-internet-access"
+# ADR-0020 exception (6 Plain-text config): its settings live in app
+# preferences, not in these dotfiles, until #516 manages them.
+cask "rectangle"
+cask "steam"
+cask "terraform-linters/tap/tflint"
+cask "visual-studio-code"
+# ADR-0020 exception (3 Well regarded): a small single-maintainer app.
+# Earns it: dictation used every day (#511).
+cask "voiceink"
+cask "whatsapp"
+{{- end }}
+{{- else if eq .machine_type "work" }}
+brew "actionlint"
+brew "bat"
+brew "checkov"
+brew "cspell"
+brew "dotnet"
+brew "eza"
+brew "fd"
+brew "fzf"
+brew "gh"
+brew "git"
+brew "git-delta"
+brew "git-filter-repo"
+brew "gitleaks"
+brew "go"
+brew "golangci-lint"
+brew "jq"
+brew "lazygit"
+brew "lychee"
+brew "markdownlint-cli2"
+# ADR-0020 exception (3 Well regarded): see the personal block.
+brew "mdcat"
+# Node and Java versions, and npm CLIs (ADR-0021)
+brew "mise"
+brew "nano"
+brew "openssl"
+brew "pre-commit"
+brew "prettier"
+brew "ripgrep"
+brew "semgrep"
+brew "starship"
+brew "tenv"
+brew "trivy"
+brew "uv"
+brew "watch"
+# ADR-0020 exception (5 No duplicates): see the personal block.
+brew "wget"
+brew "yq"
+brew "zoxide"
+
+{{- if eq .chezmoi.os "darwin" }}
+
+# macOS only. Work Linux machines also run this Brewfile (ADR-0019), so
+# everything below is either macOS-only upstream (every cask) or has a
+# different owner on Linux: Docker from Docker's apt repo (ADR-0018). The
+# acli and tflint taps are kept to macOS too: work Linux has never had them,
+# and their Linux support is unverified.
+tap "atlassian/acli"
+tap "terraform-linters/tap"
+
+brew "atlassian/acli/acli"
+brew "colima"
+brew "docker"
+brew "docker-buildx"
+brew "docker-compose"
+
+cask "font-jetbrains-mono-nerd-font"
+cask "ghostty"
+# ADR-0020 exception (6 Plain-text config): see #516.
+cask "rectangle"
+cask "terraform-linters/tap/tflint"
+{{- end }}
+{{- else }}
+brew "bat"
+brew "fzf"
+brew "git"
+brew "git-delta"
+brew "jq"
+brew "lazygit"
+brew "uv"
+# ADR-0020 exception (5 No duplicates): see the personal block.
+brew "wget"
+brew "zoxide"
+{{- end }}

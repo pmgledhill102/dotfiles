@@ -1,0 +1,73 @@
+{{- $machineType := "personal" -}}
+{{- if hasKey . "machine_type" -}}
+{{-   $machineType = .machine_type -}}
+{{- end -}}
+#!/bin/sh
+# One-time cleanup: remove the agentic-coding-config payload from ~/.claude/ on
+# machines that are no longer entitled to it.
+#
+# The .claude external is gated to personal machines (see
+# .chezmoiexternal.toml.tmpl and dotfiles#389), but chezmoi only adds and
+# updates targets — it never removes a target whose source went away. So every
+# work or minimal machine that applied a pre-gate version keeps the full
+# personal agent config indefinitely. Gating the external is only half the
+# change; this script is the other half.
+#
+# Runs once per machine via chezmoi's run_once_ prefix. Idempotent: every
+# removal is guarded on existence, so a machine that never had the external —
+# or has already been cleaned — is a clean no-op.
+
+set -eu
+
+MACHINE_TYPE="{{ $machineType }}"
+
+# The external still applies on personal machines. Nothing to remove.
+if [ "$MACHINE_TYPE" = "personal" ]; then
+  exit 0
+fi
+
+CLAUDE_DIR="$HOME/.claude"
+[ -d "$CLAUDE_DIR" ] || exit 0
+
+# ~/.claude/ is SHARED. The external's files sit alongside Claude Code's own
+# runtime state — projects/, sessions/, history.jsonl, plugins/, tasks/,
+# telemetry/, backups/ and more — so `rm -rf ~/.claude` would destroy real
+# user data. Only the entries below are shipped by the external; anything not
+# listed is local state and must survive. settings.local.json in particular is
+# user-local, never shipped, and deliberately absent from this list.
+#
+# The list is the top level of agentic-coding-config's home/ directory. It has
+# to be maintained by hand — a work machine has no manifest to consult once the
+# external is gated off. To re-derive it on a personal machine:
+#
+#     chezmoi managed | grep '^\.claude/' | cut -d/ -f2 | sort -u
+#
+# Note bin/, commands/ and skills/ are removed wholesale. They are external-
+# owned on every machine this targets (Claude Code itself is personal-gated in
+# Brewfile.tmpl, so a work machine has the config without the tool). If you
+# ever hand-author a slash command or skill on a non-personal machine, move it
+# out before applying.
+removed=0
+for entry in \
+  .claude-plugin \
+  AGENTS.md \
+  bin \
+  CLAUDE.md \
+  commands \
+  hooks \
+  retired-paths \
+  settings.json \
+  settings.json.md \
+  skills; do
+  target="$CLAUDE_DIR/$entry"
+  if [ -e "$target" ]; then
+    rm -rf "$target"
+    echo "  removed ~/.claude/$entry"
+    removed=$((removed + 1))
+  fi
+done
+
+if [ "$removed" -gt 0 ]; then
+  echo "==> Removed $removed agentic-coding-config path(s) from ~/.claude/ (machine_type=$MACHINE_TYPE)."
+  echo "    Claude Code runtime state (projects/, sessions/, history.jsonl, ...) left intact."
+fi

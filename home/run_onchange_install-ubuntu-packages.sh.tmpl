@@ -1,0 +1,211 @@
+#!/bin/sh
+# chezmoi:template:left-delimiter="# {{" right-delimiter="}}"
+
+# This script runs whenever the ubuntu_pkglist changes (run_onchange)
+# It installs packages from the list on Linux systems
+
+set -e
+
+# Print the latest release tag for a GitHub repo ("jesseduffield/lazygit"),
+# or nothing at all if it cannot be resolved.
+#
+# The obvious route — api.github.com/.../releases/latest — is rate limited to
+# 60 requests an hour PER IP for unauthenticated callers, and GitHub-hosted
+# runners share an IP pool, so it intermittently answers with a rate-limit body
+# carrying no tag_name. That made the grep below exit 1, which under 'set -e'
+# killed the whole apply mid-provision rather than one optional tool
+# (dotfiles#429). The /releases/latest web URL redirects to /releases/tag/<tag>
+# and is not rate limited, so ask that first and keep the API as a fallback.
+latest_release_tag() {
+  tag_url=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+    "https://github.com/$1/releases/latest" 2>/dev/null || true)
+  case "$tag_url" in
+    */releases/tag/*)
+      printf '%s\n' "${tag_url##*/}"
+      return 0
+      ;;
+  esac
+
+  curl -s "https://api.github.com/repos/$1/releases/latest" |
+    grep -Po '"tag_name": *"\K[^"]*' || true
+}
+
+# {{ if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping apt package install (fast CI mode)"
+exit 0
+# {{ end }}
+
+case "$(uname -s)" in
+  Linux*)
+    echo "Linux detected - installing packages from ubuntu_pkglist..."
+    
+    PKGLIST_FILE="$HOME/.config/ubuntu_pkglist"
+    
+    if [ ! -f "$PKGLIST_FILE" ]; then
+      echo "Warning: Package list not found at $PKGLIST_FILE"
+      exit 0
+    fi
+    
+    export DEBIAN_FRONTEND=noninteractive
+    sudo apt-get update
+    
+    echo "Installing packages from ubuntu_pkglist..."
+    # Read package list and install (skip empty lines and comments)
+    grep -v '^#' "$PKGLIST_FILE" | grep -v '^$' | while read -r package; do
+      echo "Installing $package..."
+      sudo apt-get install -y "$package" || echo "Warning: Failed to install $package"
+    done
+
+# {{ if eq .machine_type "minimal" }}
+    # Everything from here to the matching end comes from the Brewfile on
+    # personal and work machines, which run Homebrew on Linux (ADR-0017,
+    # ADR-0019). One owner per tool: installing both copies would leave a
+    # stale one on disk.
+    #
+    # lazygit is not installed on minimal machines (ADR-0019). fzf and mdcat
+    # are kept, from their GitHub releases: apt's fzf (0.44 on Ubuntu 24.04)
+    # is too old for `fzf --zsh`, and mdcat is not in apt at all.
+
+    # Ubuntu ships bat and fd under other names (batcat, fdfind), so the
+    # `command -v bat` / `command -v fd` gates in aliases.zsh and dot_zshrc
+    # never fire. Link the expected names into ~/.local/bin, which dot_zshrc
+    # puts on PATH (dotfiles#448).
+    mkdir -p "$HOME/.local/bin"
+    for pair in bat:batcat fd:fdfind; do
+      name=${pair%%:*}
+      apt_name=${pair#*:}
+      if [ ! -e "$HOME/.local/bin/$name" ] && ! command -v "$name" >/dev/null 2>&1 \
+         && command -v "$apt_name" >/dev/null 2>&1; then
+        ln -s "$(command -v "$apt_name")" "$HOME/.local/bin/$name"
+        echo "Linked $name -> $apt_name"
+      fi
+    done
+
+    # Install fzf from the GitHub release. dot_zshrc runs `fzf --zsh`, which
+    # needs fzf 0.48+, newer than Ubuntu 24.04's archive, so apt is not an
+    # option. Goes to ~/.local/bin (no sudo), ahead of any system fzf on PATH.
+    if "$HOME/.local/bin/fzf" --zsh >/dev/null 2>&1; then
+      echo "fzf already installed, skipping"
+    else
+      case "$(uname -m)" in
+        x86_64) FZF_ARCH=amd64 ;;
+        aarch64 | arm64) FZF_ARCH=arm64 ;;
+        *) FZF_ARCH= ;;
+      esac
+      FZF_TAG=$(latest_release_tag junegunn/fzf)
+      FZF_VERSION=${FZF_TAG#v}
+      if [ -z "$FZF_ARCH" ]; then
+        echo "fzf: no release binary for $(uname -m), skipping"
+      elif [ -z "$FZF_VERSION" ]; then
+        echo "Warning: could not resolve latest fzf release, skipping"
+      elif curl -fsSL "https://github.com/junegunn/fzf/releases/download/${FZF_TAG}/fzf-${FZF_VERSION}-linux_${FZF_ARCH}.tar.gz" |
+          tar xzf - -C "$HOME/.local/bin" fzf; then
+        echo "fzf v${FZF_VERSION} installed successfully"
+      else
+        echo "Warning: could not download fzf v${FZF_VERSION}, skipping"
+      fi
+    fi
+
+    # Install mdcat (markdown renderer — see dotfiles#417). Not in the Ubuntu
+    # archive, so it comes from the GitHub release, same shape as fzf above.
+    # The release publishes x86_64-unknown-linux-gnu only, so other
+    # architectures are skipped rather than handed a binary that will not run.
+    if [ "$(uname -m)" = "x86_64" ]; then
+      if ! command -v mdcat >/dev/null 2>&1; then
+        echo "Installing mdcat..."
+        MDCAT_TAG=$(latest_release_tag BIRSAx2/mdcat)
+        MDCAT_VERSION=${MDCAT_TAG#mdcat-}
+        if [ -n "$MDCAT_VERSION" ]; then
+          echo "Downloading mdcat v${MDCAT_VERSION}..."
+          curl -Lo mdcat.tar.gz "https://github.com/BIRSAx2/mdcat/releases/download/mdcat-${MDCAT_VERSION}/mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar xf mdcat.tar.gz --strip-components=1 "mdcat-${MDCAT_VERSION}-x86_64-unknown-linux-gnu/mdcat"
+          sudo install mdcat -D -t /usr/local/bin/
+          rm -f mdcat.tar.gz mdcat
+          echo "mdcat installed successfully"
+        else
+          echo "Warning: could not resolve latest mdcat release, skipping"
+        fi
+      else
+        echo "mdcat already installed, skipping"
+      fi
+    else
+      echo "mdcat: no release binary for $(uname -m), skipping"
+    fi
+# {{ end }}
+
+# {{ if ne .machine_type "minimal" }}
+    # Install Docker Engine from Docker's apt repo (ADR-0018), per
+    # docs.docker.com/engine/install/ubuntu. Native on Linux and WSL: no
+    # Docker Desktop, no VM. WSL needs systemd for the service, which
+    # run_once_configure-wsl enables. Skipped when docker is already present,
+    # e.g. GitHub's runners, whose preinstalled packages conflict with
+    # docker-ce. Not on minimal: those machines get no container engine.
+    if ! command -v docker >/dev/null 2>&1; then
+      echo "Installing Docker Engine..."
+      # Each step is chained with && rather than relying on set -e, which is
+      # suspended inside an if condition. A distro Docker's repo does not
+      # cover (an Ubuntu derivative whose ID has no download.docker.com path)
+      # then warns instead of aborting the whole apply.
+      # shellcheck disable=SC1091
+      DOCKER_OS=$(. /etc/os-release && echo "$ID")
+      # shellcheck disable=SC1091
+      DOCKER_CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+      DOCKER_KEYRING=/etc/apt/keyrings/docker.asc
+      if sudo install -m 0755 -d /etc/apt/keyrings &&
+        sudo curl -fsSL "https://download.docker.com/linux/${DOCKER_OS}/gpg" -o "$DOCKER_KEYRING" &&
+        sudo chmod a+r "$DOCKER_KEYRING" &&
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=$DOCKER_KEYRING] https://download.docker.com/linux/${DOCKER_OS} ${DOCKER_CODENAME} stable" |
+          sudo tee /etc/apt/sources.list.d/docker.list >/dev/null &&
+        sudo apt-get update &&
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+        echo "Docker Engine installed successfully"
+      else
+        echo "Warning: Docker Engine install failed, skipping"
+        sudo rm -f /etc/apt/sources.list.d/docker.list
+      fi
+    else
+      echo "Docker already installed, skipping"
+    fi
+    # Run docker without sudo; takes effect at the next login. Membership of
+    # the docker group is root-equivalent, the usual trade-off for this.
+    if getent group docker >/dev/null 2>&1 && ! id -nG "$USER" | grep -qw docker; then
+      sudo usermod -aG docker "$USER"
+      echo "Added $USER to the docker group (log out and back in to use it)"
+    fi
+
+# {{ end }}
+
+# {{ if eq .machine_type "personal" }}
+    # Install Claude Code (Linux counterpart of the Brewfile's
+    # claude-code@latest cask). The native installer puts the launcher at
+    # ~/.local/bin/claude, self-updates, and defaults to the latest channel.
+    if [ ! -x "$HOME/.local/bin/claude" ] && ! command -v claude >/dev/null 2>&1; then
+      echo "Installing Claude Code..."
+      curl -fsSL https://claude.ai/install.sh | bash
+    else
+      echo "Claude Code already installed, skipping"
+    fi
+# {{ end }}
+
+# {{ if eq .machine_type "minimal" }}
+    # Install uv (Python package manager; from the Brewfile on personal and
+    # work)
+    echo "Installing/Updating uv..."
+    if ! command -v uv >/dev/null 2>&1; then
+      # UV_NO_MODIFY_PATH: otherwise the installer appends
+      # `. "$HOME/.local/bin/env"` to ~/.zshrc (and .bashrc/.profile), because
+      # ~/.local/bin is never on PATH inside a chezmoi script. dot_zshrc already
+      # adds it, and the edit makes chezmoi flag ~/.zshrc as modified (#446).
+      curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh
+      echo "uv installed successfully"
+    else
+      echo "uv already installed, skipping"
+    fi
+# {{ end }}
+
+    echo "Package installation complete"
+    ;;
+  *)
+    echo "Not Linux - skipping apt package installation"
+    ;;
+esac

@@ -1,0 +1,238 @@
+#!/bin/sh
+
+set -e
+
+if [ "${RUNNER_DEBUG}" = "1" ]; then
+    set -x
+fi
+
+{{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping package install (fast CI mode)"
+exit 0
+{{- end }}
+
+case "$(uname -s)" in
+  Linux*)
+    echo "Linux detected"
+    if grep -qi microsoft /proc/version; then
+      echo "WSL detected"
+    fi
+    echo "Updating apt-get..."
+    export DEBIAN_FRONTEND=noninteractive
+    sudo apt-get update
+    echo "Installing packages with apt-get..."
+    # Add packages here
+    # removed snapd, using generic install
+    # ncurses-term provides terminal definitions for modern terminals like Ghostty
+    # ncurses-bin provides 'tic' command needed to compile terminfo
+    sudo apt-get install -y git zsh age ncurses-term ncurses-bin
+
+{{- if eq .machine_type "minimal" }}
+    # Personal and work machines get Starship from the Brewfile (ADR-0017,
+    # ADR-0019); only minimal machines use the installer.
+    if ! command -v starship >/dev/null 2>&1; then
+      echo "Installing Starship..."
+      # Install to ~/.local/bin (on PATH via dot_zshrc) so neither this nor
+      # dotup's later updates need sudo. The installer's default is
+      # /usr/local/bin, which escalates (#446).
+      mkdir -p "$HOME/.local/bin"
+      curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin" > /dev/null 2>&1 || echo "Starship install failed"
+    else
+      echo "Starship already installed, skipping..."
+    fi
+{{- end }}
+
+    if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
+      echo "Installing Oh My Zsh..."
+      rm -rf "$HOME/.oh-my-zsh"
+      # --unattended: sets up OMZ but does not change shell
+      # KEEP_ZSHRC=yes: prevents replacing existing .zshrc
+      KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+      echo "Oh My Zsh already installed, skipping..."
+    fi
+    
+    # Change shell to zsh
+    CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+    ZSH_PATH=$(command -v zsh)
+    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+        echo "Changing default shell to $ZSH_PATH..."
+        # Try usermod first on Linux (more script friendly than chsh sometimes)
+        if command -v usermod >/dev/null 2>&1; then
+            sudo usermod -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to change shell with usermod."
+        else
+            sudo chsh -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to change shell with chsh."
+        fi
+    fi
+    
+    echo "Installing Oh My Zsh custom plugins..."
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
+      git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    else
+      echo "zsh-autosuggestions already installed, skipping..."
+    fi
+    
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
+      git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    else
+      echo "zsh-syntax-highlighting already installed, skipping..."
+    fi
+    
+{{- if ne .machine_type "minimal" }}
+    # C toolchain (gcc, make, libc headers): rustup links with the system cc,
+    # as do native npm modules. macOS gets this from the Xcode CLT; installed
+    # before rustup so it finds a linker (dotfiles#438).
+    sudo apt-get install -y build-essential
+
+    # Install Rust toolchain via rustup
+    if ! command -v rustup >/dev/null 2>&1; then
+      echo "Installing Rust toolchain via rustup..."
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      # Source cargo env for the remainder of this script
+      . "$HOME/.cargo/env"
+    else
+      echo "Rustup already installed, skipping..."
+    fi
+{{- end }}
+{{- if ne .machine_type "minimal" }}
+
+    # Homebrew on Linux, personal (ADR-0017) and work (ADR-0019): the
+    # Brewfile is then installed by run_once_after_install-brewfile. Homebrew's Linux
+    # prerequisites are build-essential, procps, curl, file and git;
+    # build-essential is installed above. NONINTERACTIVE skips the "Press
+    # RETURN" prompt; the installer still uses sudo once to create
+    # /home/linuxbrew, which the apt-get calls above have already authorised.
+    if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+      echo "Installing Homebrew..."
+      sudo apt-get install -y procps curl file
+      NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    else
+      echo "Homebrew already installed, skipping..."
+    fi
+{{- end }}
+
+    # Install nano syntax highlighting (scopatz/nanorc)
+    echo "Installing nano syntax highlighting..."
+    if [ ! -d "$HOME/.nano/.git" ]; then
+      rm -rf "$HOME/.nano"
+      git clone https://github.com/scopatz/nanorc.git "$HOME/.nano"
+    else
+      echo "nano syntax highlighting already installed, skipping..."
+    fi
+
+    # Install Ghostty terminfo for SSH compatibility
+    # This allows remote servers to recognize the 'xterm-ghostty' terminal type
+    echo "Installing Ghostty terminfo..."
+    if ! infocmp xterm-ghostty >/dev/null 2>&1; then
+      # Use the terminfo file from the repository (generated by GitHub Actions)
+      # Check both paths: relative to source root (if .chezmoiroot used) and full path
+      TERMINFO_FILE="{{ .chezmoi.sourceDir }}/dot_config/ghostty/xterm-ghostty.terminfo"
+      if [ ! -f "$TERMINFO_FILE" ]; then
+         TERMINFO_FILE="{{ .chezmoi.sourceDir }}/home/dot_config/ghostty/xterm-ghostty.terminfo"
+      fi
+
+      if [ -f "$TERMINFO_FILE" ]; then
+        mkdir -p "$HOME/.terminfo"
+        tic -x -o "$HOME/.terminfo" "$TERMINFO_FILE" && \
+          echo "Ghostty terminfo installed successfully from repository" || \
+          echo "Warning: Failed to compile Ghostty terminfo"
+      else
+        echo "Warning: Repository terminfo not found at $TERMINFO_FILE. Ghostty terminfo not installed."
+      fi
+    else
+      echo "Ghostty terminfo already installed, skipping..."
+    fi
+    ;;
+  Darwin*)
+    echo "macOS detected"
+    if ! command -v brew >/dev/null 2>&1; then
+      echo "Installing Homebrew..."
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      # Add Homebrew to PATH for the remainder of this script
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+    echo "Installing packages with Homebrew..."
+    # Add packages here
+    # Check if tools are installed before trying to install/upgrade to save time/errors
+    brew install chezmoi zsh ghostty age starship || true
+
+    if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
+      echo "Installing Oh My Zsh..."
+      rm -rf "$HOME/.oh-my-zsh"
+      KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+      echo "Oh My Zsh already installed, skipping..."
+    fi
+    
+    # Change shell to zsh on macOS
+    ZSH_PATH=$(command -v zsh)
+    # macOS uses dscl or chsh. chsh on macOS asks for password even with sudo sometimes?
+    # In CI, sudo works.
+    if [ "$SHELL" != "$ZSH_PATH" ]; then
+         echo "Changing default shell to $ZSH_PATH..."
+         # Try sudo chsh. If it fails, warn.
+         sudo chsh -s "$ZSH_PATH" "$USER" || echo "Warning: Failed to switch shell. You may need to run 'chsh -s $(which zsh)' manually."
+    fi
+    
+    echo "Installing Oh My Zsh custom plugins..."
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
+      git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    else
+      echo "zsh-autosuggestions already installed, skipping..."
+    fi
+    
+    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
+      git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    else
+      echo "zsh-syntax-highlighting already installed, skipping..."
+    fi
+    
+{{- if ne .machine_type "minimal" }}
+    # Install Rust toolchain via rustup
+    if ! command -v rustup >/dev/null 2>&1; then
+      echo "Installing Rust toolchain via rustup..."
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      # Source cargo env for the remainder of this script
+      . "$HOME/.cargo/env"
+    else
+      echo "Rustup already installed, skipping..."
+    fi
+{{- end }}
+
+    # Install nano syntax highlighting (scopatz/nanorc)
+    echo "Installing nano syntax highlighting..."
+    if [ ! -d "$HOME/.nano/.git" ]; then
+      rm -rf "$HOME/.nano"
+      git clone https://github.com/scopatz/nanorc.git "$HOME/.nano"
+    else
+      echo "nano syntax highlighting already installed, skipping..."
+    fi
+
+    # Install Ghostty terminfo for SSH compatibility
+    # This allows remote servers to recognize the 'xterm-ghostty' terminal type
+    echo "Installing Ghostty terminfo..."
+    if ! infocmp xterm-ghostty >/dev/null 2>&1; then
+      # Use the terminfo file from the repository (generated by GitHub Actions)
+      # Check both paths: relative to source root (if .chezmoiroot used) and full path
+      TERMINFO_FILE="{{ .chezmoi.sourceDir }}/dot_config/ghostty/xterm-ghostty.terminfo"
+      if [ ! -f "$TERMINFO_FILE" ]; then
+         TERMINFO_FILE="{{ .chezmoi.sourceDir }}/home/dot_config/ghostty/xterm-ghostty.terminfo"
+      fi
+
+      if [ -f "$TERMINFO_FILE" ]; then
+        mkdir -p "$HOME/.terminfo"
+        tic -x -o "$HOME/.terminfo" "$TERMINFO_FILE" && \
+          echo "Ghostty terminfo installed successfully from repository" || \
+          echo "Warning: Failed to compile Ghostty terminfo"
+      else
+        echo "Warning: Repository terminfo not found at $TERMINFO_FILE. Ghostty terminfo not installed."
+      fi
+    else
+      echo "Ghostty terminfo already installed, skipping..."
+    fi
+    ;;
+  *)
+    echo "Unsupported operating system"
+    exit 1
+    ;;
+esac

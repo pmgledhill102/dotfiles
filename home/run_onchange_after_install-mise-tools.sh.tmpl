@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Install the runtimes and npm CLIs declared in ~/.config/mise/config.toml
+# (ADR-0021). Re-runs whenever that config's source or the npm list changes:
+# config {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+# npm {{ .packages.npm.packages | toJson | sha256sum }}
+#
+# Runs after run_once_after_install-brewfile, which installs mise on macOS and
+# on personal and work Linux (ADR-0019), because chezmoi runs after-scripts in
+# name order.
+
+set -e
+
+{{- if eq (env "DOTFILES_SKIP_INSTALL") "1" }}
+echo "DOTFILES_SKIP_INSTALL=1 — skipping mise install (fast CI mode)"
+exit 0
+{{- end }}
+
+MISE=""
+for candidate in "$(command -v mise 2>/dev/null || true)" \
+  "$HOME/.local/bin/mise" \
+  "/opt/homebrew/bin/mise" \
+  "/usr/local/bin/mise" \
+  "/home/linuxbrew/.linuxbrew/bin/mise"; do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    MISE="$candidate"
+    break
+  fi
+done
+
+if [ -z "$MISE" ]; then
+  echo "mise not found; skipping runtime install. Run 'brewup' (macOS, personal"
+  echo "Linux) or re-run 'chezmoi apply' (work Linux), then this runs again."
+  exit 0
+fi
+
+echo "Installing mise tools (Node, Java, npm CLIs)..."
+MISE_YES=1 "$MISE" install
+echo "mise tools installed."

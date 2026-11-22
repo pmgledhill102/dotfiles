@@ -1,0 +1,394 @@
+# Dotfiles
+
+Personal dotfiles managed by [chezmoi](https://www.chezmoi.io/). Provides a
+consistent dev environment across macOS, Linux, WSL, and Windows.
+
+> **This repository is public by design** — the bootstrap is a single `curl` on
+> a fresh machine, before any credential exists. Nothing here may reference a
+> private repository; tooling that operates on one reads it from untracked
+> machine config. See
+> [ADR-0014](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/adrs/0014-public-repo-no-private-references.md).
+
+## What You Get
+
+One curl command on a fresh machine and you walk away with a tuned shell, a
+modern CLI toolkit, your editors and Git already configured, secrets
+decrypted, and a Claude Code setup that knows how to scaffold any new
+language project — all kept in sync across every machine you own with two
+short commands.
+
+### One install, four platforms
+
+Works on **macOS, Ubuntu/Debian Linux, WSL, and Windows** from the same
+source of truth. Pick a tier at install time (`personal` / `work` /
+`minimal`) so a work laptop doesn't get Steam and a minimal VM doesn't get
+the full kitchen sink.
+
+### A polished terminal
+
+Zsh + Oh My Zsh with quality-of-life add-ons:
+
+- **`zsh-autosuggestions`** — fish-style as-you-type history suggestions
+- **`zsh-syntax-highlighting`** — commands turn green/red before you press
+  Enter
+- **`colored-man-pages`**, **`command-not-found`**, **`extract`** (one
+  command for any archive), **`copypath`**, **`copyfile`**
+- **Starship prompt** with transient-prompt collapse so scrollback stays
+  clean
+- **fzf** wired for `Ctrl-R` history search and fuzzy file pickers
+- **zoxide** so `z proj` jumps to your most-used folder without typing the
+  path
+- Bitwarden SSH agent auto-wired (on WSL via a relay to the Windows agent,
+  [#451](https://github.com/pmgledhill102/dotfiles/issues/451)), telemetry opted out, `~/.zshrc.local`
+  escape hatch for per-machine tweaks
+
+### A modern CLI toolkit installed for you
+
+- **Better core tools** — `bat`, `fd`, `ripgrep`, `git-delta`, `jq`/`yq`,
+  `fzf`, `zoxide`
+- **Git + dev** — `gh`, `lazygit`, `pre-commit`, `gitleaks`
+- **Languages** — Go, .NET, Node and Java through `mise` (ADR-0021), `uv` (Python), Rust
+- **Cloud / infra** — `gcloud`, `awscli`, `azure-cli`, `tenv` + `tflint`,
+  `checkov`, `trivy`, `semgrep`, Docker (Colima on macOS)
+- **Personal-tier GUI apps** — VS Code, Ghostty, Bitwarden, Rectangle,
+  Chrome, JetBrains Mono Nerd Font, Claude Desktop, and more
+
+### Short, memorable maintenance commands
+
+You don't need to remember chezmoi or brew incantations:
+
+- **`dotup`** — pull latest dotfiles, update Oh My Zsh + plugins, refresh
+  nano syntax, update Starship (Linux without Homebrew), then reload aliases/functions in
+  the current shell
+- **`brewup`** — macOS and personal Linux: `brew update` + install everything in your Brewfile +
+  `brew upgrade` + `rustup update`, in one step. Casks that update
+  themselves (`auto_updates`, e.g. Discord, VS Code, Chrome) are left
+  alone, so the run never stops on a sudo prompt — set
+  `BREWUP_UPGRADE_SELF_UPDATING=1` to upgrade them anyway
+- **`claudeup`** — interactive Claude Code MCP server setup (GitHub MCP
+  wired to your `gh` auth token, Google Developer Knowledge keyed from
+  Bitwarden)
+- **`xcodeup`** — macOS only: install/update the latest Xcode via
+  `xcodes`, point the toolchain at it, and download the iOS platform
+  (simulator runtime). Interactive — Apple sign-in can't be automated
+- **`dotstatus`** — machine type, source path, last applied, and any
+  pending changes
+- **`dotguide`** — macOS only: open the shortcut guide for this machine's
+  profile in the browser; `dotguide md` shows the Markdown version in the
+  terminal
+- **`dotfuncs`** — list every custom function with its one-line description
+  so you can rediscover what's available after `dotup`
+
+### Quick-capture project notes
+
+- **`note "anything"`** (alias **`n`**) — append a timestamped bullet to
+  `~/notes/<project>.md`, where project is the git repo basename (or cwd
+  basename outside a repo). No args → print the current project's notes.
+- **`note -e`** — open the current project's notes file in `$EDITOR`
+- **`notes`** — list all note files across projects
+- **`notes grep <pattern>`** (or just `notes <pattern>`) —
+  case-insensitive search across every project's notes
+
+### Rendered markdown in the terminal
+
+`bat` is a syntax highlighter, not a renderer — it prints markdown bytes as
+they arrive, so a table piped out of a CLI tool stays ragged. `mdcat` computes
+column widths at render time and aligns the table whatever the source looks
+like.
+
+- **`mytool | mdc`** — the main use: render whatever a tool just printed
+- **`mdc file.md`** — same function, with a filename
+- **`mdcp file.md`** — through a pager, for long documents (inline images
+  degrade to plain ANSI, since pagers swallow the graphics escapes)
+
+Wrapping follows the window when a terminal is attached, and is disabled
+entirely when redirected, so `mdc file.md > out.txt` doesn't bake the current
+width into the file. Static preferences live in `~/.config/mdcat/config.toml`;
+`bat` stays the default for source inspection and everything non-markdown.
+
+### A centralised Claude Code setup that follows you everywhere
+
+Every machine gets the same `~/.claude/` config — sourced from a separate
+repo,
+[`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config),
+mounted into `~/.claude/` via [chezmoi externals][chezmoi-externals]. One
+`dotup` pulls both repos and applies.
+
+- Curated permission allowlist so common dev/build/lint/GitHub commands
+  don't prompt every time, but destructive things still do
+- Slash commands to bootstrap any project — `/setup-python`, `/setup-go`,
+  `/setup-rust`, `/setup-node`, `/setup-typescript`, `/setup-java`,
+  `/setup-ruby`, `/setup-php`, `/setup-dotnet`, `/setup-shell`,
+  `/setup-markdown`, `/setup-docker`, `/setup-terraform` — each wires
+  formatter + linter + type checks + pre-commit hooks consistently
+- Repo helpers — `/setup-repo` (branch protection, Dependabot auto-merge),
+  `/setup-common` (pre-commit + gitleaks)
+- Session helpers — `/end-session`, `/retrospective`
+- Auto-fix hooks — Terraform formatted on save, pre-commit enforced before
+  `git push`
+
+[chezmoi-externals]: https://www.chezmoi.io/reference/special-files-and-directories/chezmoiexternal-format/
+
+### Secrets handled safely
+
+`age`-based encryption — secrets live in the repo encrypted, decrypt on
+first run with your key. No plaintext credentials in version control.
+
+### Confidence it works
+
+CI runs lint + full install tests on macOS, Ubuntu, and Windows on every
+push to `main`, so a broken bootstrap is caught before it hits your laptop.
+`validate-installation.sh` (and `.ps1` for Windows) sanity-checks a fresh
+install.
+
+## Quick Start
+
+### macOS / Linux / WSL
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/install.sh)"
+```
+
+### Windows (PowerShell as Administrator)
+
+```powershell
+winget install --id twpayne.chezmoi
+
+chezmoi init --apply pmgledhill102
+```
+
+This installs chezmoi, packages (Homebrew/apt/winget), shell config (Zsh +
+Oh My Zsh or PowerShell), Starship prompt, git-delta, lazygit, VS Code
+settings, JetBrains Mono Nerd Font, and platform-specific defaults.
+
+On Windows the PowerShell profile lives at
+`~\.config\powershell\Microsoft.PowerShell_profile.ps1`, as on macOS and
+Linux. Windows reads its profiles from `Documents`, so apply appends a short
+loader to both `$PROFILE` files: PowerShell 7 and Windows PowerShell 5.1.
+Open a new window afterwards to get `dotup` and the other functions. If 5.1
+reports that running scripts is disabled, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+## First-run extras (optional)
+
+A few one-time bootstrap steps that aren't auto-run on first apply because
+they're heavy or workflow-specific.
+
+### Containers (Docker, no Docker Desktop)
+
+The real `docker` CLI with Compose v2 and buildx, on personal and work
+machines; minimal gets none
+([ADR-0018](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/adrs/0018-docker-via-colima-and-docker-engine.md)).
+
+- **macOS** — the Brewfile installs Colima, which runs the Docker engine in a
+  headless VM. It is **off until you start it**, so it costs nothing while you
+  are not using Docker:
+
+  ```bash
+  colima start    # when you need docker (defaults: 2 CPU, 2 GiB RAM)
+  colima stop     # give the memory back
+  colima status
+  ```
+
+  For a bigger VM, `colima start --cpu 4 --memory 6`; the size persists for
+  later starts. On Apple Silicon, `--vm-type vz --vz-rosetta` runs x86 images
+  fast.
+- **Ubuntu / WSL** — Docker Engine from Docker's apt repo, native, no VM. The
+  install adds you to the `docker` group; log out and back in to use `docker`
+  without sudo.
+
+```bash
+docker run --rm hello-world   # verify
+docker compose version
+```
+
+### Self-hosted CI runner VM (macOS only)
+
+Self-hosted GitHub Actions runners for macOS builds live in a
+[Tart](https://tart.run) VM rather than on your own user account, so CI never
+runs as you with your keychain and session. `tart` comes from the Brewfile. Set
+`CI_VM_REPO` in `~/.config/ci-vm.conf` (untracked — this repo is public), then
+build the VM once:
+
+```bash
+ci-vm-build     # ~66 GB image pull, then registers the runner. Idempotent.
+```
+
+Day to day it's two commands:
+
+```bash
+ci-vm-up        # before opening a PR or shipping — jobs queue while it's down
+ci-vm-down      # when done; refuses while a job is running
+```
+
+`ci-vm-destroy` deregisters the runner and deletes the VM. Full detail,
+configuration and troubleshooting in
+[docs/ci-runner-vm.md](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/ci-runner-vm.md).
+
+## Per-Platform Reference
+
+| | macOS | Linux / WSL | Windows |
+| --- | --- | --- | --- |
+| Shell | Zsh + Oh My Zsh | Zsh + Oh My Zsh | PowerShell Core |
+| Terminal | Ghostty | (host terminal) | Windows Terminal |
+| Package source | `Brewfile` | `apt` package list | `winget` JSON |
+| Platform tweaks | Developer defaults | — | Long Paths + Developer Mode |
+
+## Machine Types
+
+During `chezmoi init` you choose a machine type that controls which packages
+are installed:
+
+| Type | Brew formulas | Brew casks | Description |
+| --- | --- | --- | --- |
+| `personal` | Full (cloud CLIs, runtimes, build tools) | All GUI apps | Full dev workstation |
+| `work` | Core CLI + key runtimes | Font, Ghostty, Rectangle | Work essentials |
+| `minimal` | Core CLI only | None | Headless / CI server |
+
+The Claude Code config mounted at `~/.claude/` is **`personal` only** — it
+carries a personal GitHub workflow that doesn't belong on a work machine, and
+the Claude binaries are personal-tier anyway. A machine switched away from
+`personal` has that config removed on the next apply.
+
+To change later, edit `machine_type` in `~/.config/chezmoi/chezmoi.toml` and
+run `chezmoi apply`.
+
+## Usage
+
+### Daily helpers
+
+```bash
+dotup                 # Pull latest dotfiles + update OMZ, plugins, Starship
+brewup                # brew update + install Brewfile + brew upgrade + rustup update
+claudeup              # Interactive Claude Code MCP server setup
+xcodeup               # macOS: install/select latest Xcode via xcodes
+dotstatus             # Machine type, source path, last applied, pending changes
+dotfuncs              # List all custom shell functions with descriptions
+dotguide              # macOS: open the shortcut guide (dotguide md: in the terminal)
+```
+
+### Quick-capture notes
+
+```bash
+note "fixed the auth bug"   # Append a timestamped bullet to ~/notes/<project>.md
+n "another shorthand"        # 'n' is an alias for 'note'
+note                          # Print the current project's notes
+note -e                       # Open the current project's notes in $EDITOR
+notes                         # List all note files
+notes grep <pattern>          # Search across every project's notes
+notes <pattern>               # Shorthand for 'notes grep'
+```
+
+### Rendered markdown
+
+```bash
+mytool | mdc                  # Render piped markdown, tables aligned to the window
+mdc file.md                   # Same, from a file
+mdc file.md > out.txt         # Redirected: wrapping disabled entirely
+mdcp file.md                  # Render through a pager (no inline images)
+```
+
+### Machine-local overrides
+
+`~/.zshrc.local` is sourced last by `.zshrc` and isn't managed by chezmoi,
+so per-machine tweaks go there. For example, to put a red badge at the
+start of the prompt on a server:
+
+```sh
+export MACHINE_LABEL="BUILD SERVER"
+```
+
+With `MACHINE_LABEL` unset, the prompt is unchanged. PowerShell reads the
+same `starship.toml`, so `$env:MACHINE_LABEL = "BUILD SERVER"` in your
+profile does the same there.
+
+### Direct chezmoi commands
+
+```bash
+chezmoi diff          # Preview pending changes
+chezmoi apply -v      # Apply changes
+chezmoi edit ~/.zshrc # Edit a managed file
+chezmoi add ~/.foo    # Start managing a new file
+```
+
+### Package management
+
+```bash
+# macOS — packages auto-install when Brewfile changes
+brew bundle
+
+# Linux — apt packages live under [data.packages.apt] in
+# home/.chezmoi.toml.tmpl; the rendered ~/.config/ubuntu_pkglist
+# regenerates from it, and changes auto-install on the next apply.
+chezmoi init --apply
+
+# npm CLIs — declared under [data.packages.npm] in
+# home/.chezmoi.toml.tmpl. They render into ~/.config/mise/config.toml as
+# "npm:" tools, and run_onchange_after_install-mise-tools runs
+# `mise install` whenever the list or the config changes (ADR-0021).
+```
+
+## Secret Management
+
+This repo uses `age` to encrypt sensitive files. chezmoi decrypts them
+automatically on apply.
+
+### Setup
+
+```bash
+age-keygen -o ~/.config/chezmoi/key.txt
+```
+
+Store this key in Bitwarden. Place it at `~/.config/chezmoi/key.txt` on each
+machine.
+
+### Adding Secrets
+
+```bash
+chezmoi edit --encrypted ~/.config/secret-file
+chezmoi apply
+```
+
+Highly sensitive secrets (API keys, passwords) belong in Bitwarden, not here.
+
+## Platform Support
+
+Every supported surface gets a tier, so "does this work on X" has an answer
+with a commitment attached rather than a yes/no. The matrix these tiers come
+from is under discussion in
+[agentic-coding-config#353](https://github.com/pmgledhill102/agentic-coding-config/issues/353);
+this table is the current state of play, and the link becomes an ADR reference
+once that lands.
+
+| Surface | Tier | What this repo delivers | Agent config |
+| --- | --- | --- | --- |
+| macOS (Sonoma+), personal | **primary** | everything — Brewfile, defaults, Ghostty, xcodeup | full |
+| macOS, work | supported | `work` tier | none |
+| Ubuntu 22.04+ / Debian 11+ / WSL | supported | packages and shell; no GUI applications. Personal tier runs Homebrew and the Brewfile ([ADR-0017](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/adrs/0017-homebrew-on-personal-linux.md)); work and minimal use apt | pending the OS/persistence split upstream |
+| Cloud sandbox (Ubuntu, ephemeral) | supported | `minimal`, scriptable without chezmoi | via agentic-coding-config's bootstrap |
+| Windows 10/11 (PowerShell) | **best-effort** | WinGet packages, PowerShell profile, Windows Terminal | pending an `env-windows` profile ([a-c-c#417](https://github.com/pmgledhill102/agentic-coding-config/issues/417)) |
+
+- **primary** — fixed now, from wherever the user is; every new capability
+  lands here first
+- **supported** — CI-tested; defects queued alongside primary work; narrower
+  scope by design
+- **best-effort** — install stays CI-tested so it does not rot; defects fixed
+  opportunistically at that machine, with no queue position. Issues carry
+  `surface: windows-desktop`
+
+Note on the Windows row: the machine currently receives the macOS agent
+profile, which is a composition gap upstream rather than a delivery bug here.
+Gating the external off Windows was considered and rejected — it would strip
+20 skills, 12 `bin/` scripts and the hook wiring from a machine that uses them
+daily.
+
+## Documentation
+
+- [CONTRIBUTING.md](https://github.com/pmgledhill102/dotfiles-private/blob/main/CONTRIBUTING.md) — development workflow and code style
+- [docs/TESTING.md](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/TESTING.md) — CI pipeline and validation scripts
+- [docs/ci-runner-vm.md](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/ci-runner-vm.md) — self-hosted Actions runner in a Tart VM
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common issues and fixes
+
+## License
+
+Personal configuration. Feel free to fork and adapt for your own use.

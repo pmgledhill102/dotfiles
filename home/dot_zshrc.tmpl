@@ -1,0 +1,196 @@
+#!/bin/zsh
+# shellcheck disable=SC1071
+# This is a zsh configuration file, not a portable shell script
+
+# Zsh configuration
+
+# Path to your oh-my-zsh installation.
+export ZSH=$HOME/.oh-my-zsh
+
+# Ensure local bin is in PATH
+export PATH="$HOME/.local/bin:$PATH"
+
+# Homebrew
+{{- if eq .chezmoi.os "darwin" }}
+eval "$(/opt/homebrew/bin/brew shellenv)"
+{{- else if eq .chezmoi.os "linux" }}
+if [ -d /home/linuxbrew/.linuxbrew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+{{- end }}
+
+# Ensure cargo bin is in PATH (Rust toolchain)
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Set name of the theme to load --- if set to "random", it will
+# load a random theme each time oh-my-zsh is loaded, in which case,
+# to know which specific one was loaded, run: echo $RANDOM_THEME
+# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
+ZSH_THEME=""
+
+# Set to this to use case-sensitive completion
+# CASE_SENSITIVE="true"
+
+# Uncomment the following line to use hyphen-insensitive completion.
+# Case-sensitive completion must be off. _ and - will be interchangeable.
+# HYPHEN_INSENSITIVE="true"
+
+# Uncomment the following line to disable bi-weekly auto-update checks.
+# DISABLE_AUTO_UPDATE="true"
+
+# Uncomment the following line to change how often to auto-update (in days).
+# export UPDATE_ZSH_DAYS=13
+
+# Uncomment the following line to disable colours in ls.
+# DISABLE_LS_COLORS="true"
+
+# Uncomment the following line to disable auto-setting terminal title.
+# DISABLE_AUTO_TITLE="true"
+
+# Uncomment the following line to enable command auto-correction.
+# ENABLE_CORRECTION="true"
+
+# Uncomment the following line to display red dots whilst waiting for completion.
+# COMPLETION_WAITING_DOTS="true"
+
+# Uncomment the following line if you want to disable marking untracked files
+# under VCS as dirty. This makes repository status check for large repositories
+# much, much faster.
+# DISABLE_UNTRACKED_FILES_DIRTY="true"
+
+# Uncomment the following line if you want to change the command execution time
+# stamp shown in the history command output.
+# The optional three formats: "mm/dd/yyyy"|"dd.mm.yyyy"|"yyyy-mm-dd"
+# HIST_STAMPS="mm/dd/yyyy"
+
+# Would you like to use another custom folder than $ZSH/custom?
+# ZSH_CUSTOM=/path/to/new-custom-folder
+
+# Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
+# Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
+# Example format: plugins=(rails git textmate ruby lighthouse)
+# Add wisely, as too many plugins slow down shell startup.
+plugins=(
+  git
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  colored-man-pages
+  command-not-found
+  extract
+  history
+  copypath
+  copyfile
+)
+
+# shellcheck source=/dev/null
+source "$ZSH/oh-my-zsh.sh"
+
+# --- History + completion (override OMZ defaults) ---
+
+# Larger history with sane dedup and cross-session sharing.
+# HIST_IGNORE_SPACE: commands prefixed with a space are not recorded — handy
+# for one-off sensitive commands you don't want stored.
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE SHARE_HISTORY EXTENDED_HISTORY
+
+# Case-insensitive prefix completion (typing lowercase matches uppercase too).
+# OMZ's default already does this; this is the explicit, idempotent override.
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
+# User configuration
+
+# export MANPATH="/usr/local/man:$MANPATH"
+
+# You may need to manually set your language environment
+# export LANG=en_US.UTF-8
+
+# Preferred editor
+export EDITOR="code --wait"
+
+# CLI editor (for git commit messages in terminal, etc.)
+export VISUAL="nano"
+
+# Telemetry opt-outs
+export HOMEBREW_NO_ANALYTICS=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+# Docker on macOS runs inside Colima (ADR-0018). The docker CLI finds it via
+# the "colima" context, but tools that read the socket directly
+# (Testcontainers, act, some IDE plugins) only honour DOCKER_HOST.
+if [ "$(uname -s)" = "Darwin" ] && command -v colima >/dev/null 2>&1; then
+  export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+fi
+
+# Bitwarden SSH agent. On WSL the socket is a relay to the Windows agent, run by
+# the bitwarden-ssh-agent systemd user service (#451).
+[ -S ~/.bitwarden-ssh-agent.sock ] && export SSH_AUTH_SOCK=~/.bitwarden-ssh-agent.sock
+
+# --- Tool integrations ---
+
+# fzf key bindings and fuzzy completion. `fzf --zsh` needs fzf 0.48+; an older
+# fzf (apt's 0.44 on Ubuntu 24.04) rejects the flag, so test the flag itself
+# rather than only that fzf exists, or every new shell prints an error (#503).
+# Key bindings need a terminal: in an interactive shell without one (`zsh -i -c
+# ...` from a script or an editor's task runner) fzf's script fails restoring
+# the zle option ("can't change option: zle"). Test the terminal itself:
+# [[ -o zle ]] still reads as on there.
+if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1 && _fzf_init=$(fzf --zsh 2>/dev/null); then
+  eval "$_fzf_init"
+fi
+unset _fzf_init
+
+# zoxide (smarter cd via frecency: `z foo`, `zi foo`)
+# Loaded after fzf so `zi` picks up the fzf integration automatically.
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
+
+# fzf: use fd as the file source so default ignores (.git, node_modules,
+# build dirs) apply to Ctrl-T file picker and fuzzy completion. fd is faster
+# than find and respects .gitignore by default.
+if command -v fd >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .cache'
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+fi
+
+# mise: Node and Java versions, and npm CLIs (ADR-0021). A per-directory
+# hook rather than shims, so a project's mise.toml or .nvmrc takes effect on cd.
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate zsh)"
+fi
+
+# Load custom aliases
+# shellcheck source=/dev/null
+[ -f "$HOME/.config/zsh/aliases.zsh" ] && source "$HOME/.config/zsh/aliases.zsh"
+
+# Load custom shell functions (one file per command, see ~/.config/zsh/functions/)
+if [ -d "$HOME/.config/zsh/functions" ]; then
+  for f in "$HOME/.config/zsh/functions"/*.zsh; do
+    # shellcheck source=/dev/null
+    [ -f "$f" ] && source "$f"
+  done
+fi
+
+# Starship prompt (init after OMZ source to preserve transient prompt hooks)
+export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+eval "$(starship init zsh)"
+
+# Transient prompt: collapse previous prompts to just the character symbol.
+# See docs/TRANSIENT-PROMPT.md for details.
+__starship_full_prompt=$PROMPT
+__starship_full_rprompt=$RPROMPT
+
+__starship_transient_accept_line() {
+  PROMPT='$(starship module character)'
+  RPROMPT=''
+  zle reset-prompt
+  PROMPT=$__starship_full_prompt
+  RPROMPT=$__starship_full_rprompt
+  zle .accept-line
+}
+zle -N accept-line __starship_transient_accept_line
+
+# Optional machine-local overrides (not managed by chezmoi)
+# shellcheck source=/dev/null
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"

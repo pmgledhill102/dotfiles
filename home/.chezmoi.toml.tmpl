@@ -1,0 +1,258 @@
+{{- /* Machine type selection — presented once during chezmoi init */ -}}
+{{- $machineType := promptChoiceOnce . "machine_type" "Machine type (personal = full dev setup, work = essentials only, minimal = headless server)" (list "personal" "work" "minimal") -}}
+
+# chezmoi configuration file
+# Machine type: {{ $machineType }}
+
+[data]
+    name = "Paul Gledhill"
+    email = "github@pmgledhill.com"
+    machine_type = "{{ $machineType }}"
+
+    # Package management - organized by package manager
+    # Note: Brew packages are managed directly in Brewfile.tmpl
+    [data.packages]
+        # Ubuntu - apt packages
+        [data.packages.apt]
+{{- if eq $machineType "personal" }}
+            # Personal Linux machines also run Homebrew and the Brewfile
+            # (ADR-0017), which owns the CLI tools (bat, eza, fd, ripgrep,
+            # zoxide, delta, jq, ...). apt keeps only what the bootstrap
+            # needs before Homebrew exists. Docker comes from Docker's own apt
+            # repo in run_onchange_install-ubuntu-packages (ADR-0018).
+            # One owner per tool (ADR-0019): nothing here may also be in the
+            # Linux Brewfile, except the bootstrap set (curl, git, wget, zsh)
+            # that apt must provide before Homebrew exists; CI enforces it
+            # with scripts/check-package-owners.sh.
+            packages = [
+                "curl",
+                "git",
+                "unzip",
+                "wget",
+                "zip",
+                "zsh",
+            ]
+{{- else if eq $machineType "work" }}
+            # Work Linux machines run Homebrew and the work Brewfile too
+            # (ADR-0019), which owns the CLI tools; apt keeps the bootstrap
+            # set, as on personal.
+            packages = [
+                "curl",
+                "git",
+                "unzip",
+                "wget",
+                "zsh",
+            ]
+{{- else }}
+            packages = [
+                "bat",
+                "curl",
+                "eza",
+                "fd-find",
+                "git",
+                "git-delta",
+                "jq",
+                "ripgrep",
+                "wget",
+                "zoxide",
+                "zsh",
+            ]
+{{- end }}
+
+        # Windows - winget packages
+        [data.packages.winget]
+{{- if eq $machineType "personal" }}
+            packages = [
+                "7zip.7zip",
+                "9P6RC76MSMMJ",
+                "Adobe.Acrobat.Reader.64-bit",
+                # Relays Bitwarden's SSH agent pipe into WSL (#451)
+                "albertony.npiperelay",
+                "Amazon.AWSCLI",
+                "Amazon.SAM-CLI",
+                "AntibodySoftware.WizTree",
+                "astral-sh.uv",
+                "Audacity.Audacity",
+                "Azul.Zulu.21.JDK",
+                "Bitwarden.Bitwarden",
+                "Canva.Affinity",
+                "CPUID.CPU-Z",
+                "CrystalDewWorld.CrystalDiskInfo",
+                "CrystalDewWorld.CrystalDiskMark",
+                "dandavison.delta",
+                "DEVCOM.JetBrainsMonoNerdFont",
+                "Devolutions.UniGetUI",
+                "FiloSottile.age",
+                "Git.Git",
+                "GitHub.cli",
+                "GoLang.Go",
+                "Google.Chrome",
+                "Google.CloudSDK",
+                "HandBrake.HandBrake",
+                "Hashicorp.Packer",
+                "Hugo.Hugo.Extended",
+                "ImageMagick.ImageMagick",
+                "JesseDuffield.lazygit",
+                "koalaman.shellcheck",
+                "Microsoft.Azure.FunctionsCoreTools",
+                "Microsoft.AzureCLI",
+                "Microsoft.Bicep",
+                "Microsoft.Coreutils",
+                "Microsoft.DotNet.SDK.9",
+                "Microsoft.Office",
+                "Microsoft.PowerShell",
+                "Microsoft.PowerToys",
+                "Microsoft.VisualStudio.2022.BuildTools",
+                "Microsoft.VisualStudioCode",
+                "Microsoft.WindowsTerminal",
+                "MoonlightGameStreamingProject.Moonlight",
+                "OliverBetz.ExifTool",
+                "OO-Software.ShutUp10",
+                "OpenJS.NodeJS",
+                "OpenRGB.OpenRGB",
+                "OpenVPNTechnologies.OpenVPNConnect",
+                "PrivateInternetAccess.PrivateInternetAccess",
+                "Python.Python.3.14",
+                "REALiX.HWiNFO",
+                "RubyInstallerTeam.RubyWithDevKit.3.4",
+                "Rustlang.Rustup",
+                "Starship.Starship",
+                "TechPowerUp.GPU-Z",
+                "twpayne.chezmoi",
+                "VideoLAN.VLC",
+            ]
+            # Packages installed but pinned (excluded from winget upgrade).
+            # These have built-in auto-updaters that conflict with winget.
+            packages_pinned = [
+                "Discord.Discord",
+                "ElectronicArts.EADesktop",
+                "EpicGames.EpicGamesLauncher",
+                "GOG.Galaxy",
+                "Ubisoft.Connect",
+                "Valve.Steam",
+            ]
+            # Windows Store app IDs:
+            #   9P6RC76MSMMJ = Amazon Prime Video
+            # Manual installs (winget unreliable for Store apps):
+            #   Microsoft.SysinternalsSuite (Store ID: 9p7knl5rwt25)
+            #
+            # Retired IDs, verified against the live catalogue 2026-09-08
+            # (dotfiles#269, dotfiles#270). All had been failing every apply
+            # since at least 2026-04; each error was "No package found matching
+            # input criteria", which winget also emits for an ID that once
+            # existed, so the failures read as transient when they were not.
+            #
+            #   MartiCliment.UniGetUI  -> Devolutions.UniGetUI
+            #       Publisher changed. MartiCliment.UniGetUI.Pre-Release still
+            #       resolves, which is why a loose search looks like a hit.
+            #   Microsoft.365          -> Microsoft.Office
+            #       "Microsoft 365 Apps for enterprise". Same caveat as before:
+            #       winget installs the full suite with no component selection,
+            #       so uninstall what you don't want post-install. The Office
+            #       Deployment Tool + office-config.xml route was dropped
+            #       earlier for the same reason.
+            #   Microsoft.AzureFunctionsCoreTools
+            #                          -> Microsoft.Azure.FunctionsCoreTools
+            #       Extra dot. Sorts before Microsoft.AzureCLI ('.' < 'C').
+            #   9N2D0P16C80H, 9NTV2DZ11KD9, 9P8DVF1XW02V
+            #                          -> Canva.Affinity
+            #       Affinity Designer 2 / Publisher 2 / Photo 2 were delisted
+            #       after the Canva acquisition and replaced by one unified
+            #       "Affinity" app. Three IDs collapse to one. The winget-source
+            #       ID is used rather than the msstore ID (9NW9CX6H2JGL) —
+            #       msstore entries report Version "Unknown", so winget cannot
+            #       tell installed from outdated and reinstalls on every apply.
+            #   Nvidia.GeForceExperience -> removed, no replacement
+            #       Discontinued by NVIDIA in favour of the NVIDIA App, which
+            #       is not published to winget under any ID (Nvidia.NvidiaApp
+            #       does not resolve). Nvidia.GeForceNow is cloud gaming, a
+            #       different product, and is not a substitute. Install the
+            #       NVIDIA App by hand if it is wanted.
+            #   RubyInstallerTeam.RubyWithDevKit.3.2 -> ...3.4
+            #       3.2 still resolves but is end-of-life, and its installer
+            #       failed with exit code 4 on the last attempt. 3.4 is the
+            #       current stable line; 4.0 exists but is a major bump and was
+            #       not taken here. NOTE: the exit-code-4 failure has not been
+            #       reproduced against 3.4 — the version bump is a fix for the
+            #       EOL, not a confirmed fix for the installer error.
+            #
+            # Two IDs from those issues needed no change: 9P6RC76MSMMJ resolves
+            # and is installed, and OpenVPNTechnologies.OpenVPNConnect now
+            # resolves at 3.9.0 and is installed. The latter's April failure was
+            # a 403 fetching the v3.8.0 MSI from the vendor CDN — transient, and
+            # the kind of thing dotfiles#273 is about.
+{{- else if eq $machineType "work" }}
+            packages = [
+                "astral-sh.uv",
+                "dandavison.delta",
+                "DEVCOM.JetBrainsMonoNerdFont",
+                "FiloSottile.age",
+                "Git.Git",
+                "JesseDuffield.lazygit",
+                "Microsoft.Coreutils",
+                "Microsoft.PowerShell",
+                "Microsoft.WindowsTerminal",
+                "Rustlang.Rustup",
+                "Starship.Starship",
+                "twpayne.chezmoi",
+            ]
+            packages_pinned = []
+{{- else }}
+            packages = [
+                "astral-sh.uv",
+                "dandavison.delta",
+                "FiloSottile.age",
+                "Git.Git",
+                "JesseDuffield.lazygit",
+                "Microsoft.PowerShell",
+                "Starship.Starship",
+                "twpayne.chezmoi",
+            ]
+            packages_pinned = []
+{{- end }}
+
+        # npm CLIs, installed as mise "npm:" tools so they survive Node
+        # upgrades (ADR-0021). Rendered into home/dot_config/mise/config.toml.tmpl
+        # and installed by home/run_onchange_after_install-mise-tools.sh.tmpl
+        [data.packages.npm]
+{{- if eq $machineType "personal" }}
+            packages = [
+                "@google/clasp",
+            ]
+{{- else }}
+            packages = []
+{{- end }}
+
+    # VS Code extensions - organized by scope
+    [data.vscode]
+        # Core extensions — installed on work and personal machines
+        extensions_core = [
+            "DavidAnson.vscode-markdownlint",
+            "GitHub.vscode-pull-request-github",
+            "hediet.vscode-drawio",
+            "ms-vscode-remote.remote-ssh",
+            "ms-vscode-remote.remote-wsl",
+            "ms-vscode.PowerShell",
+            "redhat.vscode-xml",
+            "redhat.vscode-yaml",
+            "streetsidesoftware.code-spell-checker",
+            "timonwong.shellcheck",
+        ]
+        # Personal-only extensions — language-specific tooling
+        extensions_personal = [
+            "dbaeumer.vscode-eslint",
+            "esbenp.prettier-vscode",
+            "fredwangwang.vscode-hcl-format",
+            "golang.Go",
+            "jebbs.plantuml",
+            "mads-hartmann.bash-ide-vscode",
+            "ms-azuretools.vscode-containers",
+            "ms-dotnettools.csdevkit",
+            "ms-dotnettools.csharp",
+            "ms-python.python",
+            "ms-toolsai.jupyter",
+            "rust-lang.rust-analyzer",
+            "tomoki1207.pdf",
+            "vscjava.vscode-java-pack",
+            "yzhang.markdown-all-in-one",
+        ]
