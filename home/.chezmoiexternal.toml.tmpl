@@ -1,29 +1,44 @@
-# Mount agentic-coding-config's home/ subdirectory at ~/.claude/.
+# Mount the agent config at ~/.claude/.
+#
+# The agent config is written in agentic-coding-config, a private source, and
+# published into the agent/ subtree of the public dotfiles repository: its
+# home/ as agent/home/, its profiles/ as agent/profiles/. This file reads it
+# from there, anonymously (ADR-0022, a-c-c ADR-0028).
 #
 # We use chezmoi's `archive` external (downloading the GitHub-generated
 # tarball) rather than `git-repo`, because git-repo externals mount the
-# entire repo tree at the target with no filtering — .git/, .beads/,
-# .github/, README, ADRs, all of it would flood ~/.claude/. Archive
-# externals support stripComponents + include glob patterns, which lets
-# only home/** deploy.
+# entire repo tree at the target with no filtering: .git/, README, install.sh
+# and this very source tree would all flood ~/.claude/. Archive externals
+# support stripComponents + include glob patterns, which lets only
+# agent/home/** deploy.
 #
 # Trade-off accepted: archive re-downloads on each refresh (vs git-repo's
 # incremental fetch). For a repo this small that's fine; refreshPeriod
 # bounds the frequency.
 #
-# stripComponents=2 strips both "agentic-coding-config-main/" (GitHub's
-# auto-generated archive root) and "home/" so paths land directly under
-# ~/.claude/. include filters out everything outside home/.
+# stripComponents=3 strips "dotfiles-main/" (GitHub's auto-generated archive
+# root), "agent/" and "home/", so paths land directly under ~/.claude/.
+# include filters out everything outside agent/home/.
+#
+# THE THREE MUST AGREE. The include prefix has three components and
+# stripComponents is 3. Neither mistake is an error: apply exits 0 either way.
+# If the prefix matches nothing, nothing is written and nothing is removed
+# (seen on chezmoi 2.74.1): an existing ~/.claude keeps its files and silently
+# stops updating, and a fresh machine gets no agent config. If the count is
+# wrong, the files nest one level down. After any change here, check with
+#   chezmoi apply --dry-run --verbose --refresh-externals
+# from a source that holds the change (docs/TESTING.md says how).
 #
 # personal-only: the agent config carries the personal-org GitHub workflow
 # and personal-context-repo references, and the Claude binaries themselves
 # are already gated to personal in Brewfile.tmpl. See dotfiles#389.
 #
-# On WSL, ~/.claude/CLAUDE.md comes from agentic-coding-config's WSL profile
-# (profiles/claude-wsl/CLAUDE.md) rather than from home/, whose CLAUDE.md is
-# the macOS profile. The archive's include is narrowed to skip home/CLAUDE.md
-# (home/[!C]*: an `exclude` would let unmatched paths outside home/ through
-# and collide), and an archive-file external delivers the profile. See #481.
+# On WSL, ~/.claude/CLAUDE.md comes from the WSL profile
+# (agent/profiles/claude-wsl/CLAUDE.md) rather than from agent/home/, whose
+# CLAUDE.md is the macOS profile. The archive's include is narrowed to skip
+# agent/home/CLAUDE.md (agent/home/[!C]*: an `exclude` would let unmatched
+# paths outside agent/home/ through and collide), and an archive-file
+# external delivers the profile. See #481.
 
 {{- $machineType := "personal" -}}
 {{- if hasKey . "machine_type" -}}
@@ -36,25 +51,25 @@
 {{-     $isWSL = true -}}
 {{-   end -}}
 {{- end -}}
-{{- $url := "https://github.com/pmgledhill102/agentic-coding-config/archive/refs/heads/main.tar.gz" -}}
+{{- $url := "https://github.com/pmgledhill102/dotfiles/archive/refs/heads/main.tar.gz" -}}
 {{- if eq $machineType "personal" }}
 [".claude"]
 type = "archive"
 url = "{{ $url }}"
-stripComponents = 2
+stripComponents = 3
 refreshPeriod = "168h"
 {{- if $isWSL }}
 include = [
-    "agentic-coding-config-main/home/[!C]*",
-    "agentic-coding-config-main/home/[!C]*/**",
+    "dotfiles-main/agent/home/[!C]*",
+    "dotfiles-main/agent/home/[!C]*/**",
 ]
 
 [".claude/CLAUDE.md"]
 type = "archive-file"
 url = "{{ $url }}"
-path = "agentic-coding-config-main/profiles/claude-wsl/CLAUDE.md"
+path = "dotfiles-main/agent/profiles/claude-wsl/CLAUDE.md"
 refreshPeriod = "168h"
 {{- else }}
-include = ["agentic-coding-config-main/home/**"]
+include = ["dotfiles-main/agent/home/**"]
 {{- end }}
 {{- end }}

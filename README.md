@@ -108,11 +108,12 @@ width into the file. Static preferences live in `~/.config/mdcat/config.toml`;
 
 ### A centralised Claude Code setup that follows you everywhere
 
-Every machine gets the same `~/.claude/` config — sourced from a separate
+Every machine gets the same `~/.claude/` config — written in a separate
 repo,
 [`agentic-coding-config`](https://github.com/pmgledhill102/agentic-coding-config),
-mounted into `~/.claude/` via [chezmoi externals][chezmoi-externals]. One
-`dotup` pulls both repos and applies.
+published to this repository's `agent/` directory, and mounted into
+`~/.claude/` via [chezmoi externals][chezmoi-externals]. One `dotup` pulls
+the dotfiles and the agent config and applies both.
 
 - Curated permission allowlist so common dev/build/lint/GitHub commands
   don't prompt every time, but destructive things still do
