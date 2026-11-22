@@ -34,7 +34,7 @@ REF=main
 # Rev: 1
 
 curl -sSL --retry 3 --retry-delay 2 \
-  "https://raw.githubusercontent.com/pmgledhill102/agentic-coding-config/$REF/cloud/bootstrap.sh" \
+  "https://raw.githubusercontent.com/pmgledhill102/dotfiles/$REF/agent/cloud/bootstrap.sh" \
   -o /tmp/bootstrap.sh || echo "[setup] could not fetch bootstrap.sh"
 
 { sh /tmp/bootstrap.sh "$REF" --profile "$PROFILE"; echo $? > /tmp/bootstrap.rc; } 2>&1 \
@@ -55,34 +55,41 @@ the ref this script is fetched from, and the ref it installs everything else
 from. Those straddling different versions is precisely the failure the pin
 exists to prevent, and two literals are two chances to update only one.
 
+**`REF` is a ref of the published repository, `pmgledhill102/dotfiles`, not of
+this one.** This repo is the private source; a publish job copies `home/`,
+`profiles/`, `cloud/` and `adrs/` into the public repository under `agent/`, in
+commits of its own
+([ADR-0028](../adrs/0028-private-sources-one-public-output.md)). The bootstrap
+resolves `REF` against the public repository and fetches every file from that
+commit. So a pin is a **public** sha, read from
+`git ls-remote https://github.com/pmgledhill102/dotfiles main` or from the
+`sha=` line of a container's manifest. A commit sha from this repo's history
+does not exist there: the bootstrap refuses it by name before installing
+anything.
+
 ### Fetching from somewhere else: `BOOTSTRAP_SOURCE_REPO`, `BOOTSTRAP_SOURCE_PREFIX`
 
 Two environment variables say where the bootstrap fetches from. Both have
-defaults, and a normal environment sets neither: a run that sets neither
-behaves exactly as it did before they existed.
+defaults, and a normal environment sets neither.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `BOOTSTRAP_SOURCE_REPO` | `pmgledhill102/agentic-coding-config` | `<owner>/<name>` on github.com. `REF` is resolved against it, and every file is fetched from it |
-| `BOOTSTRAP_SOURCE_PREFIX` | empty, the repository root | The directory in it that holds `home/`, `profiles/` and `cloud/`. No leading or trailing slash |
+| `BOOTSTRAP_SOURCE_REPO` | `pmgledhill102/dotfiles` | `<owner>/<name>` on github.com. `REF` is resolved against it, and every file is fetched from it |
+| `BOOTSTRAP_SOURCE_PREFIX` | `agent` | The directory in it that holds `home/`, `profiles/` and `cloud/`. No leading or trailing slash. Set but empty means the repository root |
 
 `--source-repo=<owner>/<name>` and `--source-prefix=<dir>` are the same two
 settings as flags, and win over the variables. The bootstrap writes them into
 the deferred toolchain run's arguments itself, because that run starts from a
 session, which does not have the setup script's environment.
 
-The use is a **published copy**: a publish job copies `home/`, `profiles/`,
-`cloud/` and `adrs/` into a public repository under `agent/`, in commits of its
-own ([ADR-0028](../adrs/0028-private-sources-one-public-output.md)). With the
-source moved there, `REF` is a ref of **that** repository, and a pin is one of
-its shas, read from `git ls-remote https://github.com/<owner>/<name> main`. A
-commit sha from this repo's history does not exist there, and the bootstrap
-refuses it by name before installing anything.
+With the source moved, `REF` is a ref of **that** repository, and a pin is
+one of its shas, read from
+`git ls-remote https://github.com/<owner>/<name> main`.
 
 The manifest records both settings, as `source=` and `source_prefix=`, and
 `start-session`'s currency check resolves the ref against `source=`. A
 container built from a rehearsal repository is therefore compared with that
-repository, not reported as behind this one.
+repository, not reported as behind the real one.
 
 **The source's own copy of `bootstrap.sh` has to support these settings**, and
 a run with a non-default source checks that before it installs anything. The
@@ -122,6 +129,11 @@ exit 0
 Afterwards `~/.agents/.bootstrap-manifest` should say `status=ok` and
 `source=<owner>/<rehearsal-repo>`, with a `sha=` that
 `git ls-remote https://github.com/<owner>/<rehearsal-repo> main` agrees with.
+
+This repo's own CI uses the same two variables to point
+`tests/bootstrap-failure-test.sh` back at this repo's layout
+(`BOOTSTRAP_SOURCE_PREFIX` empty), because the published copy can never hold
+the branch under test.
 
 **Do not put a shebang in this field.** The harness writes the field's contents
 into a generated `/tmp/init-script-*.sh` beneath a header of its own and runs
@@ -1052,8 +1064,9 @@ re-running the bootstrap — immediate, no restart.
 
 `git ls-remote` resolves the ref rather than the GitHub API: no token, no JSON
 parsing, and git is already required to be here. It asks the repository the
-manifest's `source=` line names, and this repository for a manifest from
-before that line existed.
+manifest's `source=` line names, which is the published one unless the
+environment overrode it; a manifest from before that line existed is compared
+with the published repository and reads as `behind`.
 
 **What this guarantees, precisely.** Not that every session starts fresh. The
 check ships inside the thing it checks, so a container older than the check
@@ -1097,7 +1110,7 @@ setting, or repo `AGENTS.md` files) is open in #575.
 Re-run the bootstrap directly; no environment edit, no restart:
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/pmgledhill102/agentic-coding-config/main/cloud/bootstrap.sh \
+curl -sSL https://raw.githubusercontent.com/pmgledhill102/dotfiles/main/agent/cloud/bootstrap.sh \
   -o /tmp/bootstrap.sh
 sh /tmp/bootstrap.sh main --profile claude-cloud-sandbox
 ```

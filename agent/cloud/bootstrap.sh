@@ -91,20 +91,20 @@
 # to a tag or commit in anything durable — a branch means
 # any compromise of this repo reaches every sandbox that starts afterwards.
 #
-# WHERE IT IS FETCHED FROM: this repository's root, unless the caller says
-# otherwise. A publish job also copies home/, profiles/, cloud/ and adrs/ into
-# a public repository under agent/, in commits of its own (ADR-0028), and a
-# run can be pointed at such a copy:
+# WHERE IT IS FETCHED FROM: the published copy, not the repo this file is
+# written in. The source is private; a publish job copies home/, profiles/,
+# cloud/ and adrs/ into the public repository under agent/, in commits of its
+# own (ADR-0028). So <REF> names a ref or commit of the PUBLIC repository. A
+# source commit does not exist there, and passing one as a pin is refused
+# rather than left to fail as a string of 404s.
 #
 #   BOOTSTRAP_SOURCE_REPO     owner/name on github.com, default
-#                             pmgledhill102/agentic-coding-config
+#                             pmgledhill102/dotfiles
 #   BOOTSTRAP_SOURCE_PREFIX   the directory in it that holds home/, profiles/
-#                             and cloud/, default empty: the repository root
+#                             and cloud/, default agent; empty for the root
 #
 # --source-repo=<owner/name> and --source-prefix=<dir> say the same and win
-# over the environment. <REF> then names a ref or commit of THAT repository:
-# a published copy's commits have different shas from this repo's, and a pin
-# it does not hold is refused rather than left to fail as a string of 404s.
+# over the environment. <REF> then names a ref or commit of THAT repository.
 #
 # A run with a non-default source first checks that the copy of this script
 # held by that source understands these settings (see source_aware), because
@@ -377,8 +377,8 @@ PROFILE=claude-cloud-sandbox
 PREFIX=
 # `-` rather than `:-` for the prefix: empty is a value (the repository root),
 # and only unset takes the default.
-DEFAULT_SOURCE_REPO=pmgledhill102/agentic-coding-config
-DEFAULT_SOURCE_PREFIX=
+DEFAULT_SOURCE_REPO=pmgledhill102/dotfiles
+DEFAULT_SOURCE_PREFIX=agent
 SOURCE_REPO=${BOOTSTRAP_SOURCE_REPO:-$DEFAULT_SOURCE_REPO}
 SOURCE_PREFIX=${BOOTSTRAP_SOURCE_PREFIX-$DEFAULT_SOURCE_PREFIX}
 # When the pre-commit toolchain installs (ADR-0021, 2026-11-10 amendment):
@@ -461,9 +461,8 @@ case "$SOURCE_PREFIX" in
   *[!A-Za-z0-9._/-]* | /* | */ | *..*) die "the source prefix must be a relative directory with no leading or trailing slash, got: '$SOURCE_PREFIX'" ;;
 esac
 # Whether the caller moved the source. Everything the override adds to a run
-# (a log line, the check of the source's own copy, two deferred-run flags) is
-# conditional on this, so a run that sets nothing does exactly what it did
-# before the settings existed.
+# (a log line, the check of the source's own copy for a ref, two deferred-run
+# flags) is conditional on this.
 SOURCE_OVERRIDDEN=
 if [ "$SOURCE_REPO" != "$DEFAULT_SOURCE_REPO" ] || [ "$SOURCE_PREFIX" != "$DEFAULT_SOURCE_PREFIX" ]; then
   SOURCE_OVERRIDDEN=yes
@@ -792,11 +791,12 @@ esac
 # same finding would only degrade it, and the run would still exit 0.
 #
 # The same fetch settles a pin, which the resolution above takes on trust: any
-# hex string that names no ref. A commit of this repository looks exactly like
-# one and exists nowhere in a published copy.
+# hex string that names no ref. A commit of the private source looks exactly
+# like one and exists nowhere in the published repository, so a pin is checked
+# whatever the source.
 #
 # The deferred run itself is skipped: it is the copy that was checked.
-if [ -n "$SOURCE_OVERRIDDEN" ] && [ "$TOOLCHAIN" != run ]; then
+if { [ -n "$SOURCE_OVERRIDDEN" ] || [ "$kind" = pin ]; } && [ "$TOOLCHAIN" != run ]; then
   _probe=$(mktemp)
   if ! fetch "$RAW/cloud/bootstrap.sh" "$_probe" 2>/dev/null; then
     rm -f "$_probe"

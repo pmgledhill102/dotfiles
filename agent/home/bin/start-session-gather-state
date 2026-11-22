@@ -339,11 +339,11 @@ run_section claude_drift "$(dirname "$0")/start-session-claude-drift"
 # shellcheck disable=SC2016
 run_sh bootstrap_currency '
     manifest="$HOME/.agents/.bootstrap-manifest"
-    # The manifest names the repository its sha is a commit of, so a container
-    # built from somewhere else is compared with that. One without the line
-    # predates it and was built from this default.
+    # The manifest names the repository its sha is a commit of. One without
+    # the line was built from the private source, whose shas match nothing in
+    # the published repository, so it reads as behind, which it is.
     built_from=$(sed -n "s/^source=//p" "$manifest" 2>/dev/null)
-    repo="https://github.com/${built_from:-pmgledhill102/agentic-coding-config}"
+    repo="https://github.com/${built_from:-pmgledhill102/dotfiles}"
 
     if [ ! -f "$manifest" ]; then
         # Either a workstation, or a container built before manifests existed.
