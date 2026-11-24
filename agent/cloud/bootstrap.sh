@@ -1933,6 +1933,98 @@ pc_tflint() {
   step_end precommit.tflint
 }
 
+# workspace_find <name> <out>: every file called <name> in the checkouts the
+# harness may have cloned, one path per line, sorted, written to <out>.
+#
+# Bounded on purpose. -maxdepth 3 from a handful of candidate roots covers
+# the layouts in use (the CLI clones to /home/user/<repo>, and a session may
+# start in the parent of its repos; $PWD and $HOME cover the rest) without
+# walking a whole filesystem inside a five-minute setup budget. The prunes
+# keep it off vendored trees: pre-commit's own cache clones repos that carry
+# a .pre-commit-config.yaml of their own, and a .terraform module cache
+# carries other people's .tflint.hcl.
+#
+# WARM_ROOTS is a test seam. It is word-split, so no root may hold a space.
+workspace_find() {
+  : >"$2"
+  for _wf_root in ${WARM_ROOTS:-"$PWD" "$HOME" /home/user /workspace /workspaces}; do
+    [ -d "$_wf_root" ] || continue
+    find "$_wf_root" -maxdepth 3 \
+      \( -name .cache -o -name node_modules -o -name .venv -o -name .git -o -name .terraform \) -prune -o \
+      -name "$1" -print 2>/dev/null >>"$2" || true
+  done
+  sort -u "$2" -o "$2" 2>/dev/null || true
+}
+
+# tflint_google_pins <.tflint.hcl>: the version of each plugin block whose
+# source is the Google ruleset, one per line. Not an HCL parser: it reads the
+# shape tflint documents, a `plugin "<name>" {` line, one attribute per line,
+# and a closing brace. A pin written any other way (a one-line block, a
+# version built from a variable) is not seen, and that repo keeps the
+# fallback. Only an x.y.z version is printed, because it becomes a path and a
+# URL below.
+tflint_google_pins() {
+  awk '
+    /^[[:space:]]*(#|\/\/)/ { next }
+    /^[[:space:]]*plugin[[:space:]]+"[^"]*"[[:space:]]*\{/ { inb = 1; v = ""; s = ""; next }
+    inb && /^[[:space:]]*version[[:space:]]*=/ { v = $0; sub(/^[^"]*"/, "", v); sub(/".*$/, "", v) }
+    inb && /^[[:space:]]*source[[:space:]]*=/ { s = $0; sub(/^[^"]*"/, "", s); sub(/".*$/, "", s) }
+    inb && /^[[:space:]]*}/ {
+      if (s == "github.com/terraform-linters/tflint-ruleset-google" && v != "") print v
+      inb = 0
+    }
+  ' "$1" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true
+}
+
+# tflint_google_seed <version>: put that release of the Google ruleset where
+# tflint --init looks for it, after checking the asset against the release's
+# own checksums.txt. Skipped when the plugin is already in place. Returns 1
+# with the reason in TFG_WHY rather than dying, so each caller decides what a
+# failure costs. The binary is unpacked to scratch and installed whole, so a
+# failed run never leaves a directory the skip test would mistake for done.
+tflint_google_seed() {
+  _tg_v=$1
+  _tg_dir="$HOME/.tflint.d/plugins/github.com/terraform-linters/tflint-ruleset-google/$_tg_v"
+  TFG_DIR=$_tg_dir
+  TFG_WHY=
+  [ -x "$_tg_dir/tflint-ruleset-google" ] && return 0
+  _tg_tmp="$TMP/tflint-ruleset-google-$_tg_v"
+  rm -rf "$_tg_tmp"
+  mkdir -p "$_tg_tmp/x" || {
+    TFG_WHY="could not create $_tg_tmp"
+    return 1
+  }
+  fetch "https://github.com/terraform-linters/tflint-ruleset-google/releases/download/v${_tg_v}/tflint-ruleset-google_linux_amd64.zip" \
+    "$_tg_tmp/ruleset.zip" || {
+    TFG_WHY="could not download tflint-ruleset-google $_tg_v"
+    return 1
+  }
+  fetch "https://github.com/terraform-linters/tflint-ruleset-google/releases/download/v${_tg_v}/checksums.txt" \
+    "$_tg_tmp/checksums.txt" || {
+    TFG_WHY="could not download checksums.txt for tflint-ruleset-google $_tg_v"
+    return 1
+  }
+  _tg_sum=$(awk '$2 == "tflint-ruleset-google_linux_amd64.zip" { print $1; exit }' "$_tg_tmp/checksums.txt")
+  [ -n "$_tg_sum" ] || {
+    TFG_WHY="checksums.txt for tflint-ruleset-google $_tg_v lists no linux_amd64 zip"
+    return 1
+  }
+  sha256_is "$_tg_tmp/ruleset.zip" "$_tg_sum" || {
+    TFG_WHY="tflint-ruleset-google $_tg_v does not match its checksums.txt"
+    return 1
+  }
+  unzip -o -q "$_tg_tmp/ruleset.zip" tflint-ruleset-google -d "$_tg_tmp/x" || {
+    TFG_WHY="could not unpack tflint-ruleset-google $_tg_v"
+    return 1
+  }
+  if ! mkdir -p "$_tg_dir" \
+    || ! install -m 0755 "$_tg_tmp/x/tflint-ruleset-google" "$_tg_dir/tflint-ruleset-google"; then
+    TFG_WHY="could not install tflint-ruleset-google $_tg_v into $_tg_dir"
+    return 1
+  fi
+  rm -rf "$_tg_tmp"
+}
+
 pc_tflint_ruleset_google() {
 
   # tflint --init resolves plugins through the GitHub releases API, which
@@ -1940,21 +2032,30 @@ pc_tflint_ruleset_google() {
   # asset instead -- that URL redirects to a host the proxy does allow,
   # the same asymmetry the actionlint note above records. Without this,
   # the tflint stage of the pre-push hook cannot pass in a container at
-  # all. Idempotent: the fetch is skipped once the plugin is in place.
+  # all.
+  #
+  # tflint looks a plugin up under the version the repo's .tflint.hcl pins,
+  # not under any version present, so a seed of the wrong version is no seed
+  # at all. Every version pinned in a checkout found here is seeded, and so
+  # is TFL_GOOGLE_VER, for a repo that pins nothing or arrives later. A repo
+  # pin that cannot be fetched or verified is a warning: it costs that repo's
+  # tflint hook, which cloud/README.md says how to seed by hand. The fallback
+  # failing is this tool failing, and degrades it as before.
   TFL_GOOGLE_VER=0.31.0
-  tfl_plugins="$HOME/.tflint.d/plugins/github.com/terraform-linters/tflint-ruleset-google/${TFL_GOOGLE_VER}"
-  if [ ! -x "$tfl_plugins/tflint-ruleset-google" ]; then
-    mkdir -p "$tfl_plugins" \
-      || die "could not create $tfl_plugins"
-    fetch "https://github.com/terraform-linters/tflint-ruleset-google/releases/download/v${TFL_GOOGLE_VER}/tflint-ruleset-google_linux_amd64.zip" \
-      "$TMP/tflint-ruleset-google.zip" \
-      || die "could not download tflint-ruleset-google ${TFL_GOOGLE_VER}"
-    unzip -o -q "$TMP/tflint-ruleset-google.zip" -d "$tfl_plugins" \
-      || die "could not unpack tflint-ruleset-google"
-    chmod 0755 "$tfl_plugins/tflint-ruleset-google" \
-      || die "could not make tflint-ruleset-google executable"
-  fi
-  log "tflplug -> $tfl_plugins"
+  workspace_find .tflint.hcl "$TMP/tflint-configs"
+  _tg_pins=$(while IFS= read -r _tg_cfg; do
+    [ -n "$_tg_cfg" ] && tflint_google_pins "$_tg_cfg"
+  done <"$TMP/tflint-configs" | sort -u)
+  for _tg_pin in $_tg_pins; do
+    [ "$_tg_pin" = "$TFL_GOOGLE_VER" ] && continue
+    if tflint_google_seed "$_tg_pin"; then
+      log "tflplug -> $TFG_DIR (pinned in a checkout)"
+    else
+      log "WARN    : tflint-ruleset-google $_tg_pin, pinned in a checkout, not seeded -- $TFG_WHY"
+    fi
+  done
+  tflint_google_seed "$TFL_GOOGLE_VER" || die "$TFG_WHY"
+  log "tflplug -> $TFG_DIR"
   step_end precommit.tflint-ruleset-google
 }
 
@@ -2313,22 +2414,10 @@ cap_precommit_warm() {
 
   # --- 2. the exact match, for whatever the harness cloned -----------------
   #
-  # Bounded on purpose. -maxdepth 3 from a handful of candidate roots covers
-  # the layouts in use (the CLI clones to /home/user/<repo>; $PWD and $HOME
-  # cover the rest) without walking a whole filesystem inside a five-minute
-  # setup budget. The prunes keep it off vendored trees -- pre-commit's own
-  # cache clones repos that carry a .pre-commit-config.yaml of their own, and
-  # warming those would be this container inventing hooks nobody asked for.
+  # workspace_find says where it looks and what it skips. Warming a vendored
+  # tree's config would be this container inventing hooks nobody asked for.
   _found="$TMP/warm-configs"
-  : >"$_found"
-  # WARM_ROOTS is a test seam. It is word-split, so no root may hold a space.
-  for _root in ${WARM_ROOTS:-"$PWD" "$HOME" /home/user /workspace /workspaces}; do
-    [ -d "$_root" ] || continue
-    find "$_root" -maxdepth 3 \
-      \( -name .cache -o -name node_modules -o -name .venv -o -name .git \) -prune -o \
-      -name .pre-commit-config.yaml -print 2>/dev/null >>"$_found" || true
-  done
-  sort -u "$_found" -o "$_found" 2>/dev/null || true
+  workspace_find .pre-commit-config.yaml "$_found"
 
   # A cap, because this is an unbounded input: a container holding twenty
   # checkouts must not spend the snapshot budget on them. The estate warm

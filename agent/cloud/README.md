@@ -226,6 +226,45 @@ It installs inside `--with-precommit`, since serving that config is the whole
 reason the binaries are here: `--with-terraform --no-precommit` installs
 nothing.
 
+**The tflint ruleset seed.** `tflint --init` resolves a plugin through the
+GitHub releases API, which the proxy refuses with a 403, but the release
+asset itself downloads. tflint looks a plugin up under the exact version
+`.tflint.hcl` pins, so a seed of any other version does not count. The
+bootstrap therefore reads every `.tflint.hcl` in the checkouts it can see,
+the same places the hook warm looks. From each `plugin` block whose `source`
+is `github.com/terraform-linters/tflint-ruleset-google`, it takes the
+`version` and seeds that version. It also seeds the estate pin
+(`TFL_GOOGLE_VER`) for a repo that pins nothing. Each one is checked against
+its release's `checksums.txt` before it is installed, and a version already in
+place is skipped. A repo pin that cannot be fetched or verified logs a `WARN`
+and the run goes on: it costs that repo's `terraform_tflint` hook, nothing
+else. A failure of the estate pin degrades `precommit.tflint-ruleset-google`.
+
+A repo attached with `add_repo` after the setup script ran was never seen, so
+its pin is not seeded. The hook then fails with `Failed to fetch GitHub
+releases: ... 403`. Attaching the repo does not help, because it grants git
+reads, not the releases API. Seed the pin by hand instead, with the version
+from that repo's `.tflint.hcl`:
+
+```sh
+v=0.39.0
+d="$HOME/.tflint.d/plugins/github.com/terraform-linters/tflint-ruleset-google/$v"
+u="https://github.com/terraform-linters/tflint-ruleset-google/releases/download/v$v"
+t=$(mktemp -d) && cd "$t" \
+  && curl -sSfLO "$u/tflint-ruleset-google_linux_amd64.zip" \
+  && curl -sSfLO "$u/checksums.txt" \
+  && grep ' tflint-ruleset-google_linux_amd64.zip$' checksums.txt | sha256sum -c - \
+  && mkdir -p "$d" && unzip -o -q tflint-ruleset-google_linux_amd64.zip -d "$d" \
+  && chmod 0755 "$d/tflint-ruleset-google"
+```
+
+Then `tflint --init` finds the plugin in place and makes no API call. This is
+a manual step rather than a helper the commit hook runs, because the seed
+belongs to the bootstrap: its download URLs, the fixtures that test them and
+its failure accounting all live there. A second copy in a hook would have to
+be kept in step with all three, to save one paste in a case that comes up only
+when a repo is attached mid-session.
+
 `--toolchain=background` defers the pre-commit toolchain (pre-commit, its
 linters, the Terraform tools, golangci-lint and the hook-environment warm) from
 the setup phase to the session (ADR-0021, 2026-11-10 amendment; #631). Most
@@ -814,7 +853,7 @@ then also land in `<prefix>/bin`. The manifest's `bin_dir=` names which.
 | `/usr/local/bin/golangci-lint` | always: pinned to the estate's CI version, overwriting the image's older copy (`golangci=` in the manifest) |
 | `~/.claude.json` → `mcpServers."google-developer-knowledge"` | one user-scope MCP entry, no key, with `--with-devknowledge` (merged, not replaced) |
 | `/usr/local/bin/terraform`, `/usr/local/bin/tflint`, `checkov` | the Terraform toolchain, with `--with-terraform` |
-| `~/.tflint.d/plugins/…/tflint-ruleset-google/` | the tflint google ruleset, seeded because `tflint --init` is 403ed here, with `--with-terraform` |
+| `~/.tflint.d/plugins/…/tflint-ruleset-google/` | the tflint google ruleset, seeded because `tflint --init` is 403ed here: every version a checkout's `.tflint.hcl` pins, plus the estate pin, each verified against its `checksums.txt`. With `--with-terraform` |
 
 Whitelisted today: `promote-journal-inbox`, `retrospective`, `start-session`,
 `end-session`. The other **16** skills under `home/skills/` are held back
