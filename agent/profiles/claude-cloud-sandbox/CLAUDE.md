@@ -199,14 +199,15 @@ next session. What must survive belongs in the repo or the setup script.
 
 ### `gh` is a property of the setup line
 
-Prefer the GitHub MCP tools; otherwise `gh api repos/{owner}/{repo}/...` (REST) works for content, issues, PRs and runs
-on `add_repo`-attached repos, but refuses settings, secrets, variables, alerts, Dependabot, keys, hooks, environments
-and collaborators (use MCP) paths, `DELETE git/refs` and `--paginate` (page by hand); GraphQL-backed subcommands
+Prefer the GitHub MCP tools; otherwise `gh api repos/{owner}/{repo}/...` (REST) works for reads and issue, PR and comment writes
+on `add_repo`-attached repos, but refuses settings, secrets, variables, alerts, Dependabot, keys, hooks, environments,
+collaborators, contents and `git/refs` writes (use MCP), and `--paginate` (page by hand); GraphQL-backed subcommands
 (`gh issue list`, `gh pr list`, `gh pr view`, search), `/user/*` and `/orgs/*` are blocked. The config sources are private, so a
 link into their `docs/` or issues needs `add_repo`. A denied `add_repo` is the owner's call: ask once, naming the repo and what it
 unlocks, and do not proceed without it. Verify, never assume. Confidently wrong here: **every GitHub request carries credentials,
 even a bare `curl`**, so a 200 says nothing about visibility (read `.private`); **`git push --delete` prints "Everything
-up-to-date" and deletes nothing** (check `git ls-remote --heads`). `gh`-backed helpers report `gh-unavailable` or
+up-to-date" and deletes nothing** (check `git ls-remote --heads`); **a bot command in a comment (`@dependabot rebase`) is
+split with `·` in transit, by MCP and `gh` alike**: ask the owner to post it. `gh`-backed helpers report `gh-unavailable` or
 `gh-unauthorized`: say what was not gathered, never a clean result; a skill's `gh` command names the *operation*, so use the MCP
 call. `claude-code-remote` works here; judge it by what a call returns, not by which kind of session you are. On an
 approval-binding failure (anthropics/claude-code#90127, reported for child sessions), fall back to event-driven wakes via `github`.
