@@ -1,0 +1,518 @@
+#!/bin/bash
+# Post-installation validation script for dotfiles
+# Validates that the installation is working correctly
+
+echo "================================"
+echo "Post-Installation Validation"
+echo "================================"
+echo ""
+
+# Ensure Homebrew is in PATH for macOS
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if [ -d "/opt/homebrew/bin" ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  elif [ -d "/usr/local/bin" ]; then
+    export PATH="/usr/local/bin:$PATH"
+  fi
+fi
+
+# ~/.local/bin holds tools installed without sudo (starship, fzf, the bat/fd
+# links on Ubuntu). dot_zshrc puts it on PATH; mirror that here.
+export PATH="$HOME/.local/bin:$PATH"
+
+# Homebrew on Linux (personal machines, ADR-0017). Evaluated after the
+# ~/.local/bin line, as in dot_zshrc, so brew wins over it and the system dirs.
+if [[ "$(uname -s)" == "Linux" ]] && [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
+# The applied machine tier (personal, work or minimal). Some tools are not
+# installed on every tier, and CI runs each Ubuntu tier (#501). Empty if
+# chezmoi is not installed yet; the chezmoi checks below then fail anyway.
+MACHINE_TYPE=$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null || true)
+
+# Color output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+FAILED_TESTS=0
+PASSED_TESTS=0
+WARNED_TESTS=0
+SKIPPED_TESTS=0
+
+# Fast CI mode: when set, package-dependent checks are skipped rather than
+# hard-failing. File-existence checks (chezmoi-deployed configs) still run.
+FAST_MODE="${DOTFILES_SKIP_INSTALL:-0}"
+if [ "$FAST_MODE" = "1" ]; then
+  echo -e "${YELLOW}Fast CI mode (DOTFILES_SKIP_INSTALL=1) — package-dependent checks will be skipped${NC}"
+  echo ""
+fi
+
+validate_test() {
+  local description=$1
+  local test_command=$2
+  local output
+
+  # Run the test command and capture both stdout and stderr
+  # We use eval to execute the command string properly
+  output=$(eval "$test_command" 2>&1)
+  local exit_code=$?
+
+  if [ $exit_code -eq 0 ]; then
+    echo -e "${GREEN}✓${NC} $description"
+    ((PASSED_TESTS++))
+    return 0
+  else
+    echo -e "${RED}✗${NC} $description"
+    # Only print output if there is any, to avoid empty lines
+    if [ -n "$output" ]; then
+      echo -e "${RED}  Error details: $output${NC}"
+    fi
+    ((FAILED_TESTS++))
+    return 1
+  fi
+}
+
+# Wrapper for package-dependent checks. In fast CI mode (DOTFILES_SKIP_INSTALL=1)
+# this logs a skip and returns 0 without running the test. Otherwise identical
+# to validate_test.
+validate_test_pkg() {
+  if [ "$FAST_MODE" = "1" ]; then
+    echo -e "${YELLOW}⊘${NC} $1 (skipped — DOTFILES_SKIP_INSTALL)"
+    ((SKIPPED_TESTS++))
+    return 0
+  fi
+  validate_test "$@"
+}
+
+echo "Validating shell configuration..."
+echo "-----------------------------------"
+# Check using getent/dscl if possible, fallback to ENV check but warn it might be stale.
+# In fast CI mode, the install script that installs zsh and runs chsh is skipped,
+# so the login shell is still the runner default (bash) — skip the test rather
+# than hard-fail.
+if [ "$FAST_MODE" = "1" ]; then
+  echo -e "${YELLOW}⊘${NC} Zsh is the configured shell (skipped — DOTFILES_SKIP_INSTALL)"
+  ((SKIPPED_TESTS++))
+elif command -v getent >/dev/null 2>&1; then
+  USER_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+  echo "Detected shell via getent: $USER_SHELL"
+  validate_test "Zsh is the configured shell (getent)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
+elif command -v dscl >/dev/null 2>&1; then
+  USER_SHELL=$(dscl . -read /Users/"$USER" UserShell | awk '{print $2}')
+  echo "Detected shell via dscl: $USER_SHELL"
+  validate_test "Zsh is the configured shell (dscl)" "[ \"$USER_SHELL\" = \"$(command -v zsh)\" ] || [ \"$USER_SHELL\" = \"/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"$USER_SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
+else
+  validate_test "Zsh is the default shell (\$SHELL)" "[ \"\$SHELL\" = \"/bin/zsh\" ] || [ \"\$SHELL\" = \"/usr/bin/zsh\" ] || [ \"\$SHELL\" = \"$(command -v zsh)\" ] || [ \"\$SHELL\" = \"/usr/local/bin/zsh\" ] || [ \"\$SHELL\" = \"/opt/homebrew/bin/zsh\" ]"
+fi
+
+validate_test_pkg "Oh My Zsh is loaded" "[ -n \"\$ZSH\" ] || [ -d \"\$HOME/.oh-my-zsh\" ]"
+# Note: $ZSH env var is loaded effectively when .zshrc is sourced.
+# validation script runs in bash, so $ZSH won't be set from the current shell environment
+# unless we source .zshrc (which we can't easily do from bash).
+# So checking directory existence is a safer static check for installation.
+
+echo ""
+echo "Validating Starship prompt..."
+echo "-----------------------------------"
+validate_test_pkg "Starship is in PATH" "command -v starship"
+validate_test "Starship config exists" "[ -f \"\$HOME/.config/starship.toml\" ]"
+validate_test_pkg "Starship version can be queried" "starship --version"
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  # Check for the macOS symbol () which is specific to our custom config
+  validate_test_pkg "Starship prompt uses custom config" "starship prompt | grep -q ''"
+elif [[ "$(uname -s)" == "Linux" ]]; then
+  # Check for Ubuntu () or generic Linux () symbol
+  validate_test_pkg "Starship prompt uses custom config" "starship prompt | grep -q -E '|'"
+fi
+
+# Verify Starship is actually loaded in the Zsh prompt
+PROMPT_CHECK_FILE="/tmp/zsh_prompt_check_$(date +%s)"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  # macOS syntax: script [file] [command]
+  script -q "$PROMPT_CHECK_FILE" zsh -ic "echo \"PROMPT=\$PROMPT\"" >/dev/null 2>&1
+elif [[ "$(uname -s)" == "Linux" ]]; then
+  # Linux syntax: script -c [command] [file]
+  script -q -c "zsh -ic 'echo \"PROMPT=\$PROMPT\"'" "$PROMPT_CHECK_FILE" >/dev/null 2>&1
+fi
+
+validate_test_pkg "Starship is hooked into Zsh PROMPT" "grep -F 'starship prompt' \"$PROMPT_CHECK_FILE\""
+rm -f "$PROMPT_CHECK_FILE"
+
+# Additional prompt functionality tests (T024)
+echo ""
+echo "Validating prompt theme functionality..."
+echo "-----------------------------------"
+
+# Test that starship config contains expected customizations
+validate_test "Starship config has directory customization" "grep -q 'directory' \$HOME/.config/starship.toml"
+validate_test "Starship config has git_branch customization" "grep -q 'git_branch' \$HOME/.config/starship.toml"
+validate_test "Starship config has character customization" "grep -q 'character' \$HOME/.config/starship.toml"
+
+# Test prompt rendering with common scenarios
+PROMPT_TEST_DIR="/tmp/starship_test_$(date +%s)"
+mkdir -p "$PROMPT_TEST_DIR"
+cd "$PROMPT_TEST_DIR" || exit 1
+
+# Test basic directory prompt
+validate_test_pkg "Prompt renders in non-git directory" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
+
+# Test git directory prompt
+if command -v git >/dev/null 2>&1; then
+  git init >/dev/null 2>&1
+  validate_test_pkg "Prompt renders in git repository" "starship prompt --terminal-width=80 2>/dev/null | grep -q '.'"
+fi
+
+cd - >/dev/null 2>&1 || exit 1
+rm -rf "$PROMPT_TEST_DIR"
+
+echo ""
+echo "Validating Terminal capabilities..."
+echo "-----------------------------------"
+# Check if xterm-ghostty terminfo is available (important for SSH from Ghostty)
+# We test this even if NOT currently running in Ghostty, as it's a system requirement
+# for seamless SSH access into this machine.
+validate_test_pkg "xterm-ghostty terminfo is installed" "infocmp xterm-ghostty >/dev/null 2>&1"
+
+if command -v pwsh >/dev/null 2>&1; then
+  echo ""
+  echo "Validating PowerShell configuration..."
+  echo "-----------------------------------"
+  PWSH_PROFILE="$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
+  validate_test "PowerShell profile exists" "[ -f \"$PWSH_PROFILE\" ]"
+  if [ -f "$PWSH_PROFILE" ]; then
+    validate_test "PowerShell profile uses Starship" "grep -q 'starship init powershell' \"$PWSH_PROFILE\""
+  fi
+
+  # Verify Starship loads in PowerShell by capturing the prompt output
+  PWSH_CHECK_FILE="/tmp/pwsh_check_$(date +%s)"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    script -q "$PWSH_CHECK_FILE" pwsh -Command "prompt" >/dev/null 2>&1
+  elif [[ "$(uname -s)" == "Linux" ]]; then
+    script -q -c "pwsh -Command 'prompt'" "$PWSH_CHECK_FILE" >/dev/null 2>&1
+  fi
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    validate_test_pkg "PowerShell prompt renders Starship symbol" "grep -q '' \"$PWSH_CHECK_FILE\""
+  elif [[ "$(uname -s)" == "Linux" ]]; then
+    validate_test_pkg "PowerShell prompt renders Starship symbol" "grep -q -E '|' \"$PWSH_CHECK_FILE\""
+  fi
+  rm -f "$PWSH_CHECK_FILE"
+fi
+
+echo ""
+echo "Validating tools..."
+echo "-----------------------------------"
+validate_test_pkg "Git is installed" "command -v git"
+validate_test_pkg "Age is installed" "command -v age"
+
+# Phase 9 tools
+# Work machines keep their own git identity, so ~/.gitconfig is not applied
+# there (.chezmoiignore).
+if [ "$MACHINE_TYPE" != "work" ]; then
+  validate_test "Git config exists" "[ -f \"\$HOME/.gitconfig\" ]"
+fi
+validate_test "Global gitignore exists" "[ -f \"\$HOME/.gitignore_global\" ]"
+
+# Check for tools that should be installed via Brewfile or apt packages.
+# In fast CI mode (DOTFILES_SKIP_INSTALL=1), these binary presence checks
+# are skipped — the packages haven't been installed.
+if [ "$FAST_MODE" = "1" ]; then
+  echo -e "${YELLOW}⊘${NC} git-delta / lazygit / eza / bat / fd / rg / zoxide / fzf / docker / mise / rustup / ghostty binary checks (skipped — DOTFILES_SKIP_INSTALL)"
+  SKIPPED_TESTS=$((SKIPPED_TESTS + 16))
+else
+  if command -v delta >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} git-delta is installed"
+    ((PASSED_TESTS++))
+    # The delta pager is set in the managed ~/.gitconfig, not applied on work.
+    if [ "$MACHINE_TYPE" != "work" ]; then
+      validate_test "Git is configured to use delta" "git config --get core.pager | grep -q delta"
+    fi
+  else
+    echo -e "${RED}✗${NC} git-delta is installed"
+    ((FAILED_TESTS++))
+  fi
+
+  if [ "$MACHINE_TYPE" = "minimal" ]; then
+    : # ADR-0019 dropped lazygit's GitHub-release install on minimal
+  elif command -v lazygit >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} lazygit is installed"
+    ((PASSED_TESTS++))
+    validate_test "Lazygit config exists" "[ -f \"\$HOME/.config/lazygit/config.yml\" ]"
+  else
+    echo -e "${RED}✗${NC} lazygit is installed"
+    ((FAILED_TESTS++))
+  fi
+
+  # Tools that aliases.zsh / dot_zshrc gate on with `command -v`; a miss
+  # there is silent in the shell, so catch it here (dotfiles#448).
+  validate_test "eza is in PATH" "command -v eza"
+  validate_test "bat is in PATH" "command -v bat"
+  validate_test "fd is in PATH" "command -v fd"
+  validate_test "rg is in PATH" "command -v rg"
+  validate_test "zoxide is in PATH" "command -v zoxide"
+  validate_test "fzf supports --zsh (0.48+)" "fzf --zsh >/dev/null"
+
+  # Docker CLI and plugins (ADR-0018). CLI only: macOS runners cannot boot
+  # Colima's VM, so there is no daemon to talk to there. On macOS the
+  # plugin checks also prove ~/.docker/config.json points at Homebrew's
+  # cli-plugins directory.
+  # Not on minimal machines: Docker and rustup are installed only off the
+  # minimal tier (run_onchange_install-ubuntu-packages, run_once_before).
+  if [ "$MACHINE_TYPE" != "minimal" ]; then
+    validate_test "docker CLI is in PATH" "command -v docker"
+    validate_test "docker compose plugin works" "docker compose version"
+    validate_test "docker buildx plugin works" "docker buildx version"
+  fi
+
+  # mise and the runtimes it installs (ADR-0021). Minimal machines have none.
+  if [ "$(chezmoi execute-template '{{ .machine_type }}' 2>/dev/null)" != "minimal" ]; then
+    export PATH="$HOME/.local/bin:$PATH"
+    validate_test "mise is in PATH" "command -v mise"
+    validate_test "node resolves through mise" "mise which node"
+    validate_test "java resolves through mise" "mise which java"
+  fi
+
+  if [ "$MACHINE_TYPE" = "minimal" ]; then
+    : # no Rust toolchain on minimal machines
+  elif command -v rustup >/dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} rustup is installed"
+    ((PASSED_TESTS++))
+    validate_test "Cargo is installed" "command -v cargo"
+    validate_test "Rust stable toolchain is installed" "rustup toolchain list | grep -q stable"
+  else
+    echo -e "${RED}✗${NC} rustup is installed"
+    ((FAILED_TESTS++))
+  fi
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    # Ghostty is only installed on macOS/Windows in this setup
+    if command -v ghostty >/dev/null 2>&1; then
+      echo -e "${GREEN}✓${NC} Ghostty is installed"
+      ((PASSED_TESTS++))
+    else
+      # Ghostty might be a cask or app, command -v might not find it if not in path
+      # But for this test, let's assume valid if strictly found or if strictly required.
+      # Given it is installed via brew, it might be available.
+      # However, checking for the app bundle might be safer if command missing.
+      if [ -d "/Applications/Ghostty.app" ] || [ -d "$HOME/Applications/Ghostty.app" ]; then
+        echo -e "${GREEN}✓${NC} Ghostty.app found"
+        ((PASSED_TESTS++))
+      else
+        echo -e "${RED}✗${NC} Ghostty is installed"
+        ((FAILED_TESTS++))
+      fi
+    fi
+  fi
+fi
+
+echo ""
+echo "Validating Zsh plugins..."
+echo "-----------------------------------"
+# Check custom plugins
+ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+validate_test_pkg "zsh-autosuggestions installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-autosuggestions\" ]"
+validate_test_pkg "zsh-syntax-highlighting installed" "[ -d \"$ZSH_CUSTOM/plugins/zsh-syntax-highlighting\" ]"
+
+echo ""
+echo "Validating chezmoi..."
+echo "-----------------------------------"
+validate_test "Chezmoi is in PATH" "command -v chezmoi"
+validate_test "Chezmoi source directory exists" "chezmoi source-path >/dev/null"
+validate_test "Chezmoi can list managed files" "chezmoi managed"
+
+echo ""
+echo "Validating age encryption..."
+echo "-----------------------------------"
+validate_test_pkg "Age is in PATH" "command -v age"
+validate_test_pkg "Age keygen is in PATH" "command -v age-keygen"
+
+# Personal and work Linux run Homebrew and the Brewfile (ADR-0017, ADR-0019);
+# minimal stays apt-only.
+if [[ "$(uname -s)" == "Linux" ]] && [ -n "$MACHINE_TYPE" ] && [ "$MACHINE_TYPE" != "minimal" ]; then
+  echo ""
+  echo "Validating Homebrew on Linux ($MACHINE_TYPE)..."
+  echo "-----------------------------------"
+  validate_test_pkg "Homebrew is in PATH" "command -v brew"
+  validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
+  validate_test "brewup is deployed" "[ -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
+  validate_test_pkg "Brewfile is satisfied" "brew bundle check --no-upgrade --file \"\$HOME/Brewfile\""
+  # One owner per tool: the Brewfile's copy must be the one on PATH, not a
+  # leftover from the apt-era installers.
+  for tool in starship lazygit mdcat gh fzf uv mise; do
+    validate_test_pkg "$tool comes from Homebrew" "command -v $tool | grep -q '^/home/linuxbrew/'"
+  done
+elif [[ "$(uname -s)" == "Linux" ]] && [ "$MACHINE_TYPE" = "minimal" ]; then
+  echo ""
+  echo "Validating apt-only install (minimal)..."
+  echo "-----------------------------------"
+  validate_test "Homebrew is not installed" "[ ! -e /home/linuxbrew/.linuxbrew/bin/brew ]"
+  validate_test "brewup is not deployed" "[ ! -f \"\$HOME/.config/zsh/functions/brewup.zsh\" ]"
+  # Minimal has fewer tools, so a missing guard in dot_zshrc or aliases.zsh
+  # shows up here first as an error on every new shell (#503).
+  # Print what zsh wrote, so a failure says which guard is missing.
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  zsh_check() {
+    # Skip both compinit security audits: Ubuntu's /etc/zsh/zshrc runs a plain
+    # compinit unless skip_global_compinit is set, and oh-my-zsh runs
+    # compaudit unless ZSH_DISABLE_COMPFIX is. On a CI runner they find
+    # group-writable completion dirs and, with no terminal to ask on, abort
+    # ("not interactive and can't open terminal"). That is the runner's
+    # permissions, not a missing guard; real startup errors still show.
+    zsh_err=$(skip_global_compinit=1 ZSH_DISABLE_COMPFIX=true zsh -i -c exit 2>&1 >/dev/null </dev/null)
+    [ -z "$zsh_err" ] && return 0
+    printf '  zsh stderr: %s\n' "$zsh_err" | head -20
+    return 1
+  }
+  validate_test_pkg "Interactive zsh starts without errors" "zsh_check"
+fi
+
+# macOS-specific validations
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  echo ""
+  echo "Validating macOS-specific tools..."
+  echo "-----------------------------------"
+  validate_test_pkg "Homebrew is in PATH" "command -v brew"
+  validate_test_pkg "Ghostty is installed" "[ -d \"/Applications/Ghostty.app\" ] || command -v ghostty"
+  validate_test "Brewfile exists" "[ -f \"\$HOME/Brewfile\" ]"
+  validate_test "Shortcut guide (HTML) is deployed" "[ -f \"\$HOME/.config/dotfiles/guide/shortcuts.html\" ]"
+  validate_test "Shortcut guide (Markdown) is deployed" "[ -f \"\$HOME/.config/dotfiles/guide/shortcuts.md\" ]"
+  validate_test "dotguide is deployed" "[ -f \"\$HOME/.config/zsh/functions/dotguide.zsh\" ]"
+
+  # Check for Nerd Font installation (macOS only via Brewfile)
+  # Font cask installs are flaky on GitHub Actions runners (headless, no GUI),
+  # and packages aren't installed at all in fast CI mode — skip in both cases.
+  if [ "$FAST_MODE" = "1" ]; then
+    echo -e "${YELLOW}⊘${NC} JetBrains Mono Nerd Font (skipped — DOTFILES_SKIP_INSTALL)"
+    ((SKIPPED_TESTS++))
+  elif fc-list | grep -qi "JetBrainsMono Nerd"; then
+    echo -e "${GREEN}✓${NC} JetBrains Mono Nerd Font is installed"
+    ((PASSED_TESTS++))
+  elif [ "${CI:-}" = "true" ]; then
+    echo -e "${YELLOW}⚠${NC} JetBrains Mono Nerd Font not found (skipped in CI — font casks are unreliable on headless runners)"
+    ((WARNED_TESTS++))
+  else
+    echo -e "${RED}✗${NC} JetBrains Mono Nerd Font is installed"
+    ((FAILED_TESTS++))
+  fi
+fi
+
+# Linux-specific validations
+if [[ "$(uname -s)" == "Linux" ]]; then
+  echo ""
+  echo "Validating Linux-specific tools..."
+  echo "-----------------------------------"
+  validate_test "apt is available" "command -v apt-get"
+  validate_test "Ubuntu package list exists" "[ -f \"\$HOME/.config/ubuntu_pkglist\" ]"
+fi
+
+# ~/.ssh permissions (#489): private_ prefixes in home/private_dot_ssh. GNU
+# stat first, then BSD.
+if [ -f "$HOME/.ssh/config" ]; then
+  echo ""
+  echo "Validating ~/.ssh permissions..."
+  echo "-----------------------------------"
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  file_mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1" 2>/dev/null; }
+  validate_test "\$HOME/.ssh is 700" "[ \"\$(file_mode \"\$HOME/.ssh\")\" = 700 ]"
+  validate_test "\$HOME/.ssh/config is 600" "[ \"\$(file_mode \"\$HOME/.ssh/config\")\" = 600 ]"
+fi
+
+# WSL-only behaviour (#491). CI has no WSL runner, so nothing else exercises
+# run_once_configure-wsl, the /mnt PATH strip or the Bitwarden relay (#451).
+if grep -qi 'microsoft\|wsl' /proc/version 2>/dev/null; then
+  echo ""
+  echo "Validating WSL integration..."
+  echo "-----------------------------------"
+
+  # wsl_conf_has SECTION KEY VALUE: KEY = VALUE inside [SECTION] of
+  # /etc/wsl.conf, whitespace-tolerant, as run_once_configure-wsl writes it.
+  # shellcheck disable=SC2329 # called through validate_test's eval
+  wsl_conf_has() {
+    awk -v sec="$1" -v key="$2" -v val="$3" '
+      /^[[:space:]]*\[/ { insec = ($0 ~ ("^[[:space:]]*\\[" sec "\\]")); next }
+      insec {
+        line = $0; gsub(/[[:space:]]/, "", line)
+        if (line == key "=" val) found = 1
+      }
+      END { exit !found }
+    ' /etc/wsl.conf 2>/dev/null
+  }
+  validate_test "wsl.conf: [boot] systemd = true" "wsl_conf_has boot systemd true"
+  validate_test "wsl.conf: [interop] appendWindowsPath = false" "wsl_conf_has interop appendWindowsPath false"
+
+  validate_test "PID 1 is systemd (restart WSL after the first apply)" "[ \"\$(ps -p 1 -o comm=)\" = systemd ]"
+  SYSTEM_STATE=$(systemctl is-system-running 2>/dev/null)
+  if [ "$SYSTEM_STATE" = "running" ]; then
+    echo -e "${GREEN}✓${NC} systemd state is running"
+    ((PASSED_TESTS++))
+  elif [ "$SYSTEM_STATE" = "degraded" ]; then
+    echo -e "${YELLOW}⚠${NC} systemd state is degraded — see 'systemctl --failed'"
+    ((WARNED_TESTS++))
+  else
+    echo -e "${RED}✗${NC} systemd state is running (got: ${SYSTEM_STATE:-none})"
+    ((FAILED_TESTS++))
+  fi
+
+  validate_test "WSL interop is registered (binfmt_misc)" "[ -e /proc/sys/fs/binfmt_misc/WSLInterop ]"
+  # Same call the relay setup script makes; run from /mnt/c to avoid the UNC
+  # working-directory warning.
+  validate_test "Windows %LOCALAPPDATA% resolves via cmd.exe" "(cd /mnt/c && /mnt/c/Windows/System32/cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | grep -q '^[A-Za-z]:')"
+  # A fresh login zsh, not this script's PATH: appendWindowsPath=false is
+  # what keeps /mnt out of every later shell (#437).
+  validate_test_pkg "No Windows (/mnt/*) entries on a login zsh PATH" "! zsh -lic 'echo \$PATH' 2>/dev/null | tr : '\n' | grep -q '^/mnt/'"
+
+  # Bitwarden SSH agent relay (#451): only where chezmoi deployed the unit
+  # (personal WSL). A locked vault is not checked: Bitwarden still serves
+  # public keys then, so ssh-add -l proves nothing either way.
+  if [ -f "$HOME/.config/systemd/user/bitwarden-ssh-agent.service" ]; then
+    validate_test "npiperelay.exe symlink resolves" "[ -f \"\$HOME/.local/bin/npiperelay.exe\" ]"
+    validate_test "bitwarden-ssh-agent.service is active" "systemctl --user is-active bitwarden-ssh-agent"
+    validate_test "\$HOME/.bitwarden-ssh-agent.sock is a socket" "[ -S \"\$HOME/.bitwarden-ssh-agent.sock\" ]"
+  fi
+fi
+
+# VS Code configuration validation (cross-platform)
+echo ""
+echo "Validating VS Code configuration..."
+echo "-----------------------------------"
+# GUI app configs are not applied on minimal machines (.chezmoiignore).
+if [ "$MACHINE_TYPE" != "minimal" ]; then
+  validate_test "VS Code settings exist" "[ -f \"\$HOME/.config/Code/User/settings.json\" ]"
+  validate_test "VS Code keybindings exist" "[ -f \"\$HOME/.config/Code/User/keybindings.json\" ]"
+fi
+
+echo ""
+echo "================================"
+echo "Validation Summary"
+echo "================================"
+echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
+if [ "$SKIPPED_TESTS" -gt 0 ]; then
+  echo -e "${YELLOW}Skipped: $SKIPPED_TESTS${NC} (DOTFILES_SKIP_INSTALL fast CI mode)"
+fi
+if [ "$WARNED_TESTS" -gt 0 ]; then
+  echo -e "${YELLOW}Warned: $WARNED_TESTS${NC}"
+fi
+echo -e "${RED}Failed: $FAILED_TESTS${NC}"
+echo ""
+
+# Save counts for CI summary if running in CI environment
+TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS + WARNED_TESTS + SKIPPED_TESTS))
+{
+  echo "PASSED_TESTS=$PASSED_TESTS"
+  echo "FAILED_TESTS=$FAILED_TESTS"
+  echo "WARNED_TESTS=$WARNED_TESTS"
+  echo "SKIPPED_TESTS=$SKIPPED_TESTS"
+  echo "TOTAL_TESTS=$TOTAL_TESTS"
+} >/tmp/validation_counts.txt
+
+if [ $FAILED_TESTS -eq 0 ]; then
+  echo -e "${GREEN}All validations passed! Your dotfiles are properly installed.${NC}"
+  exit 0
+else
+  echo -e "${RED}Some validations failed. Please review the output above.${NC}"
+  exit 1
+fi

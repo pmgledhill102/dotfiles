@@ -1,0 +1,523 @@
+name: Install
+
+# Published from the private source's public-ci/ directory into this
+# repository's .github/ (dotfiles-private ADR-0023). Edits made here are
+# overwritten by the next publish.
+#
+# The source publishes each change to the `candidate` branch. This workflow
+# runs the full install on every OS and tier against it, and only when every
+# leg passes does the promote job move `main`, which is what `install.sh` and
+# `chezmoi init` fetch. Standard runners are free on a public repository, so
+# the macOS and Windows legs live here rather than in the private source.
+#
+# Never pull_request: this repository takes no pull requests, and the promote
+# job's environment holds the publish App's key.
+
+on:
+  push:
+    branches: [ "candidate" ]
+  schedule:
+    - cron: '0 6 * * 5'   # Weekly Friday 06:00 UTC, against main: upstream drift
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# A newer candidate supersedes an older one: cancel the older run.
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  test-install:
+    # Personal legs keep their historical names; the extra Ubuntu tiers get a
+    # suffix (#501).
+    name: Test Install on ${{ matrix.os }}${{ matrix.machine_type != 'personal' && format(' ({0})', matrix.machine_type) || '' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        machine_type: [personal]
+        # work and minimal Linux run code no personal leg reaches (the tarball
+        # installers, latest_release_tag, the Starship installer), and the
+        # work leg is ADR-0019's baseline for moving work Linux to Homebrew.
+        include:
+          - os: ubuntu-latest
+            machine_type: work
+          - os: ubuntu-latest
+            machine_type: minimal
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    # --- Strip pre-installed tools to simulate a fresh machine ---
+    # actions/checkout needs git, so stripping happens AFTER checkout.
+    # chezmoi init --source . uses the local checkout (no git clone needed).
+
+    - name: Strip pre-installed tools (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        echo "Uninstalling Homebrew to test bootstrap from scratch..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)" -- --force
+        sudo rm -rf /opt/homebrew /usr/local/Homebrew /usr/local/Cellar /usr/local/Caskroom
+        hash -r
+        if command -v brew >/dev/null 2>&1; then
+          echo "Error: Homebrew still found after uninstall"
+          exit 1
+        fi
+        echo "Homebrew removed successfully."
+        # Xcode CLT is kept — removing it adds ~5 min of download time.
+        # install.sh handles CLT installation on truly fresh Macs.
+
+    - name: Strip pre-installed tools (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        echo "Removing packages that install scripts should install..."
+        sudo apt-get remove -y git zsh || true
+        sudo apt-get autoremove -y
+        # The runner image ships Linuxbrew at /home/linuxbrew. Remove it on
+        # every leg: personal installs Homebrew itself (ADR-0017), so this
+        # exercises that bootstrap from scratch, as the macOS leg does; work
+        # and minimal must not find a Homebrew they would not have.
+        sudo rm -rf /home/linuxbrew
+        echo "Pre-installed tools stripped."
+
+    # Windows: no stripping needed. winget install handles already-installed
+    # packages gracefully, and --source . bypasses the git-for-clone issue.
+
+    - name: Check disk space before installation (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        echo "==================================="
+        echo "Disk Space Before Installation"
+        echo "==================================="
+        df -h
+        echo ""
+        # Store initial disk usage for volume containing home
+        # Use portable df output parsing that works on both Linux and macOS
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          INITIAL_DISK_USED=$(df -k "$HOME" | tail -n 1 | awk '{print $3}')
+        else
+          INITIAL_DISK_USED=$(df --output=used "$HOME" | tail -n 1)
+        fi
+        echo "$INITIAL_DISK_USED" > /tmp/initial_disk_used.txt
+        echo "Initial disk usage (home volume): $INITIAL_DISK_USED KB"
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+
+    - name: Check disk space before installation (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "==================================="
+        Write-Host "Disk Space Before Installation"
+        Write-Host "==================================="
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Format-Table -AutoSize
+        Write-Host ""
+        $drive = (Get-Item $HOME).PSDrive
+        $initialUsed = $drive.Used
+        $initialUsed | Out-File "$env:TEMP\initial_disk_used.txt"
+        Write-Host "Initial disk usage (home volume): $([math]::Round($initialUsed / 1KB, 2)) KB"
+
+    # --- Install chezmoi (the only pre-req for --source . apply) ---
+
+    - name: Install chezmoi (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        # Use the official installer — same method as install.sh for real bootstraps
+        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Install chezmoi (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        winget install --id twpayne.chezmoi --accept-source-agreements --accept-package-agreements
+        $wingetPath = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+        Write-Host "Adding $wingetPath to PATH"
+        echo "$wingetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Initialize and Apply Dotfiles (Unix)
+      if: runner.os != 'Windows'
+      env:
+        MACHINE_TYPE: ${{ matrix.machine_type }}
+      run: |
+        # Use 'time' to benchmarking installation (T026)
+        # We use --source . to use the checked-out repo
+        # We assume no secrets are strictly blocking for this basic CI smoke test
+
+        # Pre-seed machine_type for non-interactive CI.
+        # chezmoi's --promptChoice flag does NOT work with promptChoiceOnce,
+        # so we must write the config data directly.
+        mkdir -p "$HOME/.config/chezmoi"
+        printf '[data]\n    machine_type = "%s"\n' "$MACHINE_TYPE" > "$HOME/.config/chezmoi/chezmoi.toml"
+
+        echo "Starting Chezmoi Apply (machine_type: $MACHINE_TYPE)..."
+        time chezmoi init --apply --source . --verbose
+
+    - name: Initialize and Apply Dotfiles (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Pre-seed machine_type for non-interactive CI.
+        # chezmoi's --promptChoice flag does NOT work with promptChoiceOnce,
+        # so we must write the config data directly.
+        New-Item -ItemType Directory -Path "$HOME\.config\chezmoi" -Force | Out-Null
+        @"
+        [data]
+            machine_type = "personal"
+        "@ | Out-File -FilePath "$HOME\.config\chezmoi\chezmoi.toml" -Encoding utf8
+
+        Write-Host "Starting Chezmoi Apply..."
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        chezmoi init --apply --source . --verbose
+        $stopwatch.Stop()
+        Write-Host "Installation took $($stopwatch.Elapsed.TotalSeconds) seconds"
+
+    - name: Run Validation Script (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        chmod +x scripts/validate-installation.sh
+        ./scripts/validate-installation.sh
+
+    - name: Measure Zsh Startup Time (Unix)
+      # Informational only — feeds the GITHUB_STEP_SUMMARY table.
+      # Never block the job on this measurement.
+      continue-on-error: true
+      if: runner.os != 'Windows'
+      run: |
+        set -x
+        # Some ubuntu-latest runner images ship /usr/share/zsh as world-writable
+        # (drwxrwxrwx+), which makes oh-my-zsh's compinit refuse to load
+        # completions. Tighten perms before measuring.
+        if [ "$RUNNER_OS" = "Linux" ] && [ -d /usr/share/zsh ]; then
+          sudo chmod -R go-w /usr/share/zsh || true
+        fi
+        # Warm + timed run. Tolerate any failure — see continue-on-error above.
+        zsh -i -c exit 2>&1 || true
+        ZSH_STARTUP=$( { time zsh -i -c exit; } 2>&1 || true )
+        echo "$ZSH_STARTUP"
+        REAL_TIME=$(echo "$ZSH_STARTUP" | grep '^real' | awk '{print $2}' || echo "unknown")
+        echo "ZSH_STARTUP_TIME=$REAL_TIME" > /tmp/zsh_startup.txt
+
+    - name: Run Validation Script (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        & scripts/validate-installation-windows.ps1
+
+    - name: Check disk space after installation (Unix)
+      if: always() && runner.os != 'Windows'
+      run: |
+        echo ""
+        echo "==================================="
+        echo "Disk Space After Installation"
+        echo "==================================="
+        df -h
+        echo ""
+        
+        # Calculate disk overhead for root filesystem
+        if [ ! -f /tmp/initial_disk_used.txt ]; then
+          echo "Error: Initial disk usage file not found"
+          exit 1
+        fi
+        
+        INITIAL_DISK_USED=$(cat /tmp/initial_disk_used.txt)
+        if ! [[ "$INITIAL_DISK_USED" =~ ^[0-9]+$ ]]; then
+          echo "Error: Initial disk usage is not a valid number"
+          exit 1
+        fi
+        
+        # Get final disk usage using portable df parsing
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          FINAL_DISK_USED=$(df -k "$HOME" | tail -n 1 | awk '{print $3}')
+        else
+          FINAL_DISK_USED=$(df --output=used "$HOME" | tail -n 1)
+        fi
+        
+        OVERHEAD_KB=$((FINAL_DISK_USED - INITIAL_DISK_USED))
+        # Note: Integer division truncates to nearest MB (rounds down)
+        OVERHEAD_MB=$((OVERHEAD_KB / 1024))
+        
+        echo "==================================="
+        echo "Disk Space Overhead Summary"
+        echo "==================================="
+        echo "Initial disk used: $((INITIAL_DISK_USED / 1024)) MB"
+        echo "Final disk used:   $((FINAL_DISK_USED / 1024)) MB"
+        if [ $OVERHEAD_KB -ge 0 ]; then
+          # Calculate GB with 2 decimal places using shell arithmetic
+          # Rearranged to avoid potential overflow: (KB / 1024) * 100 / 1024
+          OVERHEAD_GB_INT=$((OVERHEAD_KB / 1024 / 1024))
+          OVERHEAD_GB_DEC=$(((OVERHEAD_KB * 100 / 1024 / 1024) % 100))
+          printf "Disk overhead:     %d MB (%d.%02d GB)\n" "$OVERHEAD_MB" "$OVERHEAD_GB_INT" "$OVERHEAD_GB_DEC"
+        else
+          # For negative values, calculate absolute value
+          OVERHEAD_MB_ABS=$(( (-OVERHEAD_KB) / 1024 ))
+          echo "Disk overhead:     -${OVERHEAD_MB_ABS} MB [disk space freed]"
+        fi
+        echo "==================================="
+        
+        echo ""
+        echo "Home directory size:"
+        du -sh "$HOME" 2>/dev/null || echo "Unable to calculate home directory size"
+        
+        # Also show breakdown of major directories in home
+        echo ""
+        echo "Top directories by size in home:"
+        # Using du directly is faster than find with -exec
+        du -sh "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -hr | head -20 || echo "Unable to list directories"
+        
+        # Persist disk overhead for summary step
+        echo "OVERHEAD_KB=$OVERHEAD_KB" > /tmp/disk_overhead.txt
+        echo "OVERHEAD_MB=$OVERHEAD_MB" >> /tmp/disk_overhead.txt
+
+    - name: Check disk space after installation (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host ""
+        Write-Host "==================================="
+        Write-Host "Disk Space After Installation"
+        Write-Host "==================================="
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | Format-Table -AutoSize
+        Write-Host ""
+        
+        $initialFile = "$env:TEMP\initial_disk_used.txt"
+        if (-not (Test-Path $initialFile)) {
+          Write-Host "Error: Initial disk usage file not found"
+          exit 1
+        }
+        
+        $initialUsed = [decimal](Get-Content $initialFile)
+        $drive = (Get-Item $HOME).PSDrive
+        $finalUsed = $drive.Used
+        
+        $overheadBytes = $finalUsed - $initialUsed
+        $overheadKB = [math]::Round($overheadBytes / 1KB, 2)
+        $overheadMB = [math]::Round($overheadBytes / 1MB, 2)
+        $overheadGB = [math]::Round($overheadBytes / 1GB, 2)
+        
+        Write-Host "==================================="
+        Write-Host "Disk Space Overhead Summary"
+        Write-Host "==================================="
+        Write-Host "Initial disk used: $([math]::Round($initialUsed / 1MB, 2)) MB"
+        Write-Host "Final disk used:   $([math]::Round($finalUsed / 1MB, 2)) MB"
+        Write-Host "Disk overhead:     $overheadMB MB ($overheadGB GB)"
+        Write-Host "==================================="
+        
+        # Persist for summary
+        "OVERHEAD_KB=$overheadKB" | Out-File "$env:TEMP\disk_overhead.txt"
+        "OVERHEAD_MB=$overheadMB" | Add-Content "$env:TEMP\disk_overhead.txt"
+
+    - name: Generate Installation Report (Unix)
+      if: always() && runner.os != 'Windows'
+      run: |
+        # Generate Job Summary
+        {
+          echo "### Installation Report (${{ matrix.os }}, ${{ matrix.machine_type }}) :bar_chart:"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        # Load test counts if available
+        if [ -f /tmp/validation_counts.txt ]; then
+            source /tmp/validation_counts.txt
+        else
+            PASSED_TESTS="0"
+            FAILED_TESTS="0"
+            TOTAL_TESTS="0"
+        fi
+
+        # Load disk overhead if available
+        if [ -f /tmp/disk_overhead.txt ]; then
+            source /tmp/disk_overhead.txt
+        else
+            OVERHEAD_KB="0"
+            OVERHEAD_MB="0"
+            OVERHEAD_DISPLAY="N/A"
+        fi
+
+        # Determine status icon
+        # We consider it a success if:
+        # 1. Validation ran and reported 0 failures
+        # 2. Total tests > 0 (it actually ran)
+        # 3. The overall job status is not already failure (e.g. from install step)
+        if [ "$FAILED_TESTS" -eq 0 ] && [ "$TOTAL_TESTS" -gt 0 ] && [ "${{ job.status }}" != "failure" ]; then
+             STATUS="✅ Success"
+        else
+             STATUS="❌ Failure"
+        fi
+
+        {
+          echo "| Metric | Value |"
+          echo "| :--- | :--- |"
+          echo "| **Status** | $STATUS |"
+          echo "| **Tests Run** | $TOTAL_TESTS |"
+          echo "| **Tests Passed** | $PASSED_TESTS |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        if [ -f /tmp/zsh_startup.txt ]; then
+            source /tmp/zsh_startup.txt
+        fi
+        echo "| **Zsh Startup** | ${ZSH_STARTUP_TIME:-N/A} |" >> "$GITHUB_STEP_SUMMARY"
+
+        if [ "$OVERHEAD_DISPLAY" != "N/A" ]; then
+            if [ "$OVERHEAD_KB" -ge 0 ]; then
+              OVERHEAD_DISPLAY="${OVERHEAD_MB} MB"
+            else
+              OVERHEAD_MB_ABS=$(( (-OVERHEAD_KB) / 1024 ))
+              OVERHEAD_DISPLAY="-${OVERHEAD_MB_ABS} MB (freed)"
+            fi
+        fi
+        echo "| **Disk Overhead** | $OVERHEAD_DISPLAY |" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Generate Installation Report (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Generate Job Summary
+        @"
+        ### Installation Report (${{ matrix.os }}) :bar_chart:
+
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+        # Load test counts if available
+        $countsFile = "$env:TEMP\validation_counts.txt"
+        if (Test-Path $countsFile) {
+            Get-Content $countsFile | ForEach-Object {
+                if ($_ -match '^(\w+)=(.+)$') {
+                    Set-Variable -Name $matches[1] -Value $matches[2]
+                }
+            }
+        } else {
+            $PASSED_TESTS = "0"
+            $FAILED_TESTS = "0"
+            $TOTAL_TESTS = "0"
+        }
+
+        # Load disk overhead if available
+        $overheadFile = "$env:TEMP\disk_overhead.txt"
+        if (Test-Path $overheadFile) {
+            Get-Content $overheadFile | ForEach-Object {
+                if ($_ -match '^(\w+)=(.+)$') {
+                    Set-Variable -Name $matches[1] -Value $matches[2]
+                }
+            }
+            $OVERHEAD_DISPLAY = "$OVERHEAD_MB MB"
+        } else {
+            $OVERHEAD_KB = "0"
+            $OVERHEAD_MB = "0"
+            $OVERHEAD_DISPLAY = "N/A"
+        }
+
+        # Determine status
+        if ($FAILED_TESTS -eq 0 -and $TOTAL_TESTS -gt 0 -and "${{ job.status }}" -ne "failure") {
+            $STATUS = ":white_check_mark: Success"
+        } else {
+            $STATUS = ":x: Failure"
+        }
+
+        @"
+        | Metric | Value |
+        | :--- | :--- |
+        | **Status** | $STATUS |
+        | **Tests Run** | $TOTAL_TESTS |
+        | **Tests Passed** | $PASSED_TESTS |
+        | **Disk Overhead** | $OVERHEAD_DISPLAY |
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+    - name: Upload Test Results
+      if: failure()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.machine_type }}
+        path: |
+          home/
+
+  # Fast-forward main to the commit every leg just tested. Not the candidate's
+  # tip: a newer publish may have replaced it since this run started.
+  #
+  # main's ruleset admits pushes from the publish App only, and the default
+  # GITHUB_TOKEN cannot be exempted from a ruleset. So this job mints a
+  # short-lived token for that App, from secrets held in the `promote`
+  # environment, whose deployment branches are restricted to `candidate`.
+  # Only the publish App can write `candidate` (its own ruleset), and this
+  # repository takes no pull requests, so only a workflow the source
+  # published can reach the key (dotfiles-private ADR-0023 section 2).
+  #
+  # A push that is not a fast-forward is refused by git, so this can never
+  # rewrite main. It is refused when main has moved since the candidate was
+  # built, which happens when the other source publishes agent/ in between.
+  # Then this job fails before any token exists, main stays where it was, and
+  # the next publish (or a manual run of the source's publish workflow)
+  # rebuilds the candidate on top of the new main.
+  promote:
+    name: Promote candidate to main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/candidate'
+    needs: [test-install]
+    runs-on: ubuntu-latest
+    environment: promote
+    permissions:
+      contents: read
+    concurrency:
+      group: promote
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tested commit is a fast-forward of main
+        env:
+          TESTED_SHA: ${{ github.sha }}
+        run: |
+          git fetch -q origin main
+          if ! git merge-base --is-ancestor origin/main "$TESTED_SHA"; then
+            {
+              echo "### Not promoted"
+              echo ""
+              echo "main moved after this candidate was built, so \`$TESTED_SHA\` is not a fast-forward of it."
+              echo "main is unchanged. Re-run the source's publish workflow to rebuild the candidate on the new main."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::main moved since the candidate was built; not promoted. Re-run the source's publish workflow."
+            exit 1
+          fi
+
+      # Scoped to this repository alone, and minted only after the check
+      # above, so a candidate that cannot be promoted never holds a token.
+      # workflows: the commit may change .github/workflows/, and GitHub
+      # refuses such a push without it, fast-forward or not.
+      - name: Mint the promote token
+        id: app-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.PUBLISH_APP_ID }}
+          private-key: ${{ secrets.PUBLISH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-workflows: write
+
+      # Never --force: a push that is not a fast-forward is refused.
+      - name: Fast-forward main
+        env:
+          TESTED_SHA: ${{ github.sha }}
+          PROMOTE_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          auth="$(printf 'x-access-token:%s' "$PROMOTE_TOKEN" | base64 | tr -d '\n')"
+          echo "::add-mask::$auth"
+          # Through the environment, not -c on the command line, so the
+          # header never appears in an argument list.
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          git push origin "$TESTED_SHA:refs/heads/main"
+          {
+            echo "### Promoted"
+            echo ""
+            echo "main is now \`$TESTED_SHA\`."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -137,8 +137,10 @@ first run with your key. No plaintext credentials in version control.
 
 ### Confidence it works
 
-CI runs lint + full install tests on macOS, Ubuntu, and Windows on every
-push to `main`, so a broken bootstrap is caught before it hits your laptop.
+Every change is installed from scratch on macOS, Ubuntu and Windows before
+this repository's `main` moves: it is published to a `candidate` branch
+first, and promoted only when every install passes. A broken bootstrap is
+caught before it hits your laptop.
 `validate-installation.sh` (and `.ps1` for Windows) sanity-checks a fresh
 install.
 
