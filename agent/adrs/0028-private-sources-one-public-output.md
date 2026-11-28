@@ -4,6 +4,9 @@
 - **Date**: 2026-11-22
 - **Amended**: 2026-11-22, `paul-context` added to the known-names allowlist
   (section 4), [#839](https://github.com/pmgledhill102/agentic-coding-config/issues/839)
+- **Amended**: 2026-11-28, the public repository runs the install matrix on a
+  `candidate` branch and `main` moves only when it passes (section 2),
+  [#869](https://github.com/pmgledhill102/agentic-coding-config/issues/869)
 - **Tags**: privacy, github, publishing, dotfiles
 - **Scope**: user (applies to all personal repos and agent surfaces)
 - **Supersedes**: the "Deferred: paired public and private repositories"
@@ -65,7 +68,28 @@ content:
 - Issues, pull requests, discussions, wiki and projects are disabled.
 - A ruleset on `main` allows pushes from the publish identity only: no human
   or agent pushes, and no force-push.
-- It has no CI of its own. Everything is checked before it is published.
+- Its only CI is the install matrix, which `dotfiles-private` publishes as
+  the public `.github/` (its repo-tier
+  [ADR-0023](https://github.com/pmgledhill102/dotfiles-private/blob/main/docs/adrs/0023-public-repo-tests-a-candidate-branch.md)).
+  The dotfiles source publishes to a `candidate` branch; the matrix runs
+  there, and `main` moves, by fast-forward, only when it passes.
+  Everything is still gated before it is published; the matrix tests what
+  was published, which is what machines fetch.
+
+Promotion pushes as the publish App, because the ruleset on `main` admits no
+other identity and the default Actions token cannot be exempted from a
+ruleset. So the App's ID and key also live in the public repository, as
+secrets in an environment named `promote` whose deployment branches are
+restricted to `candidate`. That is acceptable because only the App can write
+any branch, `candidate` included, and the repository takes no pull requests:
+the only workflow that can reach the key is one a source published through
+its gates. Nothing is force-pushed, and the rulesets are unchanged: a
+candidate that was never promoted is superseded by a commit whose first
+parent is `main` and whose second is the old candidate.
+
+The agent-config source still publishes `agent/` straight to `main`, without
+the matrix: it changes nothing outside `agent/`, so never the public
+`.github/`.
 
 Reusing the name `dotfiles` keeps the install URL and the `chezmoi init` URL
 unchanged.
