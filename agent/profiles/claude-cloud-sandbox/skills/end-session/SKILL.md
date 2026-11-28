@@ -144,13 +144,18 @@ route)`. An unchecked list must never render as "none".
 session you are:
 
 ```text
-mcp__Claude_Code_Remote__list_triggers(enabled: true)
+mcp__Claude_Code_Remote__list_triggers(enabled: true, recurring: false)
 mcp__Claude_Code_Remote__get_session()     # session_id omitted = this session
 mcp__Claude_Code_Remote__list_sessions(children: true, limit: 100)
 ```
 
-`enabled: true` drops the ones that already fired or were auto-disabled, so
-what comes back is what is still going to wake something. `get_session` gives
+`enabled: true` drops the ones that already fired or were auto-disabled, and
+`recurring: false` drops cron-driven routines, whose long prompts would
+otherwise flood the transcript only to be filtered out. What comes back is the
+one-shot and fire-only triggers still going to wake something, which includes
+every `send_later` check-in. A **recurring** trigger bound to this session or a
+child (a `create_trigger` cron with no fresh session per fire) is not covered.
+`get_session` gives
 this session's id; keep only triggers whose `persistent_session_id` matches it,
 because the listing is account-wide (step 14b), **or** whose
 `persistent_session_id` is one of the children `list_sessions(children: true)`
@@ -477,8 +482,10 @@ closed" rather than as fact.
 **Only this session's.** `list_triggers` is account-wide, so an unfiltered list
 shows other sessions' live work. Reporting that as leftover mess is a false
 positive, and acting on it would be worse — a sibling session watching its own
-PR is doing its job. Step 1(c) filters on `persistent_session_id`, keeping
-this session's triggers and those of the children it started. List a child's
+PR is doing its job. Step 1(c) lists only one-shot and fire-only triggers
+(`recurring: false`), then filters on `persistent_session_id`, keeping this
+session's triggers and those of the children it started; a recurring trigger
+bound to this session is not covered. List a child's
 under step 14c, against that child, not here.
 
 Worth knowing before deciding anything is urgent: a trigger whose session is
