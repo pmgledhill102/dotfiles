@@ -7,6 +7,12 @@ param(
 
 $ErrorActionPreference = "Continue"
 
+# PLANTED FAILURE: the ADR-0023 acceptance test (#527). This fails only the
+# public Windows leg, which this repo no longer runs, so the candidate must go
+# red and public main must not move. Revert this commit once that is seen.
+Write-Host "PLANTED FAILURE: acceptance test for #527; revert me" -ForegroundColor Red
+exit 1
+
 if ($Verbose) {
     $VerbosePreference = "Continue"
 }
